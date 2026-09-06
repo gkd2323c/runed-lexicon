@@ -1,0 +1,29 @@
+{
+  "skill_name": "translation-context-builder",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "给 Sirenroot 生成 5 条 INFO:NAM1 的翻译上下文批次，把 xTranslator XML 和 xEdit dialogue context 合并进去。只准备 Agent 输入，不翻译，不写回 XML。",
+      "expected_output": "A read-only JSON context batch with five INFO:NAM1 entries, stable XML metadata, MOD context files, dictionary evidence, and xEdit dialogue joins by FormID.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "把 evgSIRENROOT.esm 的 DIAL:FULL 和 INFO:NAM1 整理成最多 10 条上下文输入，保留任务、Topic、Branch 和相关 INFO 证据。不要凭语义猜关系。",
+      "expected_output": "A structured context batch limited to the requested REC types, including deterministic xEdit context where available and unresolved join markers where no deterministic join exists.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "这个 MOD 目录缺少 CONTEXT.md 或 DICTIONARY.md，先帮我生成翻译上下文批次。",
+      "expected_output": "The workflow stops clearly before producing translation context and reports the missing required MOD context file rather than silently proceeding.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "给 Sirenroot 前 25 条 INFO:NAM1 建上下文。官方词典提示要保留 Nirnroot、Skooma、Ingun Black-Briar 这类身份/设定词，但不要因为官方 XML 里恰好有同名单词，就把 Between、Gate、Place、Fill、Talk 之类普通句子词汇当术语塞进去。",
+      "expected_output": "Dialogue context keeps high-value canonical entity/world-term hits while suppressing generic single-word accidental matches from unrelated FULL/RNAM/GMST records.",
+      "files": []
+    }
+  ]
+}

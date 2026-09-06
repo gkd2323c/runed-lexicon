@@ -1,0 +1,1047 @@
+{
+  "doc": "项目级全局禁用词库（Global Forbidden Words）。canonical 机器源，供 term-contract-compiler 编译进各 MOD 的 Translation Contract，由 translation-quality-gate 以 TERM004 对每个已翻译单元独立执行（source 英文锚点整词命中 + dest 含坏形态才报）。收录与维护规则见 GLOSSARY.md §7 与 skyrim-doc-system：只收跨 MOD 有复用价值的官方名词系统性错误形态，不收入普通词、MOD 专有词、以及依赖上下文才成立的禁令。每条 reason 必须能说清'为什么禁'，让 gate 报错可解释。",
+  "bans": [
+    {
+      "english": "Alduin",
+      "forbidden": [
+        "阿杜因"
+      ],
+      "target": "奥杜因",
+      "reason": "官方词典：世界吞噬者龙名（MVF1 审计实测变体）"
+    },
+    {
+      "english": "Argonian",
+      "forbidden": [
+        "亚龙人",
+        "阿戈尼安",
+        "阿戈尼亚",
+        "阿贡人"
+      ],
+      "target": "阿尔贡",
+      "reason": "官方 RACE:FULL 固定种族译名（MVF1 DICTIONARY 严禁清单；TERM003 另封派生后缀尼亚）"
+    },
+    {
+      "english": "Ash Yam",
+      "forbidden": [
+        "灰薯"
+      ],
+      "target": "灰烬薯",
+      "reason": "官方词典：灰烬薯（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Blackreach",
+      "forbidden": [
+        "黑降",
+        "黑渊"
+      ],
+      "target": "黑境",
+      "reason": "官方词典：黑境（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Breton",
+      "forbidden": [
+        "布列塔尼",
+        "布雷顿",
+        "布列顿"
+      ],
+      "target": "布莱顿",
+      "reason": "官方 RACE:FULL 译名；布列塔尼是地球地名（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "College of Winterhold",
+      "forbidden": [
+        "冬堡魔法学院",
+        "冬堡的学院"
+      ],
+      "target": "冬堡学院",
+      "reason": "官方词典固定名（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Cyrodiil",
+      "forbidden": [
+        "西罗帝尔"
+      ],
+      "target": "希罗帝尔",
+      "reason": "官方词典：希罗帝尔（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Dawnstar",
+      "forbidden": [
+        "晨星城"
+      ],
+      "target": "晨星",
+      "reason": "官方词典：苍原要塞首府（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Delphine",
+      "forbidden": [
+        "德尔菲娜",
+        "黛尔芬",
+        "德尔芬",
+        "德菲妮",
+        "黛爾芬"
+      ],
+      "target": "戴尔芬",
+      "reason": "官方词典：刀锋会核心成员；繁体形态同禁（MVF1 审计实测 5 种变体）"
+    },
+    {
+      "english": "Dragonsreach",
+      "forbidden": [
+        "龙霄宫"
+      ],
+      "target": "龙临宫",
+      "reason": "官方词典：白漫要塞宫殿（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Dwemer",
+      "forbidden": [
+        "矮人族"
+      ],
+      "target": "锻莫",
+      "reason": "官方设定专名；泛化为矮人族丢失文明主体（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Esbern",
+      "forbidden": [
+        "埃斯伯恩",
+        "伊斯本"
+      ],
+      "target": "伊思本",
+      "reason": "官方词典：刀锋会学者（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Falmer",
+      "forbidden": [
+        "雪精灵"
+      ],
+      "target": "伐莫",
+      "reason": "知识边界：伐莫是地下异化种族，雪精灵涉剧透称谓（MVF1 DICTIONARY 严禁清单 + risk）"
+    },
+    {
+      "english": "Forsworn",
+      "forbidden": [
+        "堕落者",
+        "誓约者",
+        "被诅咒者",
+        "背弃者"
+      ],
+      "target": "弃誓者",
+      "reason": "官方词典：瑞驰本土起义势力（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Greybeards",
+      "forbidden": [
+        "白胡子",
+        "长胡子"
+      ],
+      "target": "灰胡子",
+      "reason": "官方词典：霍斯加高峰修道者（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Helgen",
+      "forbidden": [
+        "赫尔根"
+      ],
+      "target": "海尔根",
+      "reason": "官方词典：海尔根；赫尔根为高频错译（MVF1 round4 28 条候选）"
+    },
+    {
+      "english": "Hermaeus Mora",
+      "forbidden": [
+        "赫尔迈乌斯",
+        "赫迈厄斯",
+        "赫尔墨斯",
+        "莫拉魔神"
+      ],
+      "target": "赫麦尤斯·莫拉",
+      "reason": "官方词典：知识与命运魔神；一次审计实测 4 种错音译（MVF1 round3，33 条中 30 条错）"
+    },
+    {
+      "english": "Hist Sap",
+      "forbidden": [
+        "天啊"
+      ],
+      "target": "希斯特树汁",
+      "reason": "希斯特文化感叹不得泛化为天啊（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Imperial Library",
+      "forbidden": [
+        "帝都图书馆"
+      ],
+      "target": "帝国图书馆",
+      "reason": "官方词典：帝国图书馆机构（meresis DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Jarl",
+      "forbidden": [
+        "雅尔",
+        "贾尔",
+        "首领",
+        "贵族"
+      ],
+      "target": "领主",
+      "reason": "官方词典：要塞统治者头衔（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Kynareth",
+      "forbidden": [
+        "凯娜瑞斯",
+        "凯娜雷斯",
+        "凯纳瑞斯"
+      ],
+      "target": "凯娜瑞丝",
+      "reason": "官方词典：凯娜瑞丝；错拼高频（MVF1 round4 P1-6）"
+    },
+    {
+      "english": "Kodlak",
+      "forbidden": [
+        "克拉克",
+        "科德拉克"
+      ],
+      "target": "克拉科",
+      "reason": "官方词典：战友团首领；21 条候选高频错译（MVF1 round4）"
+    },
+    {
+      "english": "Morrowind",
+      "forbidden": [
+        "莫萨尔"
+      ],
+      "target": "晨风",
+      "reason": "官方词典：晨风省；莫萨尔是另一地名（MVF1 DICTIONARY 严禁清单，不得错翻）"
+    },
+    {
+      "english": "Mudcrab",
+      "forbidden": [
+        "泥蟹"
+      ],
+      "target": "泥沼蟹",
+      "reason": "官方词典：泥沼蟹（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Solstheim",
+      "forbidden": [
+        "索瑟姆",
+        "索瑟姆岛"
+      ],
+      "target": "索瑟海姆",
+      "reason": "官方词典：龙裔 DLC 岛名；索瑟姆为高频错译（MVF1 round3，49 条源命中全错）"
+    },
+    {
+      "english": "Spriggan",
+      "forbidden": [
+        "树精",
+        "斯普里甘",
+        "斯普里根",
+        "斯普利根"
+      ],
+      "target": "木灵",
+      "reason": "官方词典：木灵；禁音译与树精（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Sweetroll",
+      "forbidden": [
+        "甜甜圈"
+      ],
+      "target": "甜卷",
+      "reason": "官方词典：天际糕点（MVF1 round4 + sirenroot sweetroll 事故同源）"
+    },
+    {
+      "english": "Thalmor",
+      "forbidden": [
+        "圣堂武士"
+      ],
+      "target": "梭默",
+      "reason": "高精灵政权专名；圣堂武士为错译（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "The Hist",
+      "forbidden": [
+        "历史之神",
+        "生命树",
+        "血族树",
+        "息儿树"
+      ],
+      "target": "希斯特",
+      "reason": "阿尔贡神圣巨树概念；禁字面泛化（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "The Thieves Guild",
+      "forbidden": [
+        "小偷公会"
+      ],
+      "target": "盗贼公会",
+      "reason": "官方词典：盗贼公会（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Thane",
+      "forbidden": [
+        "男爵"
+      ],
+      "target": "武卫",
+      "reason": "官方词典：领主封赏荣誉头衔（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Ulfric",
+      "forbidden": [
+        "乌尔弗里克"
+      ],
+      "target": "乌弗瑞克",
+      "reason": "官方词典：风舵城风暴斗篷领袖（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Whiterun",
+      "forbidden": [
+        "雪漫"
+      ],
+      "target": "白漫",
+      "reason": "官方词典：九大要塞之一；雪漫为高频错译（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Windhelm",
+      "forbidden": [
+        "风盔城"
+      ],
+      "target": "风舵城",
+      "reason": "官方词典：东境首府（MVF1 DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Canis root",
+      "forbidden": [
+        "狗尾草根"
+      ],
+      "target": "犬根",
+      "reason": "官方词典：犬根（meresis DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Gildergreen",
+      "forbidden": [
+        "金绿树"
+      ],
+      "target": "镀绿树",
+      "reason": "官方词典：白漫凯娜瑞丝神殿大树（meresis DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Leyawiin",
+      "forbidden": [
+        "黑木城"
+      ],
+      "target": "利雅文",
+      "reason": "官方词典：希罗帝尔城市；黑木 Blackwood 是所在沼泽大区（meresis DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Orsinium",
+      "forbidden": [
+        "沃斯卡里姆"
+      ],
+      "target": "奥辛纽姆",
+      "reason": "官方词典：兽人城邦；沃斯卡里姆系与沃斯加混淆（meresis DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Vigil of Stendarr",
+      "forbidden": [
+        "斯丹达尔警戒者之光"
+      ],
+      "target": "斯丹达尔警戒者",
+      "reason": "meresis DICTIONARY 严禁清单：警戒者组织名"
+    },
+    {
+      "english": "Masser",
+      "forbidden": [
+        "玛瑟尔"
+      ],
+      "target": "马瑟尔",
+      "reason": "官方词典：马瑟尔（meresis DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Mundus",
+      "forbidden": [
+        "蒙达斯"
+      ],
+      "target": "梦达思",
+      "reason": "官方词典：梦达思（meresis DICTIONARY 严禁清单）"
+    },
+    {
+      "english": "Sea of Ghosts",
+      "forbidden": [
+        "幽灵之海"
+      ],
+      "target": "幽灵海",
+      "reason": "官方 Skyrim/CC 语料统一幽灵海（不带之）；meresis 曾误作幽灵之海（GLOSSARY §7）"
+    },
+    {
+      "english": "Mysticism",
+      "forbidden": [
+        "神秘主义",
+        "神秘学"
+      ],
+      "target": "秘法",
+      "reason": "TES 旧学派译名秘法；神秘主义/神秘学为误译（SB1 DICTIONARY 严禁清单 + GLOSSARY §7）"
+    },
+    {
+      "english": "Vigilant",
+      "forbidden": [
+        "警戒师"
+      ],
+      "target": "警戒者",
+      "reason": "官方 CLAS:FULL：斯丹达尔教团成员为警戒者"
+    },
+    {
+      "english": "Ysgramor",
+      "forbidden": [
+        "伊斯格拉漠"
+      ],
+      "target": "伊斯格拉默",
+      "reason": "官方词典：五百勇士首领（dg04 v2 修正伊斯格拉漠）"
+    },
+    {
+      "english": "Vilkas",
+      "forbidden": [
+        "维尔卡斯"
+      ],
+      "target": "威尔卡斯",
+      "reason": "官方词典：战友团成员（dg04 v2 修正维尔卡斯）"
+    },
+    {
+      "english": "Skjor",
+      "forbidden": [
+        "斯约尔"
+      ],
+      "target": "斯科约尔",
+      "reason": "官方词典：战友团成员（dg04 v2 修正斯约尔）"
+    },
+    {
+      "english": "Lydia",
+      "forbidden": [
+        "莉迪亚"
+      ],
+      "target": "莱迪亚",
+      "reason": "官方词典：白漫侍卫（MVF1 round6 实测 莉迪亚 漏网）"
+    },
+    {
+      "english": "Sven",
+      "forbidden": [
+        "斯文"
+      ],
+      "target": "斯万",
+      "reason": "官方词典：河木镇吟游诗人（MVF1 round6 实测 斯文 漏网）"
+    },
+    {
+      "english": "Aranea",
+      "forbidden": [
+        "阿瑞安娜",
+        "阿拉妮亚"
+      ],
+      "target": "阿兰尼亚",
+      "reason": "官方词典：阿祖拉祭坛女祭司（dg04 v3 废止阿瑞安娜/阿拉妮亚）"
+    },
+    {
+      "english": "Ancano",
+      "forbidden": [
+        "阿卡纳",
+        "阿卡诺"
+      ],
+      "target": "安卡诺",
+      "reason": "官方词典：冬堡学院索瑟姆顾问（dg04 v3 废止阿卡纳/阿卡诺）"
+    },
+    {
+      "english": "Malborn",
+      "forbidden": [
+        "马尔伯恩"
+      ],
+      "target": "马伯恩",
+      "reason": "官方词典：梭默大使馆内应（dg04 v3 废止马尔伯恩）"
+    },
+    {
+      "english": "Saarthal",
+      "forbidden": [
+        "萨尔塔尔",
+        "萨塔尔"
+      ],
+      "target": "萨瑟尔",
+      "reason": "官方词典：冬堡废墟（dg04 v3 废止萨尔塔尔/萨塔尔）"
+    },
+    {
+      "english": "Roggvir",
+      "forbidden": [
+        "罗格维尔"
+      ],
+      "target": "罗吉维尔",
+      "reason": "官方词典：风舵城（dg04 v3 废止罗格维尔）"
+    },
+    {
+      "english": "Lisette",
+      "forbidden": [
+        "莉赛特"
+      ],
+      "target": "莉赛蒂",
+      "reason": "官方词典：独孤城吟游诗人（dg04 v3 废止莉赛特）"
+    },
+    {
+      "english": "Beitild",
+      "forbidden": [
+        "拜提尔德",
+        "贝蒂尔"
+      ],
+      "target": "贝提尤德",
+      "reason": "官方词典：晨星矿工（dg04 v3 废止拜提尔德/贝蒂尔）"
+    },
+    {
+      "english": "Fralia Gray-Mane",
+      "forbidden": [
+        "法莱亚·灰鬃",
+        "弗拉莉亚·灰鬃"
+      ],
+      "target": "法利亚·灰鬃",
+      "reason": "官方词典：灰鬃家族（dg04 v3 废止法莱亚·灰鬃）"
+    },
+    {
+      "english": "Olfina Gray-Mane",
+      "forbidden": [
+        "奥尔菲娜·格雷-曼尼",
+        "奥尔菲娜·灰鬃"
+      ],
+      "target": "奥菲娜·灰鬃",
+      "reason": "官方词典：灰鬃家族（dg04 v3 废止奥尔菲娜·格雷-曼尼）"
+    },
+    {
+      "english": "Jon Battle-Born",
+      "forbidden": [
+        "乔恩·战生"
+      ],
+      "target": "乔恩·战狂",
+      "reason": "官方词典：战狂家族（dg04 v3 废止乔恩·战生）"
+    },
+    {
+      "english": "Yatul",
+      "forbidden": [
+        "亚图尔"
+      ],
+      "target": "雅图尔",
+      "reason": "官方词典（dg04 v3 废止亚图尔）"
+    },
+    {
+      "english": "Njada",
+      "forbidden": [
+        "妮亚达"
+      ],
+      "target": "尼加达",
+      "reason": "官方词典：战友团成员（dg04 v2 修正妮亚达）"
+    },
+    {
+      "english": "Ria",
+      "forbidden": [
+        "莉亚"
+      ],
+      "target": "利亚",
+      "reason": "官方词典：战友团成员（dg04 v2 修正莉亚）"
+    },
+    {
+      "english": "Camilla Valerius",
+      "forbidden": [
+        "卡米拉",
+        "卡米拉·瓦勒瑞斯"
+      ],
+      "target": "凯米拉·瓦勒瑞斯",
+      "reason": "官方词典：河木镇（dg04 v2 修正卡米拉；简短凯米拉合法）"
+    },
+    {
+      "english": "Constance Michel",
+      "forbidden": [
+        "康斯坦丝",
+        "康斯坦丝·米切尔"
+      ],
+      "target": "康斯坦斯·米切尔",
+      "reason": "官方词典：荣耀堂孤儿院（dg04 v2 修正康斯坦丝；康斯坦斯简短合法）"
+    },
+    {
+      "english": "Aventus Aretino",
+      "forbidden": [
+        "阿雷蒂诺"
+      ],
+      "target": "阿文图斯·艾瑞提诺",
+      "reason": "官方词典：孤儿院男孩（dg04 v2 修正阿雷蒂诺）"
+    },
+    {
+      "english": "Delvin Mallory",
+      "forbidden": [
+        "德尔文·马洛里"
+      ],
+      "target": "戴尔文·马洛里",
+      "reason": "官方词典：盗贼公会（dg04 v2 修正德尔文）"
+    },
+    {
+      "english": "Augur of Dunlain",
+      "forbidden": [
+        "敦莱茵的预言者"
+      ],
+      "target": "占卜师杜兰",
+      "reason": "官方词典：冬堡学院（dg04 v3 废止敦莱茵的预言者）"
+    },
+    {
+      "english": "Azura's Star",
+      "forbidden": [
+        "阿祖拉的星辰"
+      ],
+      "target": "阿祖拉之星",
+      "reason": "官方词典（dg04 v3 废止阿祖拉的星辰）"
+    },
+    {
+      "english": "Stands-In-Shallows",
+      "forbidden": [
+        "立于浅滩",
+        "立浅滩"
+      ],
+      "target": "孤立浅滩",
+      "reason": "官方词典：阿尔贡连字名（dg04 v3 废止立于浅滩/立浅滩）"
+    },
+    {
+      "english": "High Hrothgar",
+      "forbidden": [
+        "霍斯加高峰修道院"
+      ],
+      "target": "霍斯加修道院",
+      "reason": "官方词典：灰胡子驻地（dg04 v2 修正）"
+    },
+    {
+      "english": "Golden Claw",
+      "forbidden": [
+        "金爪"
+      ],
+      "target": "黄金龙爪",
+      "reason": "官方词典：黄金龙爪（dg04/MVF1 修正金爪）"
+    },
+    {
+      "english": "Frost Troll",
+      "forbidden": [
+        "冰霜巨魔"
+      ],
+      "target": "霜巨魔",
+      "reason": "官方词典：霜巨魔（dg04 v2 修正冰霜巨魔）"
+    },
+    {
+      "english": "Rueful Axe",
+      "forbidden": [
+        "忏悔之斧"
+      ],
+      "target": "悔恨之斧",
+      "reason": "官方词典：悔恨之斧（dg04 v2 修正忏悔之斧）"
+    },
+    {
+      "english": "Hall of the Dead",
+      "forbidden": [
+        "亡者大厅"
+      ],
+      "target": "亡者之厅",
+      "reason": "官方词典：亡者之厅（dg04 v3 废止亡者大厅）"
+    },
+    {
+      "english": "Dustman's Cairn",
+      "forbidden": [
+        "石冢古墓",
+        "尘冢",
+        "尘土之冢"
+      ],
+      "target": "清洁者石冢",
+      "reason": "官方词典：清洁者石冢（dg04 v3 废止石冢古墓/尘冢）"
+    },
+    {
+      "english": "Moon Sugar",
+      "forbidden": [
+        "月糖"
+      ],
+      "target": "月亮糖",
+      "reason": "官方词典：月亮糖（dg04 v2 修正月糖）"
+    },
+    {
+      "english": "The White Phial",
+      "forbidden": [
+        "白色药瓶"
+      ],
+      "target": "白瓶",
+      "reason": "官方词典：白瓶（dg04 v2 修正白色药瓶）"
+    },
+    {
+      "english": "Mammoth Cheese Bowl",
+      "forbidden": [
+        "猛犸奶酪碗"
+      ],
+      "target": "碗装猛犸奶酪",
+      "reason": "官方词典：碗装猛犸奶酪（dg04 v2 修正）"
+    },
+    {
+      "english": "Rift Watchtower",
+      "forbidden": [
+        "裂谷哨塔"
+      ],
+      "target": "裂痕哨塔",
+      "reason": "官方词典：裂痕哨塔（dg04 v3 废止裂谷哨塔；勿与裂谷城 Riften 混淆）"
+    },
+    {
+      "english": "Riften Guard",
+      "forbidden": [
+        "裂谷城守卫"
+      ],
+      "target": "裂谷城卫兵",
+      "reason": "官方词典：裂谷城卫兵（dg04 v3 废止守卫）"
+    },
+    {
+      "english": "Mysterious Note",
+      "forbidden": [
+        "神秘纸条"
+      ],
+      "target": "神秘的纸条",
+      "reason": "官方词典：神秘的纸条（dg04 v3 废止神秘纸条）"
+    },
+    {
+      "english": "Vampire Lord",
+      "forbidden": [
+        "吸血鬼大君"
+      ],
+      "target": "吸血鬼领主",
+      "reason": "官方词典：吸血鬼领主（MVF1 round6 实测 大君 漏网；社区通行）"
+    },
+    {
+      "english": "Deathhound",
+      "forbidden": [
+        "死猎犬"
+      ],
+      "target": "死亡猎犬",
+      "reason": "官方词典：死亡猎犬（MVF1 round6 实测 死猎犬 漏网）"
+    },
+    {
+      "english": "Riverwood Trader",
+      "forbidden": [
+        "河木镇杂货铺"
+      ],
+      "target": "河木镇贸易行",
+      "reason": "官方词典：河木镇贸易行（MVF1 round6 实测 杂货铺 漏网）"
+    },
+    {
+      "english": "Amulet of Mara",
+      "forbidden": [
+        "玛拉护身符"
+      ],
+      "target": "玛拉护符",
+      "reason": "官方词典：玛拉护符（MVF1 round6 实测 护身符 漏网）"
+    },
+    {
+      "english": "Temple of Mara",
+      "forbidden": [
+        "玛拉神庙"
+      ],
+      "target": "玛拉神殿",
+      "reason": "官方词典：玛拉神殿（MVF1 round6 实测 神庙 漏网）"
+    },
+    {
+      "english": "Riverwood",
+      "forbidden": [
+        "溪木镇",
+        "溪木村"
+      ],
+      "target": "河木镇",
+      "reason": "官方词典：河木镇（社区通行溪木镇为高频错译）"
+    },
+    {
+      "english": "Khajiit",
+      "forbidden": [
+        "虎人"
+      ],
+      "target": "卡吉特",
+      "reason": "官方 RACE:FULL：卡吉特（社区通行虎人为高频错译）"
+    },
+    {
+      "english": "Daedra",
+      "forbidden": [
+        "魔族"
+      ],
+      "target": "迪德拉",
+      "reason": "官方词典：迪德拉（社区通行魔族为高频错译；与 Dremora=魔人区分）"
+    },
+    {
+      "english": "Daedric",
+      "forbidden": [
+        "魔族"
+      ],
+      "target": "迪德拉",
+      "reason": "官方词典：迪德拉盔甲/武器等装备前缀统一迪德拉"
+    },
+    {
+      "english": "Daedric Prince",
+      "forbidden": [
+        "魔族王子",
+        "魔族君王",
+        "魔神"
+      ],
+      "target": "迪德拉君王",
+      "reason": "官方词典：迪德拉君王（Prince of Oblivion 亦作湮灭君王；社区通行魔神/魔族王子为高频错译）"
+    },
+    {
+      "english": "Oblivion",
+      "forbidden": [
+        "湮没",
+        "虚空界",
+        "地狱界"
+      ],
+      "target": "湮灭",
+      "reason": "官方词典：湮灭（Oblivion 界域名；湮没为常见错别字）"
+    },
+    {
+      "english": "Dremora",
+      "forbidden": [
+        "魔族士兵"
+      ],
+      "target": "魔人",
+      "reason": "官方词典：Dremora=魔人（迪德拉战士种族）；勿与魔族/迪德拉混淆"
+    },
+    {
+      "english": "Altmer",
+      "forbidden": [
+        "高等精灵"
+      ],
+      "target": "高精灵",
+      "reason": "官方词典：日常称高精灵，自称/学名作傲特莫（高精灵…也称傲特莫）；高等精灵官方零出现"
+    },
+    {
+      "english": "Bosmer",
+      "forbidden": [
+        "高等精灵",
+        "丛林精灵"
+      ],
+      "target": "木精灵",
+      "reason": "官方词典：日常称木精灵（Wood Elf），博斯莫仅作自称引述；Bosmer 作普通词时用木精灵"
+    },
+    {
+      "english": "High Elf",
+      "forbidden": [
+        "高等精灵"
+      ],
+      "target": "高精灵",
+      "reason": "官方词典：高精灵为固定日常形；高等精灵零出现"
+    },
+    {
+      "english": "Wood Elf",
+      "forbidden": [
+        "高等精灵",
+        "丛林精灵"
+      ],
+      "target": "木精灵",
+      "reason": "官方词典：木精灵为固定日常形"
+    },
+    {
+      "english": "Dark Elf",
+      "forbidden": [
+        "黑暗精灵",
+        "黑精灵"
+      ],
+      "target": "暗精灵",
+      "reason": "官方词典：暗精灵为固定日常形（Dunmer 自称丹莫）"
+    },
+    {
+      "english": "Balgruuf",
+      "forbidden": [
+        "巴尔格鲁夫",
+        "巴格鲁夫"
+      ],
+      "target": "巴尔古夫",
+      "reason": "官方词典：白漫领主（社区巴尔格鲁夫为错译）"
+    },
+    {
+      "english": "Odahviing",
+      "forbidden": [
+        "奥达维英",
+        "奥达文"
+      ],
+      "target": "傲达威英",
+      "reason": "官方词典：傲达威英（龙临宫被擒的古龙）"
+    },
+    {
+      "english": "Mirmulnir",
+      "forbidden": [
+        "米尔穆尼尔",
+        "米尔穆纳"
+      ],
+      "target": "米拉墨尼尔",
+      "reason": "官方词典：米拉墨尼尔（天际第一头被杀的古龙）"
+    },
+    {
+      "english": "Nazeem",
+      "forbidden": [
+        "纳泽姆"
+      ],
+      "target": "纳奇姆",
+      "reason": "官方词典：纳奇姆（白漫势利眼；社区纳泽姆为错译）"
+    },
+    {
+      "english": "Clavicus Vile",
+      "forbidden": [
+        "克拉维库斯·维尔"
+      ],
+      "target": "卡拉威库斯·维尔",
+      "reason": "官方词典：卡拉威库斯·维尔（愿望君王；悔恨之斧任务）"
+    },
+    {
+      "english": "Frostfall",
+      "forbidden": [
+        "霜降",
+        "霜降月"
+      ],
+      "target": "霜落月",
+      "reason": "泰姆瑞尔历二月；霜降为二十四节气联想错译（dg04 v5 实测两本日记 2 处）"
+    },
+    {
+      "english": "Morning Star",
+      "forbidden": [
+        "晨星"
+      ],
+      "target": "晨星月",
+      "reason": "泰姆瑞尔历月名带月字；裸译晨星缺月（dg04 v5 实测 4 处）；勿与地名晨星城 Dawnstar 混淆"
+    },
+    {
+      "english": "Sun's Dawn",
+      "forbidden": [
+        "日晓",
+        "黎明日"
+      ],
+      "target": "日晓月",
+      "reason": "泰姆瑞尔历月名；裸译日晓缺月、黎明日为自造（dg04 v5 实测 1 处）"
+    },
+    {
+      "english": "First Seed",
+      "forbidden": [
+        "初种"
+      ],
+      "target": "初种月",
+      "reason": "泰姆瑞尔历月名带月字；裸译初种缺月（dg04 v5 实测 2 处）"
+    },
+    {
+      "english": "Rain's Hand",
+      "forbidden": [
+        "雨手"
+      ],
+      "target": "雨手月",
+      "reason": "泰姆瑞尔历月名带月字；裸译雨手缺月（dg04 v5 实测 4 处）"
+    },
+    {
+      "english": "Second Seed",
+      "forbidden": [
+        "次种"
+      ],
+      "target": "次种月",
+      "reason": "泰姆瑞尔历月名带月字；裸译次种缺月（dg04 v5 实测 5 处）"
+    },
+    {
+      "english": "Mid Year",
+      "forbidden": [
+        "年中",
+        "仲夏"
+      ],
+      "target": "年中月",
+      "reason": "泰姆瑞尔历月名带月字；裸译缺月或作仲夏（dg04 v5 实测 2 处）"
+    },
+    {
+      "english": "Sun's Height",
+      "forbidden": [
+        "日高"
+      ],
+      "target": "日高月",
+      "reason": "泰姆瑞尔历月名带月字；裸译日高缺月（dg04 v5 实测 2 处）"
+    },
+    {
+      "english": "Last Seed",
+      "forbidden": [
+        "末种"
+      ],
+      "target": "末种月",
+      "reason": "泰姆瑞尔历月名带月字；裸译末种缺月（dg04 v5 实测 1 处）"
+    },
+    {
+      "english": "Heartfire",
+      "forbidden": [
+        "炉火"
+      ],
+      "target": "炉火月",
+      "reason": "泰姆瑞尔历月名带月字；裸译炉火缺月（dg04 v5 实测 1 处）"
+    },
+    {
+      "english": "Sun's Dusk",
+      "forbidden": [
+        "日暮"
+      ],
+      "target": "日暮月",
+      "reason": "泰姆瑞尔历月名带月字；裸译日暮缺月（dg04 v5 实测 3 处）"
+    },
+    {
+      "english": "Evening Star",
+      "forbidden": [
+        "夜星",
+        "晚星月"
+      ],
+      "target": "夜星月",
+      "reason": "泰姆瑞尔历月名带月字；裸译夜星缺月、晚星月为旧书异体（dg04 v5 实测 2 处）"
+    },
+    {
+      "english": "Morndas",
+      "forbidden": [
+        "莫恩达斯",
+        "蒙达斯"
+      ],
+      "target": "周一",
+      "reason": "泰姆瑞尔历星期（GMST 官方）；音译或与 Mundus 梦达思混淆（语义族审计实测）"
+    },
+    {
+      "english": "Tirdas",
+      "forbidden": [
+        "提尔达斯",
+        "提尔戴斯"
+      ],
+      "target": "周二",
+      "reason": "泰姆瑞尔历星期（GMST 官方）；音译错（dg04 v5 实测提尔达斯 1 处）"
+    },
+    {
+      "english": "Middas",
+      "forbidden": [
+        "米达斯",
+        "米德斯"
+      ],
+      "target": "周三",
+      "reason": "泰姆瑞尔历星期（GMST 官方）；音译错"
+    },
+    {
+      "english": "Turdas",
+      "forbidden": [
+        "图尔达斯",
+        "图达斯"
+      ],
+      "target": "周四",
+      "reason": "泰姆瑞尔历星期（GMST 官方）；音译错"
+    },
+    {
+      "english": "Fredas",
+      "forbidden": [
+        "弗雷达斯"
+      ],
+      "target": "周五",
+      "reason": "泰姆瑞尔历星期（GMST 官方）；音译错（语义族审计实测弗雷达斯）"
+    },
+    {
+      "english": "Loredas",
+      "forbidden": [
+        "洛雷达斯",
+        "洛达斯"
+      ],
+      "target": "周六",
+      "reason": "泰姆瑞尔历星期（GMST 官方）；音译错"
+    },
+    {
+      "english": "Sundas",
+      "forbidden": [
+        "森达斯",
+        "桑达斯"
+      ],
+      "target": "周日",
+      "reason": "泰姆瑞尔历星期（GMST 官方）；音译错"
+    }
+  ],
+  "keep": []
+}

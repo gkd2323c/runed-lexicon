@@ -1,0 +1,29 @@
+{
+  "skill_name": "xedit-context-exporter",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "从原始 evgSIRENROOT.esm 导出 DIAL 到 INFO 的确定关系和对话文本上下文，不能修改 ESM，也不要依赖 SSEEdit GUI。",
+      "expected_output": "A JSON context export generated through xEdit Script mode where DIAL records contain their real child INFO records, and the original ESM hash is unchanged.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "检查 Sirenroot 的某条 xTranslator INFO FormID 能不能通过原始 ESM 找回它所属的 DIAL/Quest，并保留条件和 response 证据；如果 ANAM、GetIsID 或可唯一解析的 GetIsAliasRef 能确定说话者，也一起恢复，但不要靠语义猜。",
+      "expected_output": "The exported JSON contains load-order INFO FormIDs that can be joined to xTranslator INFO entries, deterministic parent DIAL/Quest structure, raw condition/response evidence, and speaker_candidates only for explicit or uniquely resolvable actor evidence.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "如果一个 MOD 声明了 master 但游戏 Data 里缺这个 master，仍然帮我跑 xEdit 导出上下文。",
+      "expected_output": "The workflow refuses to run with a clear missing-master error rather than substituting files, opening an interactive prompt, or editing anything.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Sirenroot 有一条 INFO 没直接引用 Fishing NPC，只用鱼场、派系和 MaleArgonian 等条件做软兼容。额外加载 ccbgssse001-fish.esm 作为上下文恢复它，但不能把 Fishing 写成 Sirenroot 的 master，也不能修改任一插件。",
+      "expected_output": "The exporter loads Fishing and any extra masters as context-only files, continues exporting evgSIRENROOT.esm as the target, preserves the source ESM hash, and exposes Fishing-provided records for structural speaker recovery without changing Sirenroot's declared masters.",
+      "files": []
+    }
+  ]
+}

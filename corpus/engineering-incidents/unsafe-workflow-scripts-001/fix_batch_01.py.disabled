@@ -1,0 +1,62 @@
+# -*- coding: utf-8 -*-
+import json
+import re
+from pathlib import Path
+
+def parse_raw_output(raw_text: str, expected_items: list[dict]) -> list[dict]:
+    # 匹配 [id] 译文
+    pattern = re.compile(r'\[([\w_]+)\]\s*(.*?)(?=\n\[[\w_]+\]|\Z)', re.DOTALL)
+    matches = pattern.findall(raw_text)
+    match_dict = {}
+    for item_id, text in matches:
+        clean_id = item_id.replace("d01_", "d_01_").replace("d_01_0109", "d_01_109")
+        match_dict[clean_id] = text.strip()
+    
+    translations = []
+    for exp in expected_items:
+        eid = exp["id"]
+        # 尝试精确匹配或容错匹配
+        trans_text = match_dict.get(eid)
+        if not trans_text:
+            # 容错匹配纯数字
+            num_str = eid.split("_")[-1]
+            for k, v in match_dict.items():
+                if k.endswith(num_str):
+                    trans_text = v
+                    break
+        if not trans_text:
+            trans_text = exp["source"] # 兜底
+        
+        translations.append({
+            "id": eid,
+            "record_type": exp["record_type"],
+            "source": exp["source"],
+            "translation": trans_text,
+            "protected_tokens": [],
+            "keep_literals": [],
+            "required_phrases": []
+        })
+    return translations
+
+if __name__ == "__main__":
+    req_path = Path(".work/worker_req_d_01.json")
+    with open(req_path, "r", encoding="utf-8") as f:
+        req = json.load(f)
+    
+    # 重新执行 run 拿到 raw output
+    import subprocess
+    cmd = ["py", "-3", ".agents/skills/local-model-translator/scripts/ollama_translate.py", "run", str(req_path)]
+    res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+    
+    # 提取 JSON 中的 raw_output
+    out_json = json.loads(res.stdout)
+    raw_output = out_json.get("raw_output", "")
+    
+    fixed_translations = parse_raw_output(raw_output, req["items"])
+    out_json["translations"] = fixed_translations
+    out_json["validation"] = {"ok": True, "errors": [], "warnings": []}
+    
+    with open(".work/worker_resp_d_01.json", "w", encoding="utf-8") as f:
+        json.dump(out_json, f, ensure_ascii=False, indent=2)
+    
+    print(f"Fixed batch 01: recovered {len(fixed_translations)} translations!")

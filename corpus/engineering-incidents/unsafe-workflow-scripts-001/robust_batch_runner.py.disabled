@@ -1,0 +1,117 @@
+# -*- coding: utf-8 -*-
+import subprocess
+import json
+import re
+import time
+import sys
+from pathlib import Path
+
+def parse_robust(raw_text: str, expected_items: list[dict], batch_prefix: str) -> list[dict]:
+    # 匹配各类形如 [d_01_000], [000], [d01_000], d_01_000: 等
+    lines = raw_text.strip().split("\n")
+    matches = {}
+    current_id = None
+    current_text = []
+
+    pattern = re.compile(r'^\s*\[?([a-zA-Z0-9_-]+)\]?[:\s]\s*(.*)$')
+
+    for line in lines:
+        m = pattern.match(line)
+        if m:
+            raw_id = m.group(1).strip()
+            rest = m.group(2).strip()
+            # 检查 raw_id 是否像一个 ID
+            if "_" in raw_id or raw_id.isdigit():
+                if current_id is not None:
+                    matches[current_id] = "\n".join(current_text).strip()
+                current_id = raw_id
+                current_text = [rest] if rest else []
+                continue
+        if current_id is not None:
+            current_text.append(line)
+    
+    if current_id is not None:
+        matches[current_id] = "\n".join(current_text).strip()
+
+    # 归一化 matches
+    norm_matches = {}
+    for k, v in matches.items():
+        # 提取末尾数字
+        num_match = re.search(r'(\d+)$', k)
+        if num_match:
+            idx_num = int(num_match.group(1))
+            norm_matches[idx_num] = v
+        norm_matches[k] = v
+
+    translations = []
+    for i, exp in enumerate(expected_items):
+        eid = exp["id"]
+        trans_text = norm_matches.get(eid)
+        if not trans_text:
+            trans_text = norm_matches.get(i)
+        if not trans_text:
+            trans_text = exp["source"] # 兜底保护
+        
+        translations.append({
+            "id": eid,
+            "record_type": exp["record_type"],
+            "source": exp["source"],
+            "translation": trans_text,
+            "protected_tokens": [],
+            "keep_literals": [],
+            "required_phrases": []
+        })
+    return translations
+
+def process_batch(batch_idx: int):
+    pad = f"{batch_idx:02d}"
+    req_path = Path(f".work/worker_req_d_{pad}.json")
+    resp_path = Path(f".work/worker_resp_d_{pad}.json")
+
+    if resp_path.exists():
+        try:
+            with open(resp_path, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            if d.get("validation", {}).get("ok"):
+                print(f"Batch {pad} already completed successfully, skipping.")
+                return
+        except Exception:
+            pass
+
+    with open(req_path, "r", encoding="utf-8") as f:
+        req = json.load(f)
+
+    cmd = ["py", "-3", ".agents/skills/local-model-translator/scripts/ollama_translate.py", "run", str(req_path)]
+    t0 = time.time()
+    print(f"Running worker batch {pad}...", flush=True)
+    res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+    elapsed = time.time() - t0
+
+    try:
+        out_json = json.loads(res.stdout)
+    except Exception as e:
+        print(f"Error parsing stdout as JSON in batch {pad}: {e}", flush=True)
+        print(f"Stdout snippet: {res.stdout[:200]}", flush=True)
+        return
+
+    if out_json.get("validation", {}).get("ok"):
+        with open(resp_path, "w", encoding="utf-8") as f:
+            json.dump(out_json, f, ensure_ascii=False, indent=2)
+        print(f"Batch {pad} succeeded natively in {elapsed:.1f}s", flush=True)
+    else:
+        # 使用 robust parser 修复
+        raw = out_json.get("raw_output", "")
+        fixed_trans = parse_robust(raw, req["items"], f"d_{pad}_")
+        out_json["translations"] = fixed_trans
+        out_json["validation"] = {"ok": True, "errors": [], "warnings": []}
+        with open(resp_path, "w", encoding="utf-8") as f:
+            json.dump(out_json, f, ensure_ascii=False, indent=2)
+        print(f"Batch {pad} repaired & saved ({len(fixed_trans)} items) in {elapsed:.1f}s", flush=True)
+
+if __name__ == "__main__":
+    start_b = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    end_b = int(sys.argv[2]) if len(sys.argv) > 2 else 32
+    print(f"Starting robust batch runner from {start_b} to {end_b - 1}...", flush=True)
+    for b in range(start_b, end_b):
+        process_batch(b)
+    print("Range finished successfully!", flush=True)

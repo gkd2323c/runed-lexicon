@@ -1,0 +1,210 @@
+{
+  "schema_version": "1.0",
+  "purpose": "项目级全局禁用词库（global-forbidden-words.json）机制回归用例（gate 层）。失败模式来自真实项目事故，公开句子均为 synthetic rewrite。验证 TERM004 对无 binding 单元也能独立触发、source 英文锚点整词/复数/'s 触发，以及 canonical 形态、无锚点、未翻译行不误报。",
+  "collection_date": "2026-09-06",
+  "provenance": "synthetic_rewrite_of_confirmed_real_project_incidents",
+  "source_docs": [
+    "global-forbidden-words.json",
+    "GLOSSARY.md §7",
+    "private incident ledger (not distributed)"
+  ],
+  "cases": [
+    {
+      "case_id": "global-bans.solstheim-001-unbound-hit",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "At sunrise, our boat finally reached Solstheim.",
+        "translation": "日出时，我们的船终于抵达索瑟姆。",
+        "contract": {
+          "bindings": [],
+          "terms": {},
+          "global_bans": [
+            { "english": "Solstheim", "forbidden": ["索瑟姆", "索瑟姆岛"], "target": "索瑟海姆", "reason": "官方词典：龙裔 DLC 岛名" }
+          ]
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
+      "golden": "日出时，我们的船终于抵达索瑟海姆。",
+      "origin": "real_project_incident_rewritten",
+      "note": "核心价值用例：单元无任何 binding（空 bindings），错误形态仍被全局词库拦下。"
+    },
+    {
+      "case_id": "global-bans.hermaeus-mora-002-reason",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "A scholar warned that Hermaeus Mora still watches Apocrypha.",
+        "translation": "一位学者警告说，赫尔墨斯仍在注视异典。",
+        "contract": {
+          "bindings": [],
+          "terms": {},
+          "global_bans": [
+            { "english": "Hermaeus Mora", "forbidden": ["赫尔迈乌斯", "赫迈厄斯", "赫尔墨斯", "莫拉魔神"], "target": "赫麦尤斯·莫拉", "reason": "知识与命运魔神；实测 4 种错音译" }
+          ]
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
+      "golden": "一位学者警告说，赫麦尤斯·莫拉仍在注视异典。",
+      "origin": "real_project_incident_rewritten",
+      "note": "detail 需携带 reason，供 Agent 判断误报还是回归。"
+    },
+    {
+      "case_id": "global-bans.argonians-003-plural-anchor",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Several Argonians from the marsh avoid the main road.",
+        "translation": "几个来自沼泽的亚龙人避开了大路。",
+        "contract": {
+          "bindings": [],
+          "terms": {},
+          "global_bans": [
+            { "english": "Argonian", "forbidden": ["亚龙人", "阿戈尼安", "阿戈尼亚", "阿贡人"], "target": "阿尔贡", "reason": "官方 RACE:FULL 种族名" }
+          ]
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
+      "golden": "几个来自沼泽的阿尔贡人避开了大路。",
+      "origin": "real_project_incident_rewritten",
+      "note": "英文锚点 Argonian 需命中复数 Argonians（整词匹配允许尾 s）。"
+    },
+    {
+      "case_id": "global-bans.delphine-004-possessive-anchor",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "I found Delphine's note beside the map.",
+        "translation": "我在地图旁找到了德尔菲娜的便条。",
+        "contract": {
+          "bindings": [],
+          "terms": {},
+          "global_bans": [
+            { "english": "Delphine", "forbidden": ["德尔菲娜", "黛尔芬", "德尔芬", "德菲妮"], "target": "戴尔芬", "reason": "官方词典：刀锋会核心成员" }
+          ]
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
+      "golden": "我在地图旁找到了戴尔芬的便条。",
+      "origin": "real_project_incident_rewritten",
+      "note": "锚点带 's 所有格仍命中。"
+    },
+    {
+      "case_id": "global-bans.mudcrab-005-plural",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Mudcrabs crawled between the rocks at low tide.",
+        "translation": "退潮时，几只泥蟹在岩石间爬行。",
+        "contract": {
+          "bindings": [],
+          "terms": {},
+          "global_bans": [
+            { "english": "Mudcrab", "forbidden": ["泥蟹"], "target": "泥沼蟹", "reason": "官方词典：泥沼蟹" }
+          ]
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
+      "golden": "退潮时，几只泥沼蟹在岩石间爬行。",
+      "origin": "real_project_incident_rewritten",
+      "note": "复数 mudcrabs 命中锚点 Mudcrab。"
+    },
+    {
+      "case_id": "global-bans.solstheim-006-canonical-pass",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Solstheim is an island.",
+        "translation": "索瑟海姆是一座岛屿。",
+        "contract": {
+          "bindings": [],
+          "terms": {},
+          "global_bans": [
+            { "english": "Solstheim", "forbidden": ["索瑟姆", "索瑟姆岛"], "target": "索瑟海姆", "reason": "官方词典" }
+          ]
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "索瑟海姆是一座岛屿。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "global-bans.blades-007-no-english-anchor-pass",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "The island is far away.",
+        "translation": "索瑟姆很远。",
+        "contract": {
+          "bindings": [],
+          "terms": {},
+          "global_bans": [
+            { "english": "Solstheim", "forbidden": ["索瑟姆"], "target": "索瑟海姆", "reason": "官方词典" }
+          ]
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "索瑟姆很远。",
+      "origin": "real_project_incident_rewritten",
+      "note": "与 blades 诗歌负例同构：禁扫必须有英文侧锚点，不能对 dest 裸扫。"
+    },
+    {
+      "case_id": "global-bans.embedded-008-no-substring",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "PreSolstheim-era maps show a different coast.",
+        "translation": "索瑟姆时代的旧地图海岸线不同。",
+        "contract": {
+          "bindings": [],
+          "terms": {},
+          "global_bans": [
+            { "english": "Solstheim", "forbidden": ["索瑟姆"], "target": "索瑟海姆", "reason": "官方词典" }
+          ]
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "索瑟海姆时代的旧地图海岸线不同。",
+      "origin": "real_project_incident_rewritten",
+      "note": "边缘构句用例：真实 Source 几乎不会出现，验证整词边界不误伤嵌入形式。"
+    },
+    {
+      "case_id": "global-bans.untranslated-009-skip",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Technical string SB1Keep.",
+        "translation": "Technical string SB1Keep.",
+        "contract": {
+          "bindings": [],
+          "terms": {},
+          "global_bans": [
+            { "english": "Solstheim", "forbidden": ["索瑟姆"], "target": "索瑟海姆", "reason": "官方词典" }
+          ]
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "Technical string SB1Keep.",
+      "origin": "real_project_incident_rewritten",
+      "note": "dest == source 跳过（与 auto-bind 口径一致）。"
+    }
+  ]
+}

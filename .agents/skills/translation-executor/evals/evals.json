@@ -1,0 +1,29 @@
+{
+  "skill_name": "translation-executor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use the prepared Sirenroot INFO context batch in .work/status-context-v2.json and produce a structured translation draft for batch 0. Do not modify the xTranslator XML. Validate the completed draft before reporting it ready.",
+      "expected_output": "A translation-result JSON with exactly the batch's translation units, Chinese draft text informed by dialogue/speaker context and official terminology, no XML changes, and a successful strict validation.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Initialize a translation draft from a translation-context-builder JSON that contains runtime placeholders such as <Alias=Target> and %s, translate the batch, and prove the placeholders survived unchanged without editing XML.",
+      "expected_output": "A validated translation-result JSON whose completed translations preserve the exact protected-token multiset; the source XML is untouched.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I have a prepared Skyrim translation context containing new MOD-original character names with no official Chinese translation. Translate the batch without asking me to choose the names. Use reasonable provisional transliterations or TES culture-specific naming conventions, keep the dialogue moving, and reserve REVIEW for real semantic ambiguity.",
+      "expected_output": "A structured draft that resolves ordinary MOD-original character names into consistent provisional Chinese forms, keeps those items TRANSLATED, records useful terminology decisions, and uses REVIEW only for meaningfully unresolved semantic concepts.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "A prepared localization batch contains normal player-facing text plus internal technical labels and a creator name that should not be localized. Complete the batch without pretending those identifiers need Chinese translations.",
+      "expected_output": "Player-facing text is TRANSLATED, genuinely non-localizable entries are explicitly KEEP with source text preserved exactly, and strict validation succeeds without identical-source warnings for KEEP entries.",
+      "files": []
+    }
+  ]
+}

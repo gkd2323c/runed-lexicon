@@ -1,0 +1,87 @@
+"""Parse gate warnings correctly and examine each."""
+import json, os, glob, re
+
+base = r"<PROJECT_ROOT>"
+work_dir = os.path.join(base, ".work")
+
+# Build lookup
+files = sorted(glob.glob(os.path.join(work_dir, "dg04bjornfollower-rest-translation-*.json")))
+index_map = {}
+for fp in files:
+    with open(fp) as f:
+        data = json.load(f)
+    for item in data.get("translations", []):
+        xi = item.get("xml_index")
+        if xi is not None:
+            index_map[xi] = item
+
+# Load gate report
+gate_file = os.path.join(work_dir, "qa-reports", "dg04bjornfollower-rest-gate-full.json")
+with open(gate_file) as f:
+    gate = json.load(f)
+
+warnings = gate.get("warnings", [])
+print(f"Total warnings: {len(warnings)}")
+
+# Parse translation_unit_id "xml-index:NNN" to get numeric index
+for w in warnings:
+    tu_id = w.get("translation_unit_id", "")
+    m = re.search(r"xml-index:(\d+)", tu_id)
+    xi = int(m.group(1)) if m else None
+    w["_xml_index"] = xi
+
+print("\n=== Examining warning items ===")
+for w in warnings:
+    xi = w.get("_xml_index")
+    term = w.get("term_id", "")
+    item = index_map.get(xi)
+    if not item:
+        print(f"\nxml_index {xi}: NOT FOUND (term={term})")
+        continue
+    print(f"\n--- xml_index {xi} | term: {term} | expected: {w.get('expected')} ---")
+    print(f"  Source: '{item.get('source')[:150]}'")
+    print(f"  Translation: '{item.get('translation')[:150]}'")
+    print(f"  REC: {item.get('rec')}")
+    print(f"  EDID: {item.get('edid')}")
+    print(f"  Confidence: {item.get('confidence')}")
+    print(f"  Notes: '{item.get('notes')}'")
+
+# Now check each term's context for verdict
+print("\n\n=== VERDICT for each warning ===")
+for w in warnings:
+    xi = w.get("_xml_index")
+    term = w.get("term_id", "")
+    expected = w.get("expected", "")
+    item = index_map.get(xi)
+    if not item:
+        continue
+    src = item.get("source", "")
+    dst = item.get("translation", "")
+    rec = item.get("rec", "")
+    
+    # Check if the expected term is in source
+    contract_file = os.path.join(work_dir, "term-contracts", "dg04bjornfollower.compiled.json")
+    with open(contract_file) as f:
+        contract = json.load(f)
+    term_info = contract.get("terms", {}).get(term, {})
+    eng = term_info.get("english", "")
+    
+    has_eng_in_src = eng in src if eng else False
+    has_expected_in_dst = expected in dst
+    
+    print(f"\n  xml_index {xi} | term={term} | eng='{eng}' -> expected='{expected}'")
+    print(f"    Source contains '{eng}': {has_eng_in_src}")
+    print(f"    Dest contains '{expected}': {has_expected_in_dst}")
+    print(f"    Source[:100]: '{src[:100]}'")
+    print(f"    Dest[:100]: '{dst[:100]}'")
+    print(f"    REC: {rec}")
+    
+    # Verdict logic:
+    # If source doesn't contain the English term, the auto-bind is over-reaching (source doesn't have the term)
+    # If source has the term but dest omits it, it's a potential ellipsis/legal omission
+    if not has_eng_in_src:
+        print(f"    → VERDICT: IGNORE (source doesn't contain '{eng}', auto-bind over-reaching)")
+    elif has_expected_in_dst:
+        print(f"    → VERDICT: FALSE POSITIVE (dest actually contains target)")
+    else:
+        print(f"    → VERDICT: REVIEW (source has term, dest omits — likely legal ellipsis)")

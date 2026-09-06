@@ -1,0 +1,23 @@
+{
+  "skill_name": "translation-batch-preparer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "给 Sirenroot 的 INFO:NAM1 对话准备一个 3 条的翻译批次，先不要翻译，也不要修改 XML。每条保留定位信息并附带能从官方词典确认的术语。",
+      "expected_output": "A structured three-entry batch for INFO:NAM1 with stable XML metadata, duplicate counts, and official dictionary candidates, while leaving the source XML untouched.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "把 evgSIRENROOT.esm 里还没翻译的 DIAL:FULL 和 QUST:NNAM 整理成最多 10 条的 Agent 输入，重点是可追溯和官方术语提示，不要直接替我定译名。",
+      "expected_output": "A structured batch limited to DIAL:FULL and QUST:NNAM, at most ten entries, representing both requested record types when candidates exist, with traceability and non-authoritative official-term hints.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "准备这个新 MOD 的翻译批次。它的目录里只有 xTranslator XML，没有 CONTEXT.md 和 DICTIONARY.md。",
+      "expected_output": "The workflow stops before translation preparation and asks the user whether to create the missing CONTEXT.md and DICTIONARY.md instead of silently proceeding.",
+      "files": []
+    }
+  ]
+}

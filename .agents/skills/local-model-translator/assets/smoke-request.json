@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "task_id": "local-model-translator-smoke",
+  "model": "hy-mt2-32k:latest",
+  "background": "These are short Skyrim-style localization strings. The Agent has already resolved the meaning. Translate only the listed source items.",
+  "style": [
+    "Natural Simplified Chinese consistent with Skyrim localization",
+    "Keep imperative UI/dialogue wording concise"
+  ],
+  "terminology": [
+    {
+      "source": "Whiterun",
+      "target": "白漫城",
+      "enforce": true
+    },
+    {
+      "source": "sweetroll",
+      "target": "甜卷",
+      "enforce": true
+    }
+  ],
+  "keep_literals": [
+    "Mala"
+  ],
+  "items": [
+    {
+      "id": "SMOKE-01",
+      "record_type": "INFO:NAM1",
+      "source": "<Alias=Player>, take %d sweetrolls to Whiterun before dusk.",
+      "guidance": "An urgent instruction."
+    },
+    {
+      "id": "SMOKE-02",
+      "record_type": "DIAL:FULL",
+      "source": "Return to Whiterun now.",
+      "guidance": "A terse player-facing dialogue option."
+    },
+    {
+      "id": "SMOKE-03",
+      "record_type": "INFO:NAM1",
+      "source": "%s may be waiting outside Whiterun.",
+      "guidance": "Keep the unknown runtime subject as %s."
+    },
+    {
+      "id": "SMOKE-04",
+      "record_type": "BOOK:DESC",
+      "source": "The inscription reads Mala.",
+      "guidance": "Mala is an untranslated ancient-language token in this story."
+    }
+  ]
+}
+

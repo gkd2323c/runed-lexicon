@@ -1,0 +1,372 @@
+{
+  "schema_version": "1.0",
+  "purpose": "由真实项目术语事故语义等价改写得到的 gate 层核心回归。覆盖组织名/普通名词多义、官方专名、合法省略、禁后缀变体、主语术语被删、文化限定词丢失与回指。",
+  "collection_date": "2026-09-03",
+  "provenance": "synthetic_rewrite_of_confirmed_real_project_incidents",
+  "source_docs": ["private incident ledger (not distributed)", "official dictionary evidence"],
+  "cases": [
+    {
+      "case_id": "term-contract.blades-org-001",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "I would rather trust you than ask the Blades for protection.",
+        "translation": "我宁愿相信你，也不想让那些刀刃来保护我。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.blades-org", "source_span": "the Blades", "required": true }],
+          "terms": {
+            "synthetic.blades-org": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "刀锋会",
+              "forbidden": ["刀刃", "刀锋战士", "刀锋帮"],
+              "match": { "kind": "contains_phrase", "accepted": ["刀锋会"] },
+              "source": "Blades"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "我宁愿相信你，也不想请刀锋会来保护我。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.blades-org-002",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "The Blades still insist the dragon must die.",
+        "translation": "那些刀刃还是坚持要杀死那条龙。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.blades-org", "source_span": "The Blades", "required": true }],
+          "terms": {
+            "synthetic.blades-org": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "刀锋会",
+              "forbidden": ["刀刃", "刀锋战士", "刀锋帮"],
+              "match": { "kind": "contains_phrase", "accepted": ["刀锋会"] },
+              "source": "Blades"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "刀锋会还是坚持要杀死那条龙。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.blades-common-noun-003",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Steel flashed as their blades caught the moonlight.",
+        "translation": "月光落在他们的刀刃上，钢铁寒光一闪。",
+        "contract": {
+          "bindings": [],
+          "terms": {
+            "synthetic.blades-org": {
+              "decision_status": "CONFIRMED", "enforcement": "FORBIDDEN_ONLY", "target": "刀锋会", "source": "Blades"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "月光落在他们的刀刃上，钢铁寒光一闪。",
+      "origin": "real_project_incident_rewritten",
+      "note": "无 binding 时，普通名词 blades 不得被组织名契约强制。"
+    },
+    {
+      "case_id": "term-contract.helgen-001",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "We should reach Helgen before nightfall.",
+        "translation": "我们应该能在天黑前抵达赫尔根。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.helgen", "source_span": "Helgen", "required": true }],
+          "terms": {
+            "synthetic.helgen": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "海尔根", "forbidden": ["赫尔根"],
+              "match": { "kind": "contains_phrase", "accepted": ["海尔根"] }, "origin": "OFFICIAL", "source": "Helgen"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "我们应该能在天黑前抵达海尔根。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.argonian-ellipsis-001",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Helping fellow Argonians always lifts my mood.",
+        "translation": "能帮助同胞总让我心情好些。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.argonian", "source_span": "fellow Argonians", "required": false, "required_target": "阿尔贡" }],
+          "terms": {
+            "synthetic.argonian": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "阿尔贡",
+              "forbidden": ["亚龙人", "阿戈尼安", "阿戈尼亚", "阿贡人"],
+              "match": { "kind": "forms", "accepted": ["阿尔贡"], "blocked_suffixes": ["尼亚", "尼亚人"] },
+              "origin": "OFFICIAL", "source": "Argonian"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "能帮助同胞总让我心情好些。",
+      "origin": "real_project_incident_rewritten",
+      "note": "同胞称谓是合法省略，binding required=false 明确表达。"
+    },
+    {
+      "case_id": "term-contract.argonian-blocked-suffix-002",
+      "test_layer": "gate",
+      "category": "term_variant",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "The Argonians near the marsh rarely visit the city.",
+        "translation": "沼泽附近的阿尔贡尼亚人很少进城。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.argonian", "source_span": "The Argonians", "required": true }],
+          "terms": {
+            "synthetic.argonian": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "阿尔贡",
+              "forbidden": ["亚龙人", "阿戈尼安", "阿戈尼亚", "阿贡人"],
+              "match": { "kind": "forms", "accepted": ["阿尔贡"], "blocked_suffixes": ["尼亚", "尼亚人"] },
+              "origin": "OFFICIAL", "source": "Argonian"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM003"] },
+      "golden": "沼泽附近的阿尔贡人很少进城。",
+      "origin": "real_project_incident_rewritten",
+      "note": "bad 形态含 target 子串，必须由 blocked_suffixes 阻止假 PASS。"
+    },
+    {
+      "case_id": "term-contract.argonian-forbidden-003",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "An Argonian merchant waved from the dock.",
+        "translation": "码头上的亚龙人商贩向我们挥手。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.argonian", "source_span": "An Argonian", "required": true }],
+          "terms": {
+            "synthetic.argonian": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "阿尔贡",
+              "forbidden": ["亚龙人", "阿戈尼安", "阿戈尼亚", "阿贡人"],
+              "match": { "kind": "forms", "accepted": ["阿尔贡"], "blocked_suffixes": ["尼亚", "尼亚人"] },
+              "origin": "OFFICIAL", "source": "Argonian"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "码头上的阿尔贡商贩向我们挥手。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.kynareth-subject-001",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "While you're away, I hope Kynareth isn't watching every little thing I do. I haven't stolen so much as an apple.",
+        "translation": "你不在的时候，希望别总有人盯着我。我连苹果都没偷过。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.kynareth", "source_span": "Kynareth", "required": true }],
+          "terms": {
+            "synthetic.kynareth": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "凯娜瑞丝",
+              "forbidden": ["凯娜瑞斯", "凯娜雷斯", "凯纳瑞斯"],
+              "match": { "kind": "contains_phrase", "accepted": ["凯娜瑞丝"] }, "origin": "OFFICIAL", "source": "Kynareth"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001"] },
+      "golden": "你不在的时候，我只希望凯娜瑞丝别盯着我的一举一动。我连苹果都没偷过。",
+      "origin": "real_project_incident_rewritten",
+      "note": "Gate 只证明术语主语缺失；完整主语关系仍需语义审校。"
+    },
+    {
+      "case_id": "term-contract.kynareth-variant-002",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Before leaving, she whispered a prayer to Kynareth.",
+        "translation": "临走前，她低声向凯娜瑞斯祈祷。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.kynareth", "source_span": "Kynareth", "required": true }],
+          "terms": {
+            "synthetic.kynareth": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "凯娜瑞丝",
+              "forbidden": ["凯娜瑞斯", "凯娜雷斯"],
+              "match": { "kind": "contains_phrase", "accepted": ["凯娜瑞丝"] }, "origin": "OFFICIAL", "source": "Kynareth"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "临走前，她低声向凯娜瑞丝祈祷。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.jel-variant-001",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "They introduced themselves using their full Jel name.",
+        "translation": "他们用完整的杰尔语名字作了自我介绍。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.jel", "source_span": "Jel", "required": true }],
+          "terms": {
+            "synthetic.jel": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "耶尔语", "forbidden": ["杰尔语"],
+              "match": { "kind": "contains_phrase", "accepted": ["耶尔语"] }, "origin": "PROJECT", "source": "Jel"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "他们用完整的耶尔语名字作了自我介绍。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.jel-qualifier-deleted-002",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Call me Veesh. Among Argonians, refusing to use someone's full Jel name can be rude.",
+        "translation": "叫我维什就行。对阿尔贡来说，不用对方的完整名字称呼可能有些失礼。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.jel", "source_span": "full Jel name", "required": true }],
+          "terms": {
+            "synthetic.jel": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "耶尔语", "forbidden": ["杰尔语"],
+              "match": { "kind": "contains_phrase", "accepted": ["耶尔语"] }, "origin": "PROJECT", "source": "Jel"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001"] },
+      "golden": "叫我维什就行。对阿尔贡来说，不用完整的耶尔语名字称呼对方可能有些失礼。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.companions-org-001",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "The Companions are recruiting again in Whiterun.",
+        "translation": "同伴们又在白漫招人了。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.companions", "source_span": "The Companions", "required": true }],
+          "terms": {
+            "synthetic.companions": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "战友团",
+              "forbidden": ["同伴", "同伴们", "同伴团"],
+              "match": { "kind": "contains_phrase", "accepted": ["战友团"] }, "origin": "OFFICIAL", "source": "The Companions"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "战友团又在白漫招人了。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.kodlak-001",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Kodlak asked me to meet him here.",
+        "translation": "科德拉克让我来这里见他。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.kodlak", "source_span": "Kodlak", "required": true }],
+          "terms": {
+            "synthetic.kodlak": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "克拉科", "forbidden": ["克拉克", "科德拉克"],
+              "match": { "kind": "contains_phrase", "accepted": ["克拉科"] }, "origin": "OFFICIAL", "source": "Kodlak"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "克拉科让我来这里见他。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.kodlak-anaphora-002",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "I spoke to Kodlak. He asked me to wait here.",
+        "translation": "我跟克拉科谈过了。他让我在这里等。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.kodlak", "source_span": "I spoke to Kodlak.", "required": true }],
+          "terms": {
+            "synthetic.kodlak": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "克拉科", "forbidden": ["克拉克", "科德拉克"],
+              "match": { "kind": "contains_phrase", "accepted": ["克拉科"] }, "source": "Kodlak"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "我跟克拉科谈过了。他让我在这里等。",
+      "origin": "real_project_incident_rewritten",
+      "note": "第二句 He 合法回指，不要求再次出现专名。"
+    },
+    {
+      "case_id": "term-contract.blades-org-golden-004",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "The Blades once guarded the Dragonborn.",
+        "translation": "刀锋会曾经保护龙裔。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.blades-org", "source_span": "The Blades", "required": true }],
+          "terms": {
+            "synthetic.blades-org": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "刀锋会",
+              "forbidden": ["刀刃", "刀锋战士", "刀锋帮"],
+              "match": { "kind": "contains_phrase", "accepted": ["刀锋会"] }, "source": "Blades"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "刀锋会曾经保护龙裔。",
+      "origin": "real_project_incident_rewritten"
+    }
+  ]
+}

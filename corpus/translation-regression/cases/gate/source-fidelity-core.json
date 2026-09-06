@@ -1,0 +1,215 @@
+{
+  "schema_version": "1.0",
+  "purpose": "由真实项目 Source fidelity 与机械事故语义等价改写得到的 gate 层核心回归。语义类坏译文在 gate 层故意可能 PASS，用来防止把机械验证误称为语义正确；KEEP、placeholder、charset 则提供可机械断言的正负例。",
+  "collection_date": "2026-09-03",
+  "provenance": "synthetic_rewrite_of_confirmed_real_project_incidents",
+  "source_docs": ["private incident ledger (not distributed)"],
+  "cases": [
+    {
+      "case_id": "source-fidelity.prison-escape-001",
+      "test_layer": "gate",
+      "category": "source_fidelity",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "I met an Argonian named Varo after we were both abandoned in a locked cell and left for dead. We escaped and each tried to rebuild our lives. I'm still not sure whether traveling with him is worth it, so I should learn more about him.",
+        "translation": "我遇到了一位名叫瓦罗的阿尔贡。我们都曾被遗弃在荒野中，如今决定结伴前行。我应该多了解他的过去。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.argonian", "source_span": "an Argonian", "required": true, "required_target": "阿尔贡" }],
+          "terms": {
+            "synthetic.argonian": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "阿尔贡", "forbidden": ["亚龙人", "阿戈尼安"],
+              "match": { "kind": "forms", "accepted": ["阿尔贡"] }, "source": "Argonian"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [], "note": "jail cell -> 荒野、escape 被删、态度改写属于语义事故；术语机械检查仍可 PASS。" },
+      "golden": "我是在一间上锁的牢房里遇到阿尔贡瓦罗的，我们俩都被丢在那里等死。后来我们逃了出去，各自试着重新开始生活。我还不确定和他同行值不值得，所以应该再多了解他一些。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.investigation-ellipsis-002",
+      "test_layer": "gate",
+      "category": "source_fidelity",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Varo said we should wait for someone called 'R' to arrive in Skyrim and look for us. I'm more interested in who he meant. He clearly knows more than he says. Maybe R knows something I don't. Another letter arrived with a broken charm that Varo says looks familiar. Something is wrong. Then an assassin came after us.",
+        "translation": "瓦罗说我们应该等“R”来到天际找我们。后来又来了一封信，里面有一枚让瓦罗觉得眼熟的破损护符。事情不太对劲，之后还有刺客来袭。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "PASS", "codes": [], "note": "三层调查疑点被删属于语义事故，deterministic gate 不应假装能判。" },
+      "golden": "瓦罗说我们应该等一个叫“R”的人来到天际找我们。但我更在意他指的到底是谁。他显然知道得比说出来的更多，也许“R”知道一些我不知道的事。后来又来了一封信，里面有一枚瓦罗觉得眼熟的破损护符。事情不太对劲，之后还有刺客来袭。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.truncated-source-003",
+      "test_layer": "gate",
+      "category": "source_fidelity",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "After opening the sealed letter, I",
+        "translation": "拆开密封信后，我终于找到了幕后主使的证据。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "PASS", "codes": [], "note": "残缺 Source 被擅自补剧情属于语义/审校问题。" },
+      "golden": "拆开那封密封信后，我",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.added-action-004",
+      "test_layer": "gate",
+      "category": "source_fidelity",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Varo somehow knew the player's account name. Varo begins the conversation again.",
+        "translation": "瓦罗似乎认出了玩家。瓦罗重新搭话，还向玩家索要食物。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "PASS", "codes": [], "note": "Source 外新增索要食物的动作无法由当前机械 gate 自证。" },
+      "golden": "瓦罗不知怎么知道了玩家的账户名。瓦罗重新开始对话。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.double-negation-005",
+      "test_layer": "gate",
+      "category": "source_fidelity",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "You're going to trust the same mages who banished the Wyrm forward in time? Fine—so long as they don't recover the relic and they actually destroy it this time, I won't object.",
+        "translation": "你要相信那些把巨龙送回过去的法师？行吧，只要他们这次拿到遗物并真的毁掉它，我就不反对。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "PASS", "codes": [], "note": "forward -> past 与 don't recover -> recover 的双重逻辑反转属于语义事故。" },
+      "golden": "你要相信那些把巨龙送往未来的法师？行吧，只要他们这次别拿到遗物，而且真的把它毁掉，我就不反对。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.keep-author-001",
+      "test_layer": "gate",
+      "category": "keep",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "NorthwindDev",
+        "translation": "北风开发者",
+        "contract": { "bindings": [], "terms": {}, "keep_list": ["NorthwindDev"] }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["KEEP001"] },
+      "golden": "NorthwindDev",
+      "origin": "real_project_incident_rewritten",
+      "note": "synthetic 作者署名：KEEP 内容被伪翻译。"
+    },
+    {
+      "case_id": "source-fidelity.keep-author-002-golden",
+      "test_layer": "gate",
+      "category": "keep",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "NorthwindDev",
+        "translation": "NorthwindDev",
+        "contract": { "bindings": [], "terms": {}, "keep_list": ["NorthwindDev"] }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "NorthwindDev",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.placeholder-001",
+      "test_layer": "gate",
+      "category": "placeholder",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "You owe me <Global=GoldAmount> gold.",
+        "translation": "你欠我<Global=GoldAmount>金币。",
+        "contract": { "bindings": [], "protected_tokens": ["<Global=GoldAmount>"] }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "你欠我<Global=GoldAmount>金币。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.placeholder-002",
+      "test_layer": "gate",
+      "category": "placeholder",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "You owe me <Global=GoldAmount> gold.",
+        "translation": "你欠我全部金币。",
+        "contract": { "bindings": [], "protected_tokens": ["<Global=GoldAmount>"] }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["PLACEHOLDER001"] },
+      "golden": "你欠我<Global=GoldAmount>金币。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.placeholder-003-golden",
+      "test_layer": "gate",
+      "category": "placeholder",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "You owe me <Global=GoldAmount> gold.",
+        "translation": "你欠我<Global=GoldAmount>金币。",
+        "contract": { "bindings": [], "protected_tokens": ["<Global=GoldAmount>"] }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "你欠我<Global=GoldAmount>金币。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.charset-001",
+      "test_layer": "gate",
+      "category": "charset",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Welcome back, traveler.",
+        "translation": "歡迎回來，旅行者。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["CHAR001"] },
+      "golden": "欢迎回来，旅行者。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "source-fidelity.charset-002-context-false-positive",
+      "test_layer": "gate",
+      "category": "charset",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Banditry is no righteous path, no matter how you excuse it.",
+        "translation": "强盗行径从来不是什么正路，不管你怎么辩解。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "强盗行径从来不是什么正路，不管你怎么辩解。",
+      "origin": "real_project_incident_rewritten",
+      "note": "测试 zhconv 对标准简体“么”在特定上下文中的误转换不得造成 CHAR001 假阳性。"
+    },
+    {
+      "case_id": "source-fidelity.charset-003-real-traditional",
+      "test_layer": "gate",
+      "category": "charset",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Pretending to be righteous changes nothing; we both know what happened.",
+        "translation": "裝什麼正義都改變不了結果，我們都知道發生了什麼。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["CHAR001"] },
+      "golden": "装什么正义都改变不了结果，我们都知道发生了什么。",
+      "origin": "real_project_incident_rewritten",
+      "note": "即使句中包含 zhconv 上下文敏感字符，也必须继续检出真正的繁体字。"
+    }
+  ]
+}

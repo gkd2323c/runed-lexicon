@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "purpose": "由真实项目事故语义等价改写得到的 translator 层核心语义回归。测试陌生称谓的上下文消歧、拼写笑点、昵称串线、残缺表达与常见词义误判；公开 fixture 不保留真实 MOD 台词、角色名或节点信息。",
+  "collection_date": "2026-09-03",
+  "provenance": "synthetic_rewrite_of_confirmed_real_project_incidents",
+  "source_docs": ["private incident ledger (not distributed)"],
+  "cases": [
+    {
+      "case_id": "semantic.contextual-address-001",
+      "test_layer": "translator",
+      "category": "semantic",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "semantic_unit": "角色 Maren 总把朋友称作 velka。同一段对话里有两处证据：'Velka, could you help me with this?' 的回应明显友好；另一处 'Good to see you, velka.' 出现在久别重逢场景。这个词应理解为朋友/伙伴一类亲近称谓，而不是辱骂。",
+        "source": "Maren just called me a velka. I think I used to know what that means, but it's slipped my mind.",
+        "context": "velka 是该角色反复使用的友好称呼；当前说话者只是想不起确切含义。",
+        "dictionary": "velka：词义未固定，语境证据=朋友/伙伴类亲近称谓；Maren -> 马伦（synthetic）"
+      },
+      "assertion": { "must_not_contain": ["蠢货", "笨蛋", "白痴"], "golden_review": true },
+      "golden": "马伦刚叫我“velka”。我觉得自己以前知道那是什么意思，但现在想不起来了。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "semantic.spelling-joke-001",
+      "test_layer": "translator",
+      "category": "semantic",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "semantic_unit": "角色正在两个只差一个字母的昵称 Miri 与 Miry 之间做选择，前几句反复拿 I/Y 的拼写差异开玩笑。拼写本身就是笑点，不能把两个昵称都音译成同一个中文形式后抹掉差异。",
+        "source": "Miri with an I, then.",
+        "context": "当前场景明确在讨论昵称的字母拼写，而不是昵称含义。",
+        "dictionary": "Miri / Miry：synthetic 昵称对；必须保留 I/Y 拼写差异"
+      },
+      "assertion": { "must_contain": ["I", "Miri"], "golden_review": true },
+      "golden": "那就用 I 拼写的 Miri。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "semantic.nickname-crosswire-001",
+      "test_layer": "translator",
+      "category": "semantic",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "semantic_unit": "角色 A 偶尔叫角色 B 'Pops'，意思接近老爸/老爹。另一个完全独立的昵称是 Hooks，只能在 Source 明确出现 Hooks 时使用。当前句只有 Pops。",
+        "source": "Hey Pops, the courier left something for us.",
+        "context": "Pops 与 Hooks 属于同一角色的两个不同昵称，但本句只出现 Pops。",
+        "dictionary": "Pops -> 老爸/老爹类称呼；Hooks -> 胡克斯（synthetic 独立昵称）"
+      },
+      "assertion": { "must_not_contain": ["胡克斯", "Hooks"], "golden_review": true },
+      "golden": "嘿，老爸，信使给我们留了东西。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "semantic.truncated-idiom-001",
+      "test_layer": "translator",
+      "category": "semantic",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "semantic_unit": "连续几条台词都在做正反两面的比较，其中一条作者写成残缺的 'As for me, on the hand...'。结合相邻句法，高度疑似漏掉 other，表达的是 'on the other hand' 一类转折，而不是在描述身体部位。",
+        "source": "As for me, on the hand...",
+        "context": "残缺句位于对比结构中；应保守恢复转折功能，不把 hand 按身体部位硬译。",
+        "dictionary": ""
+      },
+      "assertion": { "must_not_contain": ["我的手", "手上", "手里"], "golden_review": true },
+      "golden": "至于我，话又说回来……（原文残缺，保守处理）",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "semantic.lexical-cowered-001",
+      "test_layer": "translator",
+      "category": "semantic",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "semantic_unit": "战争诗歌描写士兵先逃跑、再畏缩躲避，随后有人战斗、有人倒下。cowered 在这里是畏缩/蜷缩，不是祷告或宗教动作。",
+        "source": "Soldiers fled, then cowered beneath the walls; some fought, and some fell.",
+        "context": "动作序列：奔逃 -> 畏缩躲避 -> 战斗/倒下。",
+        "dictionary": ""
+      },
+      "assertion": { "must_not_contain": ["祷告", "祈祷"], "golden_review": true },
+      "golden": "士兵们先是奔逃，随后蜷缩在城墙下；有人奋战，也有人倒下。",
+      "origin": "real_project_incident_rewritten"
+    }
+  ]
+}

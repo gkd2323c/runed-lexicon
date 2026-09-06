@@ -1,0 +1,125 @@
+{
+  "schema_version": "1.0",
+  "purpose": "由真实项目中的 Creation Club / 官方专名错译事故改写得到的 gate 层回归。保留必须依赖官方词典判定的术语本体，周围台词全部 synthetic 化。",
+  "collection_date": "2026-09-04",
+  "provenance": "synthetic_rewrite_of_confirmed_real_project_incidents",
+  "source_docs": ["private incident ledger (not distributed)", "official dictionary evidence"],
+  "cases": [
+    {
+      "case_id": "official-term.dragonscale-armor-001",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "This dragonscale armor is lighter than I expected.",
+        "translation": "这套龙鳞甲比我想的轻。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.dragonscale-armor", "source_span": "dragonscale armor", "required": true, "required_target": "龙鳞护甲" }],
+          "terms": {
+            "synthetic.dragonscale-armor": {
+              "decision_status": "CONFIRMED",
+              "enforcement": "REQUIRED",
+              "target": "龙鳞护甲",
+              "forbidden": ["龙鳞铠甲", "龙鳞甲", "龙甲"],
+              "match": { "kind": "contains_phrase", "accepted": ["龙鳞护甲"] },
+              "origin": "OFFICIAL",
+              "source": "Dragonscale Armor",
+              "note": "测试官方物品名不能因口语省字而漂移。"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "这套龙鳞护甲比我想的轻。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "official-term.gray-cowl-001",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Keep your voice down; the Cowl of the Gray Fox is what we're after.",
+        "translation": "小声点，我们要找的是灰狐头巾。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.gray-cowl", "source_span": "Cowl of the Gray Fox", "required": true, "required_target": "灰狐面具" }],
+          "terms": {
+            "synthetic.gray-cowl": {
+              "decision_status": "CONFIRMED",
+              "enforcement": "REQUIRED",
+              "target": "灰狐面具",
+              "forbidden": ["灰狐头巾", "灰狐的头巾", "头巾"],
+              "match": { "kind": "contains_phrase", "accepted": ["灰狐面具"] },
+              "origin": "OFFICIAL",
+              "source": "The Gray Cowl of Nocturnal",
+              "note": "测试同一神器在语境变体名称下仍需收敛到项目确认的官方实体译名。"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "小声点，我们要找的是灰狐面具。",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "official-term.gogh-001",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Did anyone remember to feed Gogh?",
+        "translation": "有人记得给戈格喂东西吗？",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.gogh", "source_span": "Gogh", "required": true, "required_target": "咕呃" }],
+          "terms": {
+            "synthetic.gogh": {
+              "decision_status": "CONFIRMED",
+              "enforcement": "REQUIRED",
+              "target": "咕呃",
+              "forbidden": ["戈格"],
+              "match": { "kind": "contains_phrase", "accepted": ["咕呃"] },
+              "origin": "OFFICIAL",
+              "source": "Gogh",
+              "note": "测试模型不能在已有官方 NPC 译名时重新自行音译。"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "有人记得给咕呃喂东西吗？",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "official-term.crowstooth-001",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Crowstooth was less frightening than the stories suggested.",
+        "translation": "克劳斯之牙没有传闻里那么吓人。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.crowstooth", "source_span": "Crowstooth", "required": true, "required_target": "克罗斯图斯" }],
+          "terms": {
+            "synthetic.crowstooth": {
+              "decision_status": "CONFIRMED",
+              "enforcement": "REQUIRED",
+              "target": "克罗斯图斯",
+              "forbidden": ["克劳斯之牙", "鸦牙"],
+              "match": { "kind": "contains_phrase", "accepted": ["克罗斯图斯"] },
+              "origin": "OFFICIAL",
+              "source": "Crowstooth",
+              "note": "测试已有官方人名不能被按词义重新造译名。"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "克罗斯图斯没有传闻里那么吓人。",
+      "origin": "real_project_incident_rewritten"
+    }
+  ]
+}

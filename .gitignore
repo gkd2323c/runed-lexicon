@@ -1,0 +1,57 @@
+# Runtime / generated work
+.work/
+_tmp/
+translation-batch-preparer-workspace/
+*-workspace/
+
+# Python / Node / editor noise
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local credentials and environment
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+
+# Logs and crash dumps
+*.log
+*.dmp
+
+# Official game / Creation Club dictionary exports are local evidence.
+dictionary/**/*.xml
+
+# MOD workspaces are local by default. Keep only the public directory contract.
+mods/**
+!mods/README.md
+
+# Bethesda plugin/archive binaries, wherever they accidentally land.
+*.esp
+*.esm
+*.esl
+*.bsa
+*.ba2
+
+# Local xEdit distribution. The project-owned exporter script lives under
+# .agents/skills/xedit-context-exporter/, not here.
+tools/xEdit/**
+!tools/xEdit/README.md
+
+# External translator term corpus; provenance is documented but redistribution
+# permission is not assumed.
+tools/term-rules/*.txt
+
+# Common native binaries should not be vendored accidentally.
+*.exe
+*.dll
+*.pdb

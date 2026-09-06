@@ -1,0 +1,23 @@
+{
+  "skill_name": "xtranslator-xml-writer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Apply a completed set of translation-executor JSON batches to an xTranslator XML without changing Source, EDID, REC, Params, node order, or unrelated Dest values. Write a new XML and produce a validation report.",
+      "expected_output": "Uses the deterministic writer, checks source/result identity, changes only intended Dest contents, writes a new XML, and reports successful structural validation.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I accidentally supplied overlapping old and new translation batches that contain the same XML records. Merge them into the localization XML.",
+      "expected_output": "Refuses writeback because duplicate translation units or XML indices make result selection ambiguous; does not pick a winner silently.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "The source xTranslator XML changed after the translation batches were created. Write the old translations into it anyway.",
+      "expected_output": "Refuses writeback on the source XML hash/record identity mismatch rather than bypassing the guard.",
+      "files": []
+    }
+  ]
+}

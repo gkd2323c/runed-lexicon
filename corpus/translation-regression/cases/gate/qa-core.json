@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "purpose": "由真实项目 QA 事故语义等价改写得到的 gate 层回归：短叹词误判与已确认官方术语再次漂移。公开 fixture 不保留真实 MOD 标识或节点路径。",
+  "collection_date": "2026-09-03",
+  "provenance": "synthetic_rewrite_of_confirmed_real_project_incidents",
+  "source_docs": ["private incident ledger (not distributed)"],
+  "cases": [
+    {
+      "case_id": "qa.interjection-agh-001",
+      "test_layer": "gate",
+      "category": "interjection",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Agh!",
+        "translation": "啊哈！",
+        "contract": {
+          "bindings": [],
+          "interjection_map": { "Agh!": ["呃啊！", "啊！"] }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM002"] },
+      "machine_assert": { "must_not_contain": ["啊哈！"], "code": "TERM002" },
+      "golden": "呃啊！",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "qa.interjection-agh-002-golden",
+      "test_layer": "gate",
+      "category": "interjection",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Agh!",
+        "translation": "呃啊！",
+        "contract": {
+          "bindings": [],
+          "interjection_map": { "Agh!": ["呃啊！", "啊！"] }
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "machine_assert": { "must_not_contain": ["啊哈！"], "must_contain": ["呃啊！"], "code": "TERM002" },
+      "golden": "呃啊！",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "qa.interjection-agh-003-variant",
+      "test_layer": "gate",
+      "category": "interjection",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Agh!",
+        "translation": "啊！",
+        "contract": {
+          "bindings": [],
+          "interjection_map": { "Agh!": ["呃啊！", "啊！"] }
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "machine_assert": { "must_not_contain": ["啊哈！"], "must_contain": ["啊！"], "code": "TERM002" },
+      "golden": "啊！",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "qa.interjection-extended-004",
+      "test_layer": "gate",
+      "category": "interjection",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Aggghh!",
+        "translation": "啊哈！",
+        "contract": {
+          "bindings": [],
+          "interjection_map": { "Aggghh!": ["呃啊！"], "Agh!": ["呃啊！", "啊！"] }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM002"] },
+      "machine_assert": { "must_not_contain": ["啊哈！"], "code": "TERM002" },
+      "golden": "呃啊！",
+      "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "qa.sweetroll-001",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "I'd rather save my sweetroll for later.",
+        "translation": "我还是把甜甜圈留到以后再吃吧。",
+        "contract": {
+          "bindings": [{ "term_id": "global.sweetroll", "source_span": "sweetroll", "required": true }],
+          "terms": {
+            "global.sweetroll": {
+              "decision_status": "CONFIRMED",
+              "enforcement": "REQUIRED",
+              "target": "甜卷",
+              "forbidden": ["甜甜圈", "甜面包圈"],
+              "match": { "kind": "contains_phrase", "accepted": ["甜卷"] },
+              "origin": "OFFICIAL",
+              "evidence": "official dictionary evidence",
+              "source": "sweetroll"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM001", "TERM002"] },
+      "golden": "我还是把甜卷留到以后再吃吧。",
+      "origin": "real_project_incident_rewritten",
+      "note": "失败模式：模型已经有 canonical 术语证据，最终输出仍漂移到熟悉但错误的社区/常识词。"
+    },
+    {
+      "case_id": "qa.sweetroll-002-golden",
+      "test_layer": "gate",
+      "category": "term_exact",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "I'd rather save my sweetroll for later.",
+        "translation": "我还是把甜卷留到以后再吃吧。",
+        "contract": {
+          "bindings": [{ "term_id": "global.sweetroll", "source_span": "sweetroll", "required": true }],
+          "terms": {
+            "global.sweetroll": {
+              "decision_status": "CONFIRMED",
+              "enforcement": "REQUIRED",
+              "target": "甜卷",
+              "forbidden": ["甜甜圈", "甜面包圈"],
+              "match": { "kind": "contains_phrase", "accepted": ["甜卷"] },
+              "origin": "OFFICIAL",
+              "source": "sweetroll"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "我还是把甜卷留到以后再吃吧。",
+      "origin": "real_project_incident_rewritten"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "local://translation-regression/translator-case.schema.json",
+  "title": "translator 层用例 schema（模型能力评测）",
+  "description": "本项目自有 schema，仅存在于 corpus/translation-regression/schema/ 本地路径，无外部注册表宿主。" ,
+  "note": "修正记录：原 $schema 曾误写为一个编造的 agentskills.io URL（不存在的 schema 地址），已改为 JSON Schema 标准草案标识符；$id 为本地虚拟标识，不指向任何真实 URL。",
+  "type": "object",
+  "required": ["case_id", "test_layer", "category", "plugin", "input", "assertion", "origin"],
+  "additionalProperties": true,
+  "properties": {
+    "case_id": { "type": "string", "description": "稳定失败模式 ID；公开 corpus 不编码真实 MOD 名或节点编号" },
+    "test_layer": { "const": "translator" },
+    "category": { "enum": ["term_exact","term_forbidden","term_variant","keep","placeholder","charset","interjection","source_fidelity","spoiler_alias","semantic","xml_structure"] },
+    "plugin": { "type": "string", "description": "公开 fixture 通常写 synthetic；真实来源插件保留在私有事故证据中" },
+    "input": {
+      "type": "object",
+      "description": "喂给被测翻译模型的完整上下文（禁止裸 source）",
+      "required": ["semantic_unit"],
+      "properties": {
+        "semantic_unit": { "type": "string", "description": "语义等价改写后的完整语义单元：任务 / 对话分支 / 书籍段落 / 角色语料" },
+        "source": { "type": "string", "description": "synthetic 被测源句（在 semantic_unit 内）" },
+        "context": { "type": "string", "description": "synthetic 上下文；保留原事故所需证据结构，不复制私有文档" },
+        "dictionary": { "type": "string", "description": "synthetic 或最小必要官方术语约束" },
+        "contract_evidence": { "type": "string", "description": "相关 term / binding 证据" }
+      }
+    },
+    "assertion": {
+      "type": "object",
+      "description": "评测断言：自动可判定的先自动，不能自动的用 golden 抽样人工复核",
+      "properties": {
+        "must_contain": { "type": "array", "items": { "type": "string" } },
+        "must_not_contain": { "type": "array", "items": { "type": "string" } },
+        "golden_review": { "type": "boolean", "description": "true 表示需人工比对 golden" }
+      }
+    },
+    "golden": { "type": "string", "description": "与真实修复原则语义等价的 synthetic golden" },
+    "origin": { "type": "string", "description": "公开 provenance 类别，例如 real_project_incident_rewritten" },
+    "note": { "type": "string" }
+  }
+}

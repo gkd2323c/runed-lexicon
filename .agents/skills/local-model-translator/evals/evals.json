@@ -1,0 +1,41 @@
+{
+  "skill_name": "local-model-translator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use the local Hy-MT2 Ollama model to translate this prepared Skyrim dialogue batch. I already resolved the speaker and quest context; keep <Alias=Player>, %s and %d exact and enforce the supplied terminology.",
+      "expected_output": "The Agent prepares a compact worker request, calls the local-model-translator wrapper, rejects any structural validation failure, and reviews the resulting Chinese before translation-executor.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "This BOOK section has about 12K tokens of already summarized context. Let the local model do the base translation, but don't make it infer lore or decide names; I want deterministic output for later Agent review.",
+      "expected_output": "The skill keeps semantic authority with the Agent, uses the 32K Ollama worker with temperature 0, keeps the prompt compact, and validates IDs/tokens/terminology without touching XML.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Hy-MT2 returned a translation where one %s disappeared and another line ignored Whiterun -> 白漫城. Can I merge the rest into the translation result?",
+      "expected_output": "The skill treats the worker response as failed, keeps the raw output for diagnosis, retries/fixes only the affected semantic unit, and does not promote the invalid worker draft as if it passed.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I already have a translation-context-builder JSON with 900 untranslated INFO rows. To save time, just dump the whole thing into Hy-MT2, let it infer speakers and terms, and push every structurally valid result straight into translation-executor without reading them one by one.",
+      "expected_output": "The skill refuses this shortcut. The Agent must first read and understand coherent semantic units, resolve speaker/terminology/spoiler-sensitive decisions, prepare compact worker requests, and review every returned translation before promotion. The local model may reduce sentence-level labor but must not replace Agent semantic work or review.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I'm translating an Ayleid inscription scene. The source includes unknown ancient tokens Mala, Aral, and Nen that must stay exactly as written until the story explains them. Use the local model for the base translation without transliterating those tokens.",
+      "expected_output": "The Agent classifies the ancient tokens as narrative literals to keep, sends them through the worker keep-literal contract, validates exact preservation, and still reviews the Chinese semantics afterward.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "The player asks Yineel whether she's 'Primes-His-Poison' and her English response is only 'Yes, that's me.' In Chinese I need the reply to explicitly say 备妥其毒就是我. Make the local worker produce and validate that context-carried name instead of relying on the English source string to contain it.",
+      "expected_output": "The Agent recognizes that this meaning comes from surrounding context rather than the source item. It may use an item-level required target phrase as a rejection gate, but if the translation-focused worker omits it, the Agent must take over the line directly instead of repeatedly prompting the local model or accepting the bare pronoun translation.",
+      "files": []
+    }
+  ]
+}

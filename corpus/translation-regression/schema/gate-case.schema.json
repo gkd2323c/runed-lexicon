@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "local://translation-regression/gate-case.schema.json",
+  "title": "gate 层用例 schema（Translation Quality Gate 单元测试）",
+  "description": "本项目自有 schema，仅存在于 corpus/translation-regression/schema/ 本地路径，无外部注册表宿主。" ,
+  "note": "修正记录：原 $schema 曾误写为一个编造的 agentskills.io URL（不存在的 schema 地址），已改为 JSON Schema 标准草案标识符；$id 为本地虚拟标识，不指向任何真实 URL。",
+  "type": "object",
+  "required": ["case_id", "test_layer", "category", "plugin", "input", "expect", "origin"],
+  "additionalProperties": true,
+  "properties": {
+    "case_id": { "type": "string", "description": "稳定的失败模式 ID；公开 corpus 不编码真实 MOD 名或节点编号" },
+    "test_layer": { "const": "gate" },
+    "category": { "enum": ["term_exact","term_forbidden","term_variant","keep","placeholder","charset","xml_structure","interjection","source_fidelity"] },
+    "plugin": { "type": "string", "description": "公开 fixture 通常写 synthetic；真实来源插件不在公开 corpus 中暴露" },
+    "xml_index": { "type": ["integer", "null"], "description": "公开 synthetic fixture 通常为 null；真实事故节点号留在私有证据中" },
+    "input": {
+      "type": "object",
+      "required": ["source", "translation", "contract"],
+      "properties": {
+        "source": { "type": "string", "description": "语义等价改写后的 synthetic Source；官方术语测试可保留最小必要专名" },
+        "translation": { "type": "string", "description": "被测译文（bad 或 golden）" },
+        "contract": {
+          "type": "object",
+          "description": "最小 contract：bindings + 必要 term。gate 测试只给 gate 判定的最小子集",
+          "required": ["bindings"],
+          "properties": {
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["term_id"],
+                "properties": {
+                  "term_id": { "type": "string" },
+                  "source_span": { "type": "string" },
+                  "required": { "type": "boolean" },
+                  "required_target": { "type": "string" }
+                }
+              }
+            },
+            "terms": {
+              "type": "object",
+              "description": "term_id -> Term Definition（含 target/forbidden/match/decision_status/enforcement）",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "required": ["verdict"],
+      "properties": {
+        "verdict": { "enum": ["PASS", "FAIL", "WARNING"] },
+        "codes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "golden": { "type": "string", "description": "与真实修复原则语义等价的 synthetic golden" },
+    "origin": { "type": "string", "description": "公开 provenance 类别，例如 real_project_incident_rewritten；不写私有路径" },
+    "note": { "type": "string" }
+  }
+}
