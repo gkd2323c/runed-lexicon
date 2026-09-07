@@ -1,12 +1,13 @@
 # 节点 Prompt 模板（子 agent 是全新进程，prompt 必须自包含）
 
-每个翻译节点 prompt 按此 8 段写，缺段即可能跑飞。方括号内按批替换。
+每个翻译节点 prompt 按此 9 段写，缺段即可能跑飞。下文以 thedark 为例，照批替换。
 
 ## 模板
 
 ```text
-【任务一句话】把 thedark 第 003 批（xml_index 80-119，共 40 条）翻成中文，
-产出 .work/thedark-translation-003.json（init + fill + validate 全走完）。
+【任务】把 thedark 第 003 批共 40 条翻成中文。context 用 .work/thedark-context.json
+第 3 批。交付 .work/thedark-translation-003.json 与 .work/thedark-map-003.json，
+init、写 map、fill、validate 四步都要跑完。
 
 【先读规则】（按顺序读，不凭记忆）
 - AGENTS.md（项目根）
@@ -43,17 +44,31 @@ map 文件 .work/thedark-map-003.json 一并保留备查。
 changed_scope / residual_risks。
 ```
 
-## workflow agent() 调用侧写法
+## workflow 侧写法（以 script 字符串提交）
+
+`workflow` 工具不直接吃 JS 调用：把扇出逻辑写成 `script` 字符串提交
+（首行必须是 `export const meta = { name, description }`），批次表与 prompt
+模板在脚本内用 JS 拼装，节点经 `agent(prompt, opts)` 派生。`opts` 常用：
+`label`（批次名）、`access: "write"`（跑命令验证的节点必选）、`writeFolders`
+（互斥的已存在绝对目录，见 SKILL.md §5）、`agentType`（人格路由，可省）。
+并发与超时走 `limits`（如 `{ maxConcurrent: 5, nodeTimeoutMs: 900000 }`，并发严禁超过 5）。
 
 ```js
-await agent(`<上段 prompt 全文>`, {
-  label: "thedark-translate-003",
+export const meta = { name: "druadach-p3-wave1", description: "29批并行翻译" };
+const R = "C:/Users/gkd2323c/Documents/runed-lexicon";
+const jobs = [
+  { id: "qo-04", ctx: ".work/Druadach-questobj-context.json", batch: 4, kind: "任务目标短句" },
+  // …一批一项，scope 互不重叠
+];
+function promptFor(j) { return `【任务】…（上段模板全文，路径用 ${R} 拼成绝对路径）…`; }
+await parallel(jobs.map(j => async () => await agent(promptFor(j), {
+  label: `druadach-${j.id}`,
   access: "write",
-  writeFolders: ["<PROJECT_ROOT>/.work/thedark-b003"],
-  agentType: "hanako",
-});
+  writeFolders: [`${R}/.work/druadach-batches/${j.id}`],
+})));
 ```
 
-`writeFolders` 互斥是硬约束：并行节点不可声明同一目录。单文件两件套模式下，
-可用同一 `.work/` 目录但文件名互斥；最稳的是每批一子目录。
-读节点（纯审阅）用 `access: "read"` 且不声明 `writeFolders`。
+提交后 `workflow` 即返回后台任务 id，不阻塞。用 `wait_for_tasks` 登记等待
+终态（结果经后台通道自动回送），不要轮询。失败时错误体带 `resumeFromRunId`，
+用它重派，已完成节点可从缓存直接复用。读节点（纯审阅）用 `access: "read"` 且不声明
+`writeFolders`。

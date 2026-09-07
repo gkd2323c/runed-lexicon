@@ -2,9 +2,13 @@
 
 ## 节点超时 / 崩溃
 
-- `subagent` 无响应：`check_pending_tasks` 确认状态；仍 pending 不轮询，
-  先做手头其他工作，系统以 hana-background-result 回送结果。
-- 超时本质多为 scope 太大（单节点 > 40 条或通读全文）：拆小重派，
+- 子任务发出后主会话不轮询：`subagent` / `workflow` 提交即返回后台任务 id，
+  有后续依赖就用 `wait_for_tasks` 登记等待（到终态系统自动叫醒），无依赖就先做
+  手头别的工作，结果经后台通道自动回送。`check_pending_tasks` 只用于主动查询
+  状态，不做轮询循环。
+- `workflow` 运行失败会带回 `resumeFromRunId`：用它重派，prompt 与 opts 未变的已完成
+  节点从缓存直接复用，只有首个变化点之后重跑。
+- 超时多半是 scope 太大（单节点 > 40 条或通读全文）：拆小重派，
   不加码重试同一 scope。重试节点 prompt 内注明“续跑 .work/ 已有产物，先 stat
   再接着 validate，不重做”。
 - 中间产物必须写盘（result/map 即使 PENDING 也落盘），重试可续。
@@ -14,11 +18,11 @@
 1. 看 gate `--report` 的逐条 issue，归类：术语（TERM002/TERM004）/ 占位符
    （PLACEHOLDER001）/ 繁简（CHAR001）/ 身份漂移（XML001）。
 2. 打回原批次节点：同 thread `subagent_reply`（把 issue 全文贴回去），或新建
-   `label=<plugin>-fix-<NNN>` 修复节点；禁止新建“全局修复”节点一把改多批。
+   `label=<plugin>-fix-<NNN>` 修复节点；禁止新建“全局修复”节点一次改多批。
 3. 修复只改该批的 result JSON（经 filler，`--overwrite` + `expected_translation`
    保护旧值）；修完重跑 executor validate + gate 单批；双 PASS 才回 P4。
 4. 若 FAIL 指向契约本身错误（binding 错、forbidden 误收）：先修 DICTIONARY/
-   global-forbidden-words（主会话），重编译契约，再重跑 gate，不改译文凑合过。
+   global-forbidden-words（主会话），重编译契约，再重跑 gate，不削足适履改译文。
 
 ## 越界 / 污染
 
