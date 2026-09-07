@@ -21,7 +21,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install validation dependencies
-        run: pip install pyyaml
+        # zhconv is optional for local runs (CHAR001 degrades to WARNING
+        # without it), but CI installs it so the gate selftest asserts
+        # the same PASS baseline as a fully provisioned machine.
+        run: pip install pyyaml zhconv
 
       - name: Unit tests (unittest discover per skill)
         shell: bash
