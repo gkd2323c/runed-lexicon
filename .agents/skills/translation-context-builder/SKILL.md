@@ -1,7 +1,7 @@
 ---
 name: translation-context-builder
 description: Build structured, traceable translation context batches for Skyrim mod localization by merging xTranslator XML, xEdit dialogue context JSON, the mod's CONTEXT.md and DICTIONARY.md, and all official XML dictionaries under dictionary/. Use this before a translation Agent starts working when INFO dialogue needs quest/topic/speaker/context evidence attached. This skill prepares context only; it does not translate text or write changes back to XML.
-compatibility: Requires Python 3.10+ and the skyrim-mod-translator project layout with mods/, dictionary/, and xEdit context JSON. Uses only the Python standard library and does not require network access.
+compatibility: Requires Python 3.10+ and the runed-lexicon project layout with mods/, dictionary/, and xEdit context JSON. Uses only the Python standard library and does not require network access.
 metadata:
   version: "0.2.1"
 ---

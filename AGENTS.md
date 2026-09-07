@@ -1,6 +1,6 @@
 # AGENTS.md
 
-这是 `skyrim-mod-translator` 的项目级 Agent 操作规范（常驻核心版）。
+这是 `runed-lexicon` 的项目级 Agent 操作规范（常驻核心版）。
 
 本文件只承载每次会话都必须强制生效的约束、生命周期与路由规则；完整工艺细则按关注点拆分子 skill，命中触发条件必须先完整读取对应 SKILL.md 再继续执行，严禁用摘要或历史记忆代行。
 

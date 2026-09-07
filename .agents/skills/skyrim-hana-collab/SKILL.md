@@ -6,7 +6,7 @@ metadata:
   version: "0.1.0"
 ---
 
-# Hana 多 Agent 协作（skyrim-mod-translator）
+# Hana 多 Agent 协作（runed-lexicon）
 
 > ## ⚠️ 适用范围：仅 HanaAgent
 >

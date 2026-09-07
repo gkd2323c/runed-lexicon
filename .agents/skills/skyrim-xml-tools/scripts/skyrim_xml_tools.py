@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only helpers for xTranslator XML used by skyrim-mod-translator.
+"""Read-only helpers for xTranslator XML used by runed-lexicon.
 
 The first version deliberately does not modify XML.  It provides three
 operations needed by translation agents:

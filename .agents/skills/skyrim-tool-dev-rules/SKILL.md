@@ -1,6 +1,6 @@
 ---
 name: skyrim-tool-dev-rules
-description: skyrim-mod-translator 的工具开发规范：先检索复用 `.agents/skills/` 现成 skill、禁止重复实现现成能力，确实需要新工具时的开发方式，SKILL.md 配套强制规则、skill-creator 流程、工具性能门禁（30s 缺陷阈值 / 5s 基线回归线 / cProfile 先行 / 输出逐字节一致验收）。Use when about to write any script/CLI/tool or inline command that reads/statistics/queries/converts/validates/writes MOD data（先查现成 skill），or when creating a new skill, modifying existing pipeline tools, claiming tool work complete, optimizing tool performance, or declaring a tool deliverable without SKILL.md.
+description: runed-lexicon 的工具开发规范：先检索复用 `.agents/skills/` 现成 skill、禁止重复实现现成能力，确实需要新工具时的开发方式，SKILL.md 配套强制规则、skill-creator 流程、工具性能门禁（30s 缺陷阈值 / 5s 基线回归线 / cProfile 先行 / 输出逐字节一致验收）。Use when about to write any script/CLI/tool or inline command that reads/statistics/queries/converts/validates/writes MOD data（先查现成 skill），or when creating a new skill, modifying existing pipeline tools, claiming tool work complete, optimizing tool performance, or declaring a tool deliverable without SKILL.md.
 compatibility: Reference rules only; no scripts. References skill-creator workflow.
 metadata:
   version: "1.1.0"

@@ -1,6 +1,6 @@
 # GLOBAL.md — Skyrim 官方语料全局语境
 
-本文档是 `skyrim-mod-translator` 的项目级语义底座。
+本文档是 `runed-lexicon` 的项目级语义底座。
 
 它从项目 `dictionary/` 目录树中的官方英中 XML 语料归纳《上古卷轴 V：天际》及官方扩展内容的稳定世界观语境、叙事边界、记录类型语义和中文本地化习惯，作为所有 MOD 的共享背景。
 

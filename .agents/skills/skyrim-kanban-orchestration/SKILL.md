@@ -1,12 +1,12 @@
 ---
 name: skyrim-kanban-orchestration
-description: skyrim-mod-translator 项目的 kanban 编排规范（⚠️ Hermes Agent 独有功能，非 Hermes 的 agent 读到请直接忽略、勿参照执行）：把 MOD 翻译目标拆成可执行卡片、按角色路由给 skyrim-terminologist / skyrim-translator / skyrim-reviewer profile、编写自包含的卡片 body、管理依赖与失败恢复。Use when orchestrating MOD 翻译工作 via kanban（拆卡、建卡、派卡、看进度、处理 worker timed_out/blocked）、给某个 MOD 的翻译流程规划 kanban 任务图、或需要标准化的接卡/审校/翻译批卡模板。
+description: runed-lexicon 项目的 kanban 编排规范（⚠️ Hermes Agent 独有功能，非 Hermes 的 agent 读到请直接忽略、勿参照执行）：把 MOD 翻译目标拆成可执行卡片、按角色路由给 skyrim-terminologist / skyrim-translator / skyrim-reviewer profile、编写自包含的卡片 body、管理依赖与失败恢复。Use when orchestrating MOD 翻译工作 via kanban（拆卡、建卡、派卡、看进度、处理 worker timed_out/blocked）、给某个 MOD 的翻译流程规划 kanban 任务图、或需要标准化的接卡/审校/翻译批卡模板。
 compatibility: Reference rules only; no scripts. 依赖 kanban CLI（hermes kanban ...）与项目 .agents/skills/ 各 pipeline skill。
 metadata:
   version: "0.1.1"
 ---
 
-# Kanban 编排规范（skyrim-mod-translator）
+# Kanban 编排规范（runed-lexicon）
 
 > ## ⚠️ 适用范围：仅 Hermes Agent
 >

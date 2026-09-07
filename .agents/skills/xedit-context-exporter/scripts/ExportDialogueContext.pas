@@ -1,13 +1,13 @@
 {
-  Read-only dialogue context export for skyrim-mod-translator.
+  Read-only dialogue context export for runed-lexicon.
   Exports deterministic DIAL -> INFO structure plus raw evidence used to
   resolve speakers without semantic guessing.
 }
 unit ExportDialogueContext;
 
 const
-  OutputFileName = 'skyrim_mod_translator_dialogue_context.json';
-  TargetFileNameConfig = 'skyrim_mod_translator_target_plugin.txt';
+  OutputFileName = 'runed_lexicon_dialogue_context.json';
+  TargetFileNameConfig = 'runed_lexicon_target_plugin.txt';
 
 function HexFormID(e: IInterface): string;
 begin

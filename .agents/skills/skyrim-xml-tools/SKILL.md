@@ -1,7 +1,7 @@
 ---
 name: skyrim-xml-tools
 description: Inspect xTranslator XML, list untranslated Skyrim mod strings, query every official English-Chinese XML dictionary placed in the project's dictionary directory, and scan a translated XML's Dest against an xTranslator term-conversion rule file for old/non-official translation suggestions (read-only). Use when analyzing a mod translation XML, identifying untranslated entries, checking record-type statistics, looking up established terminology before translation, or auditing finished translations against a term-rule corpus.
-compatibility: Requires Python 3 and the skyrim-mod-translator project layout with dictionary/ and mods/ directories. No network access or third-party packages required.
+compatibility: Requires Python 3 and the runed-lexicon project layout with dictionary/ and mods/ directories. No network access or third-party packages required.
 metadata:
   version: "0.2.0"
 ---

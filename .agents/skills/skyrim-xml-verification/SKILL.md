@@ -1,6 +1,6 @@
 ---
 name: skyrim-xml-verification
-description: skyrim-mod-translator 的 XML 安全与验证规范：写回前后必须执行的验证清单、哈希与 provenance 的使用边界、性能与验证的职责分离原则。Use before or after any xTranslator XML writeback, when designing or reviewing XML-modifying tools, when deciding whether hashes/provenance need rebuilding, or when judging whether "工程验证通过" can be claimed.
+description: runed-lexicon 的 XML 安全与验证规范：写回前后必须执行的验证清单、哈希与 provenance 的使用边界、性能与验证的职责分离原则。Use before or after any xTranslator XML writeback, when designing or reviewing XML-modifying tools, when deciding whether hashes/provenance need rebuilding, or when judging whether "工程验证通过" can be claimed.
 compatibility: Reference rules only; no scripts.
 metadata:
   version: "1.1.0"

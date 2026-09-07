@@ -2,7 +2,7 @@
 name: dictionary-noun-audit
 description: >-
   Scan a translated Skyrim mod XML (or translation-result JSON) against the official English-Chinese dictionary corpus, reporting CHECK candidates where the Source contains an official proper noun while the Dest lacks that noun's official Chinese translation. Use this skill whenever a translated mod must be checked for missing or divergent official names (e.g. Source has Skyrim but Dest has no 天际), when opening or finishing a new mod translation, or after any terminology pass — before declaring official-name convergence. Single-word names proven by official record structure (WRLD/NPC_/RACE/LCTN/...) are audited by default, so Skyrim to 天际 is always checked; ambiguous single words from book/misc records are reported as low-confidence only. The script is a candidate finder, not a judge — it reports string facts with dictionary evidence and the Agent decides whether each candidate is a real error, legitimate elision, or a context-specific official form.
-compatibility: Python 3.10+. Standard library only. Requires the skyrim-mod-translator layout with dictionary/ and mods/. Read-only — never edits XML or JSON.
+compatibility: Python 3.10+. Standard library only. Requires the runed-lexicon layout with dictionary/ and mods/. Read-only — never edits XML or JSON.
 metadata:
   version: "0.4.0"
 ---

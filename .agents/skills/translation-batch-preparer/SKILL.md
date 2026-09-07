@@ -1,7 +1,7 @@
 ---
 name: translation-batch-preparer
 description: Prepare structured translation batches from xTranslator XML for Skyrim mod localization without modifying the source XML. Use this skill whenever a Skyrim mod translation needs to be broken into reviewable batches, untranslated entries need stable identifiers and duplicate counts, or official Skyrim/DLC terminology should be attached before an Agent begins translating. Before any actual translation decisions, fully read the target mod's CONTEXT.md and DICTIONARY.md; if either file is missing, stop and ask the user whether to create it.
-compatibility: Requires Python 3.10+ and the skyrim-mod-translator project layout with dictionary/ and mods/ directories. Uses only the Python standard library and does not require network access.
+compatibility: Requires Python 3.10+ and the runed-lexicon project layout with dictionary/ and mods/ directories. Uses only the Python standard library and does not require network access.
 metadata:
   version: "0.1.3"
 ---

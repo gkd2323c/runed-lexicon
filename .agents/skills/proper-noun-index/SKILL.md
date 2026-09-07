@@ -16,7 +16,7 @@ description: >-
   dictionary-noun-audit matching so it can never drift from audit behavior.
 compatibility: Python 3.10+. Standard library only. Imports matching rules from
   dictionary-noun-audit and ambiguity hints from term-contract-compiler, so those
-  skills must stay in .agents/skills/. Requires the skyrim-mod-translator layout.
+  skills must stay in .agents/skills/. Requires the runed-lexicon layout.
 metadata:
   version: "0.2.0"
 ---

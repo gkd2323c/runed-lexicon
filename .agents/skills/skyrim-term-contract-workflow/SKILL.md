@@ -1,6 +1,6 @@
 ---
 name: skyrim-term-contract-workflow
-description: skyrim-mod-translator 的官方名词契约与质量门禁工作流：新 MOD 开工前与批次收尾后的强制流程（dictionary-noun-audit 候选发现 → Agent 消解 → term-contract-compiler 编译契约 → unit bindings → translation-quality-gate → 确定性写回 → 复扫），含 PASS 声明口径与已知工具行为。Use when starting a new MOD translation, finishing any translation/rectification batch, running or interpreting dictionary-noun-audit / term-contract-compiler / translation-quality-gate / xtranslator-xml-writer results, or writing convergence claims in reports.
+description: runed-lexicon 的官方名词契约与质量门禁工作流：新 MOD 开工前与批次收尾后的强制流程（dictionary-noun-audit 候选发现 → Agent 消解 → term-contract-compiler 编译契约 → unit bindings → translation-quality-gate → 确定性写回 → 复扫），含 PASS 声明口径与已知工具行为。Use when starting a new MOD translation, finishing any translation/rectification batch, running or interpreting dictionary-noun-audit / term-contract-compiler / translation-quality-gate / xtranslator-xml-writer results, or writing convergence claims in reports.
 compatibility: Reference workflow; no scripts. Consumes the pipeline skills dictionary-noun-audit, term-contract-compiler, translation-quality-gate, xtranslator-xml-writer.
 metadata:
   version: "1.1.1"

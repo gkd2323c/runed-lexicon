@@ -27,9 +27,9 @@ STAGE_DATA = WORK_ROOT / "Data"
 CACHE_DIR = WORK_ROOT / "Cache"
 TEMP_DIR = WORK_ROOT / "Temp"
 PLUGINS_TXT = WORK_ROOT / "plugins.txt"
-XEDIT_OUTPUT_NAME = "skyrim_mod_translator_dialogue_context.json"
+XEDIT_OUTPUT_NAME = "runed_lexicon_dialogue_context.json"
 CAPTURED_OUTPUT = WORK_ROOT / "captured_dialogue_context.json"
-TARGET_PLUGIN_CONFIG = STAGE_DATA / "skyrim_mod_translator_target_plugin.txt"
+TARGET_PLUGIN_CONFIG = STAGE_DATA / "runed_lexicon_target_plugin.txt"
 
 
 class ExportError(RuntimeError):

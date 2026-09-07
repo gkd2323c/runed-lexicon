@@ -1,7 +1,7 @@
 ---
 name: skyrim-translation-craft
 description: Skyrim MOD 翻译工艺规则：上下文优先通读、信息揭示顺序与禁止剧透、原版词典证据用法、翻译风格、按 REC 记录类型的差异化策略。Use when starting or reviewing any Skyrim MOD translation work, translating or judging INFO/DIAL/QUST/BOOK text, deciding terminology in context, checking spoiler/knowledge-boundary risk, or evaluating whether a dictionary hit applies.
-compatibility: Reference rules only; no scripts. Companion to the skyrim-mod-translator pipeline skills.
+compatibility: Reference rules only; no scripts. Companion to the runed-lexicon pipeline skills.
 metadata:
   version: "1.1.0"
 ---
