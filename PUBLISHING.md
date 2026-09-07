@@ -36,6 +36,6 @@ git check-ignore -v tools/xEdit/<binary>.exe
 ## 发布后建议
 
 - 给仓库启用 secret scanning / dependency alert（托管平台支持时）。
-- CI 至少跑 Python 单元测试、Skill quick validation，以及公开可分发的 regression cases。
+- CI 至少跑 Python 单元测试、Skill quick validation，以及公开可分发的 regression cases（已落地：`.github/workflows/ci.yml`，3.10–3.13 矩阵，含 gate 47 条自测语料；注意 CI 需安装 `zhconv` 可选依赖以复现本地 PASS 基准）。
 - issue 模板要求复现者不要上传完整 MOD / 游戏文件；必要时只给最小结构化样本。
 - 每次引入新的外部数据源，先更新 `THIRD_PARTY.md`，再决定是否进入版本管理。
