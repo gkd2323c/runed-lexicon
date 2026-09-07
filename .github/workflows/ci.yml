@@ -30,13 +30,19 @@ jobs:
           found=0
           for d in .agents/skills/*/scripts; do
             if compgen -G "$d/test_*.py" > /dev/null; then
-              echo "--- unittest discover: $d"
-              python -m unittest discover -s "$d" -p "test_*.py"
-              found=1
+              # Standalone-style tests (main() entry, no unittest.TestCase)
+              # are executed by the next step; discover would exit 5 (NO TESTS RAN).
+              if grep -lq "unittest" "$d"/test_*.py; then
+                echo "--- unittest discover: $d"
+                python -m unittest discover -s "$d" -p "test_*.py"
+                found=1
+              else
+                echo "--- skip discover (standalone-style only): $d"
+              fi
             fi
           done
           if [ "$found" -eq 0 ]; then
-            echo "No test_*.py found under .agents/skills/*/scripts"
+            echo "No unittest-style tests found under .agents/skills/*/scripts"
             exit 1
           fi
 
