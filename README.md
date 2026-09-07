@@ -92,7 +92,7 @@ global-forbidden-words.json  可执行的全局禁用译法约束
 ## 开始使用
 
 1. 准备 Python 3.10+。大多数核心脚本仅使用标准库；`translation-quality-gate` 的 CHAR001 繁简检测可选依赖 `zhconv`。
-2. 将你自己合法取得的官方英中 xTranslator XML 放入 `dictionary/`。工具会递归读取整个目录，不依赖固定文件名。
+2. 将你自己合法取得的官方英中 xTranslator XML 放入 `dictionary/`（导出方法见 [`dictionary/EXPORT_GUIDE.md`](dictionary/EXPORT_GUIDE.md)）。工具会递归读取整个目录，不依赖固定文件名。
 3. 在 `mods/<plugin>/` 放入目标 MOD 的 xTranslator XML；需要恢复 DIAL/INFO、说话者和任务关系时，再提供原始插件并使用 `xedit-context-exporter`。
 4. 从项目根目录启动支持 Agent Skills 的 Agent，并让它先读取 `AGENTS.md`。进入实际翻译前，目标 MOD 必须具备并完整读取 `CONTEXT.md` 与 `DICTIONARY.md`。
 5. 按 Skill 的输入输出契约生成结构化翻译结果，通过 quality gate 后，再用 `xtranslator-xml-writer` 写回新的 translated XML。
