@@ -2,7 +2,7 @@
 
 本目录是项目的**本地官方译名证据入口**。
 
-公开仓库不会附带 Skyrim、DLC 或 Creation Club 的官方英中 XML。使用者应自行提供其合法取得或导出的 xTranslator 英中 XML 文件。
+公开仓库不会附带 Skyrim、DLC 或 Creation Club 的官方英中 XML。使用者应自行提供其合法取得或导出的 xTranslator 英中 XML 文件。导出方法见 [`EXPORT_GUIDE.md`](EXPORT_GUIDE.md)。
 
 ## 目录语义
 
