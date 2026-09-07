@@ -128,3 +128,11 @@ hermes kanban comment <id> --body "..."   # 追加说明
 ## 7. 演进
 
 本 skill 随实测更新：新陷阱、新模板、profile 职责变化都记到这里（或 references/）。与 `skyrim-doc-system`、`skyrim-term-contract-workflow` 等 pipeline skill 互补：它们管"翻译怎么做"，本 skill 管"怎么用 kanban 组织这些活"。
+
+## 8. 编排事故沉淀（Druadach 2026-09-07/08 实测）
+
+- **先核上游前提，再建下游卡**：凡"据某卡结论新建卡"，先花一次廉价验证核对该结论（如一个 grep）。T1c 指控"GLOBAL §6 用玛拉卡斯"未经核就建 Global 卡，事后实测该串全文不存在——沙上建卡，后续全错。
+- **根级 canonical 默认只读**：`GLOBAL.md` / `GLOSSARY.md` / `global-forbidden-words.json` 三件套，worker 卡只许读 + 输出结论，禁止落笔；任何改动另起 gated 卡并由用户放行。卡 body 里写"只改一个全局文件"即属越权授权，主责在编排不在 worker。
+- **卡片粒度适配单发完成**：大 MOD 三文档全塞一张 goal 卡（60 轮烧完零产物）是已知坏形状；拆到"单 worker 一轮能完成并自验"。goal-mode 配长 body 时 judge 脆弱，优先经典单发。
+- **基础设施异常先取证再定论**：spawn 崩溃、judge 报错一类，第一动作是拿到 worker 错误原文（向用户要 log/报错文本），而不是连抛自信推断。三次误诊（judge 坏→并行 OOM→宿主杀进程，真因是 provider 缺 session 头）证明：看不见日志时就明说看不见。
+- **授权动共享文件前先记基线**：在卡评论里记下目标文件的行数/关键串现状，坏了才定位得到；否则"改坏了"来了都找不到坏处。
