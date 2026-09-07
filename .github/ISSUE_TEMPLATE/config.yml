@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 翻译求助 / MOD 本地化讨论
+    url: https://github.com/gkd2323c/runed-lexicon/discussions
+    about: 不确定算不算 bug 时，先去 Discussions 讨论，确认后再开 issue。

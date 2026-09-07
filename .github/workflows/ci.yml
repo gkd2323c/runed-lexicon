@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install validation dependencies
+        run: pip install pyyaml
+
+      - name: Unit tests (unittest discover per skill)
+        shell: bash
+        run: |
+          set -e
+          found=0
+          for d in .agents/skills/*/scripts; do
+            if compgen -G "$d/test_*.py" > /dev/null; then
+              echo "--- unittest discover: $d"
+              python -m unittest discover -s "$d" -p "test_*.py"
+              found=1
+            fi
+          done
+          if [ "$found" -eq 0 ]; then
+            echo "No test_*.py found under .agents/skills/*/scripts"
+            exit 1
+          fi
+
+      - name: Standalone regression scripts
+        shell: bash
+        run: |
+          set -e
+          python .agents/skills/xtranslator-xml-writer/scripts/test_patch_mode.py
+          python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
+          python corpus/translation-regression/scripts/validate_corpus.py
+
+      - name: Skill quick validation (all skills)
+        shell: bash
+        run: |
+          set -e
+          for d in .agents/skills/*/; do
+            if [ -f "$d/SKILL.md" ]; then
+              echo "--- quick_validate: $d"
+              python .agents/skills/skill-creator/scripts/quick_validate.py "$d"
+            fi
+          done
