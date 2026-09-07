@@ -143,8 +143,9 @@ def find_blocked_suffix_hits(dest: str, term: Dict) -> List[str]:
 # 项目级全局禁用词库（global-forbidden-words.json）嵌入契约后的字段名。
 # 每一条：
 #   english: source 侧英文锚点（忽略大小写，按整词出现触发）
-#   forbidden: 中文坏形态列表（任一出现在 dest 即报）
-#   target: 正确中文形态（出现则不报；豁免 canonical 自身，避免与 REQUIRED 词互相咬合）
+#   forbidden: 中文坏形态列表（任一出现在 dest 即报；被 target 完整覆盖的
+#              实例豁免——见 find_global_ban_hits 的 R12 说明）
+#   target: 正确中文形态（dest 中任一出现区间完整覆盖其子串 forbidden 实例时豁免）
 #   reason: 为什么禁（写进 report，供 Agent 判误报/修正）
 CONTRACT_GLOBAL_BANS_KEY = 'global_bans'
 
@@ -200,10 +201,34 @@ def find_global_ban_hits(source: str, dest: str, ban: Dict) -> List[str]:
     English side is a whole-word anchor (so 'blades' poetry cannot trigger
     the 'Blades' organization ban; plural / 's forms still hit). Chinese side
     is a substring check — a curated wrong form in dest is wrong regardless of
-    whether the canonical form also appears (e.g. "木灵遭到树精袭击")."""
+    whether the canonical form also appears (e.g. "木灵遭到树精袭击").
+
+    R12 (v0.1.5): a forbidden occurrence fully covered by an occurrence of the
+    ban's canonical target is part of the correct form, not a bad variant, and
+    is suppressed ("晨星" inside "晨星月" must not fire when the full month name
+    is present). Occurrences NOT covered by the target still fire, so a bare
+    missing-月 error keeps being caught even in a unit that also contains the
+    canonical form. Root cause of 20 false TERM004 FAILs in Druadach-book
+    (2026-09-08): month bans list the bare word as forbidden and the 带月 form
+    as target, so target and forbidden matched the same text.
+    """
     if not list(_iter_word_matches(source, ban['english'])):
         return []
-    return [f for f in ban['forbidden'] if f and f in dest]
+    target = (ban.get('target') or '').strip()
+    target_spans = []
+    if target:
+        target_spans = [(p, p + len(target)) for p in _iter_matches(dest, target)]
+    hits = []
+    for f in ban['forbidden']:
+        if not f:
+            continue
+        for p in _iter_matches(dest, f):
+            covered = any(s <= p and p + len(f) <= e for s, e in target_spans)
+            if covered:
+                continue  # part of the canonical form, not a bad variant
+            hits.append(f)
+            break  # one report per forbidden form (unchanged semantics)
+    return hits
 
 
 def find_global_keep_hits(source: str, dest: str, gkeep: str) -> bool:

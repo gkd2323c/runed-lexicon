@@ -94,7 +94,7 @@ hermes kanban comment <id> --body "..."   # 追加说明
   "artifacts": ["mods/xxx.esp/xxx_translated.xml", ".work/xxx-batch1-result.json"],
   "verification": {"command": "py -3 .agents/skills/translation-quality-gate/scripts/quality_gate.py ...", "result": "PASS"},
   "changed_scope": ["xml_index 120-180", "mods/xxx.esp/DICTIONARY.md（+2 术语）"],
-  "residual_risks": ["未做 xTranslator 导入验证", "none"]
+  "residual_risks": ["<本卡特有的未闭环事项；无则只写 none>"]
 }
 ```
 

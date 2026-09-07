@@ -206,7 +206,7 @@ py -3 .agents/skills/translation-executor/scripts/translation_result.py summary 
 python .agents/skills/translation-executor/scripts/fill_translation_set.py --manifest corrections.json --output-dir new-results
 ```
 
-`output-dir` 必须不存在且父目录已存在。输出名只能是无目录的 `.json` 文件名，禁止重复输出名或重复 result。`overwrite:true` 时每条 map 必须声明 `expected_translation`。全部输入先读入快照，在输出父目录建立临时数据目录逐个调用现成 filler；任一失败不发布新结果目录，原始文件始终不写。全部通过后以同文件系统目录重命名发布；它是新副本集合的发布，不是多原文件覆盖事务，不保证突然断电或敌对并发下的事务语义。进程被强杀可能留下 `.fill-set-*` 数据目录，应核实后清理，不能将其视为有效交付。正常成功/失败均清理暂存数据，不生成临时脚本。
+`output-dir` 必须不存在且父目录已存在。输出名只能是无目录的 `.json` 文件名，禁止重复输出名或重复 result。`overwrite:true` 时每条 map 必须声明 `expected_translation`。全部输入先读入快照，在输出父目录建立临时数据目录逐个调用现成 filler；任一失败不发布新结果目录，原始文件始终不写。全部通过后以同文件系统目录重命名发布；它是新副本集合的发布，不是多原文件覆盖事务。进程被强杀可能留下 `.fill-set-*` 数据目录，应核实后清理，不能将其视为有效交付。正常成功/失败均清理暂存数据，不生成临时脚本。
 
 之后必须针对新集合运行 executor validate / gate，再按 MOD 的 PROGRESS 决定采用哪一组。filler 成功仅代表 map 应用成功，不代表语义审阅或 XML 写回验证通过。永久回归：`python .agents/skills/translation-executor/scripts/test_fill_set.py`。
 

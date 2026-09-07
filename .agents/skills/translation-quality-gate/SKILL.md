@@ -3,7 +3,7 @@ name: translation-quality-gate
 description: Deterministic, read-only pre-writeback quality gate for Skyrim mod translation batches. Verifies that completed translation-result JSON satisfies a compiled Translation Contract (term bindings, KEEP list, protected placeholders, simplified-Chinese charset) before the xTranslator XML writer runs. Use whenever a completed translation batch must be validated before XML writeback, when terminology regressions like Argonian/Blades/sweetroll need mechanical enforcement, or when a contract/regression change must be checked against the incident-derived synthetic regression corpus. Gate only checks declared unit bindings and never re-derives entity identity, and it never modifies translations.
 compatibility: Python 3.10+ recommended. Core checks use the standard library; optional zhconv enables CHAR001 simplified-Chinese detection. If zhconv is unavailable, CHAR001 reports a warning instead of silently passing. The tracked Translation Contract interface is documented in references/contract-schema.md.
 metadata:
-  version: "0.1.4"
+  version: "0.1.5"
 ---
 
 > 性能基线（见 `skyrim-tool-dev-rules` §2；MVF1 规模 8555 单元 / 9402 节点，含 XML 预检 + auto-bind）：0.89s。回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复。
@@ -124,7 +124,7 @@ the incident-derived synthetic corpus selftest.
 
 `global_bans` 是**独立于 unit_bindings 的全局扫描**：它保护官方名词完整性，
 无论某行是否带 binding 都执行（MVF1/SB1 事故证明：大部分错误形态出现在无
-binding 的单元，局部 TERM002 查不到）。判定带三道防护，避免误伤：
+binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免误伤：
 
 1. **英文侧整词锚点**：dest 出现坏形态还不够，source 必须整词出现对应英文
    （`blades` 诗歌普通名词不会触发 `Blades` 组织禁令；`PreSolstheim` 嵌入形式
@@ -132,6 +132,14 @@ binding 的单元，局部 TERM002 查不到）。判定带三道防护，避免
 2. **不扫描未翻译行**：dest == source（KEEP / 技术行）跳过。
 3. **与 TERM002 去重**：同一坏形态若同时被某已绑定 term 的 forbidden 命中，
    保留局部 TERM002（证据更丰富），不重复报 TERM004。
+4. **canonical 覆盖豁免（R12, v0.1.5）**：forbidden 中某形态是 target 的
+   子串（月名条的标准形态：裸词 forbidden + 带月 target，如"晨星"⊂"晨星月"）
+   时，其在 dest 中的出现若完整落在任一 target 出现区间内，视为 canonical
+   形态的组成部分，不报；未被 target 覆盖的实例仍报——同单元混有裸译缺月
+   （"晨星"无"月"）与正确"晨星月"时，裸错误照样拦得住。按区间豁免而非
+   整单元豁免，避免误放真错误。修复 Druadach-book 24 条 TERM004 中 20 条
+   月名 substring 假 FAIL（2026-09-08），回归用例见 corpus global-bans.json
+   010-013。
 
 每处 TERM004 命中都带该条目的 `reason`，方便 Agent 判断是误报还是真回归。
 收录/维护边界见 GLOSSARY.md §7 与 `global-forbidden-words.json` 顶部 doc。
