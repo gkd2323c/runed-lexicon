@@ -1,9 +1,9 @@
 ---
 name: translation-quality-gate
 description: Deterministic, read-only pre-writeback quality gate for Skyrim mod translation batches. Verifies that completed translation-result JSON satisfies a compiled Translation Contract (term bindings, KEEP list, protected placeholders, simplified-Chinese charset) before the xTranslator XML writer runs. Use whenever a completed translation batch must be validated before XML writeback, when terminology regressions like Argonian/Blades/sweetroll need mechanical enforcement, or when a contract/regression change must be checked against the incident-derived synthetic regression corpus. Gate only checks declared unit bindings and never re-derives entity identity, and it never modifies translations.
-compatibility: Python 3.10+ recommended. Core checks use the standard library; optional zhconv enables CHAR001 simplified-Chinese detection. If zhconv is unavailable, CHAR001 reports a warning instead of silently passing. The tracked Translation Contract interface is documented in references/contract-schema.md.
+compatibility: Python 3.10+; standard library only. CHAR001 simplified-Chinese detection uses a vendored zh-cn conversion table (scripts/zh_cn_conv.json) — no third-party dependency, deterministic across environments. The tracked Translation Contract interface is documented in references/contract-schema.md.
 metadata:
-  version: "0.1.5"
+  version: "0.1.6"
 ---
 
 > 性能基线（见 `skyrim-tool-dev-rules` §2；MVF1 规模 8555 单元 / 9402 节点，含 XML 预检 + auto-bind）：0.89s。回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复。
@@ -31,16 +31,15 @@ It performs no semantic judgment, re-derives no entity identity from source text
 
 ## Environment
 
-CHAR001 simplified-Chinese detection uses the optional `zhconv` package. Run the
-gate with a Python 3.10+ environment that has `zhconv` installed when CHAR001 is
-required:
+Standard library only. CHAR001 simplified-Chinese detection uses a vendored
+zh-cn conversion table (`scripts/zh_cn_conv.json`, derived from zhconv 1.4.3
+zhcdict.json, GPLv2+) — no pip install, no optional dependency, identical
+behavior on every machine:
 
 ```text
 python .agents/skills/translation-quality-gate/scripts/quality_gate.py ...
 python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
 ```
-
-If zhconv is unavailable, CHAR001 degrades to a WARNING (never silently passes or converts).
 
 ## Inputs
 
@@ -62,7 +61,7 @@ If zhconv is unavailable, CHAR001 degrades to a WARNING (never silently passes o
 | KEEP002 | 全局 KEEP 被翻译 | 一个 global_keep 英文值在 source 整词出现、dest 却 != 该值 |
 | KEEP001 | KEEP modified | a KEEP-list source value was translated |
 | PLACEHOLDER001 | protected token lost | a protected token present in source is absent/altered in dest |
-| CHAR001 | non-simplified chars | `zhconv.convert(dest,'zh-cn') != dest` (reports concrete diff chars; filters out zhconv context-sensitivity false positives — see R11 fix, v0.1.4) |
+| CHAR001 | non-simplified chars | vendored zh-cn conversion table: flagged iff convert(dest,'zh-cn') != dest (reports concrete diff chars; filters out context-sensitivity false positives — see R11 fix, v0.1.4; table vendored in-repo since v0.1.6) |
 | TRUNC001 | truncated translation (WARNING) | 源文是完整长句（≥55 字符、不以省略号收尾），译文却以 ……/… 中断且短于源文 62%——疑似翻译时把后半句砍掉带过。**WARNING**：可能是真残缺，也可能是角色“欲言又止/毒舌省略”的合法风格，需 Agent 对照 source 人审消解，不阻断写回 |
 | XML001 | identity drift | xml_index block's Source/EDID/REC mismatch (pre-writeback, when `--xml` given) |
 
@@ -159,19 +158,29 @@ TRUNC001 检出“译文把后半句吞了”的候选：源文是完整长句�
 机械判定会误伤。每个 TRUNC001 需 Agent 对照完整 source 判断是真残缺（补全）还是风格省略（忽略）。
 修复 SB1 34 条后全量 gate TRUNC001 = 0，且无对合法译文的误报。
 
-## CHAR001 误报过滤（R11 fix, v0.1.4）
+## CHAR001 确定性实现与误报过滤（v0.1.4 R11；v0.1.6 去 zhconv 环境依赖）
 
-CHAR001 用 `zhconv.convert(dest, 'zh-cn') != dest` 检测非简体字符。但 zhconv 存在**上下文敏感性 bug**：
-当 么 (U+4E48，什么/怎么/多么 的标准简体字) 后接 正 或 子 等字时，zhconv 会错误地将其转换为 幺 (U+5E7A)。
+CHAR001 检测非简体字符。v0.1.6 起使用**随仓 vendored 转换表** `scripts/zh_cn_conv.json`
+（zhconv 1.4.3 zhcdict.json 的 zh2Hans + zh2CN 合并表，GPLv2+，11,906 条目）加
+`quality_gate.py` 内的最长匹配转换副本，语义与 `zhconv.convert(dest, 'zh-cn')`
+逐字节一致（全 CJK 单字符域 + 短语探针验证）。不再 import zhconv，无"环境是否
+装了 zhconv"的降级分支——检测能力不再随环境漂移（t_2f368a4c）。
 
-根因：么 单独转换时 `convert('么', 'zh-cn') == '么'`（正确），但在 "什么正路"、"装什么正义" 等上下文中
-`convert('什么正路', 'zh-cn')` 返回 "什幺正路"（错误）。这是 zhconv 库 bug，不是真正的繁简问题。
+历史背景（R11 fix, v0.1.4）：zhconv 存在**上下文敏感性**：当 么 (U+4E48，
+什么/怎么/多么 的标准简体字) 后接 正 或 子 等字时，词组级转换会将其变为 幺/什幺。
+例如 convert('什么正路', 'zh-cn') 返回 "什幺正路"。这是转换表词组覆盖的固有行为，
+不是真正的繁简问题。
 
-修复方式：`charset_issue()` 在收集 diff 时，对每个 source char `a` 额外检查 `convert(a, 'zh-cn') == a`。
-若 `a` 单独转换后不变，说明它已是简体，diff 是 zhconv 上下文 bug 所致，跳过该 diff。
-若所有 diff 都是误报，`charset_issue()` 返回空列表（不报 CHAR001）。
+修复方式（保留）：`charset_issue()` 在收集 diff 时，对每个 source char `a` 额外
+检查其单字符形态在 vendored 表中是否不变（`_CONV_DATA.get(a, a) == a`）。
+若不变，说明它已是简体，diff 是词组级转换所致，跳过该 diff。若所有 diff 都是
+误报，`charset_issue()` 返回空列表（不报 CHAR001）。
 
-此修复不影响真非简体字符的检测（如 歡→欢、場→场、「→"），因为那些字符单独转换时确实会变化。
+词组保留与误报的边界（vendored 表自动继承）：瞭 (U+77AD) 单字符会转为 了，
+但表内含恒等词组条目 `瞭望 → 瞭望`，故 瞭望/瞭望塔 中的 瞭 不会被检出（官方
+语料与既有 canonical XML 均用 瞭望）；而裸 瞭 仍会被检出。真繁体字符（歡→欢、
+場→场、「→"）无论上下文一律检出。回归用例见 corpus `charset-core.json`
+（t_2f368a4c 新增，不改动既有 corpus 语义）。
 
 ## Selftest against the incident-derived synthetic corpus
 

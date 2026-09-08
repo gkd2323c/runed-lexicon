@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0",
+  "purpose": "CHAR001 确定性繁体检测回归（t_2f368a4c，去 zhconv 环境依赖后引入）：证明真实繁体样例必然检出、且 R11 类上下文误报与 瞭望 类合法短语保留不受影响。语义等价合成 fixture，不含真实 MOD 文本。",
+  "collection_date": "2026-09-08",
+  "provenance": "synthetic_rewrite_for_char001_vendoring_change",
+  "source_docs": ["translation-quality-gate SKILL.md CHAR001 section (v0.1.4 R11 fix, v0.1.6 vendored table)"],
+  "cases": [
+    {
+      "case_id": "charset.traditional-body-001",
+      "test_layer": "gate",
+      "category": "charset",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Welcome to the land of the Nord.",
+        "translation": "歡迎來到諾德人的土地。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["CHAR001"] },
+      "golden": "欢迎来到诺德人的土地。",
+      "origin": "synthetic_traditional_detection_proof"
+    },
+    {
+      "case_id": "charset.traditional-punct-002",
+      "test_layer": "gate",
+      "category": "charset",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "The guard is very dutiful here.",
+        "translation": "這裡的「守衛」很盡責。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["CHAR001"] },
+      "golden": "这里的\"守卫\"很尽责。",
+      "origin": "synthetic_traditional_punctuation_detection_proof"
+    },
+    {
+      "case_id": "charset.simplified-clean-003",
+      "test_layer": "gate",
+      "category": "charset",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "The watchtower ruin hides something old.",
+        "translation": "废弃的瞭望塔下面藏着某种古老的东西。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "PASS" },
+      "origin": "synthetic_watchtower_phrase_preservation_proof"
+    },
+    {
+      "case_id": "charset.r11-me-context-004",
+      "test_layer": "gate",
+      "category": "charset",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "What a proper path this is.",
+        "translation": "什么正路，装什么正义，多么伟大的事业。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "PASS" },
+      "origin": "r11_false_positive_regression_guard"
+    },
+    {
+      "case_id": "charset.golden-clean-005",
+      "test_layer": "gate",
+      "category": "charset",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Welcome to the land of the Nord.",
+        "translation": "欢迎来到诺德人的土地。",
+        "contract": { "bindings": [] }
+      },
+      "expect": { "verdict": "PASS" },
+      "origin": "synthetic_simplified_control_case"
+    }
+  ]
+}

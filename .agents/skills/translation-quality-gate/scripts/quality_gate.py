@@ -38,61 +38,75 @@ except Exception:  # allow running from another cwd
                              find_global_keep_hits, CONTRACT_GLOBAL_BANS_KEY,
                              CONTRACT_GLOBAL_KEEP_KEY)
 
-# zhconv optional; CHAR001 degrades to a clear WARNING when unavailable
-try:
-    from zhconv import convert as zh_convert
-except Exception:
-    zh_convert = None
-
+# CHAR001 uses the vendored zh-cn conversion table (scripts/zh_cn_conv.json);
+# no third-party dependency.
 
 # ---------------------------------------------------------------- CHAR001
 
-# Cache for _is_already_simplified() to avoid re-computing per character.
-_ZH_SIMPLIFIED_CACHE = {}
+# CHAR001 uses a vendored zh-cn conversion table (scripts/zh_cn_conv.json,
+# merged zh2Hans + zh2CN from zhconv 1.4.3 zhcdict.json, GPLv2+) and a replica
+# of zhconv's greedy longest-match conversion. Deterministic: no runtime
+# dependency on zhconv or any third-party package, no environment-conditional
+# behavior (the "zhconv unavailable" degradation branch is removed, t_2f368a4c).
+_CONV_DATA = json.loads(
+    Path(__file__).with_name('zh_cn_conv.json').read_text(encoding='utf-8'))
+_CONV_MAX_LEN = max(len(k) for k in _CONV_DATA)
 
-def _is_already_simplified(ch: str) -> bool:
-    """Return True if `ch` is already in its simplest form per zhconv.
 
-    Used to detect false positives: if `ch` is already simplified but
-    zhconv.convert(context, 'zh-cn') changes it, that's a zhconv context-sensitivity
-    bug, not a real non-simplified character.
+def _zh_convert_cn(s: str) -> str:
+    """Replica of zhconv.convert(s, 'zh-cn') via the vendored table.
+
+    Greedy longest-prefix matching: at each position take the longest dict
+    entry matching the text from that position; unmatched chars pass through.
+    Verified byte-identical to zhconv.convert(s, 'zh-cn') over the full CJK
+    single-char range and realistic phrase probes (including identity phrase
+    entries like 瞭望 that block shorter char conversions, and R11 trap
+    contexts like 什么正).
     """
-    if ch not in _ZH_SIMPLIFIED_CACHE:
-        _ZH_SIMPLIFIED_CACHE[ch] = (zh_convert(ch, 'zh-cn') == ch)
-    return _ZH_SIMPLIFIED_CACHE[ch]
+    out = []
+    i, n = 0, len(s)
+    while i < n:
+        hit = None
+        for frag_len in range(min(n - i, _CONV_MAX_LEN), 0, -1):
+            frag = s[i:i + frag_len]
+            if frag in _CONV_DATA:
+                hit = _CONV_DATA[frag]
+                i += frag_len
+                break
+        if hit is None:
+            out.append(s[i])
+            i += 1
+        else:
+            out.append(hit)
+    return ''.join(out)
 
 
 def charset_issue(dest: str) -> list:
     """Return list of offending chars when dest is not fully simplified Chinese.
 
-    Uses zhconv normalization: if convert(dest, 'zh-cn') != dest, report the concrete
-    differing characters. Detection only — no rewriting.
+    Uses vendored zh-cn normalization: if _zh_convert_cn(dest) != dest, report
+    the concrete differing characters. Detection only — no rewriting.
 
-    Filters out known zhconv false positives: when an already-simplified character
-    (e.g., 么 U+4E48) is incorrectly converted in certain contexts (e.g., 么→幺
-    when followed by 正 or 子), the char is already simplified and the diff is a
-    zhconv library bug, not a real non-simplified-char issue.
+    Filters out known conversion false positives (R11, v0.1.4): when an
+    already-simplified character (e.g., 么 U+4E48) is incorrectly converted in
+    certain contexts (么→幺/什幺 when followed by 正 or 子), the char is already
+    simplified and the diff is a conversion-table quirk, not a real
+    non-simplified-char issue.
     """
-    if zh_convert is None:
-        return [{'code': 'CHAR001', 'severity': 'WARNING',
-                 'detail': 'zhconv 不可用，跳过繁简检测'}]
-    conv = zh_convert(dest, 'zh-cn')
+    conv = _zh_convert_cn(dest)
     if conv == dest:
         return []
     # collect chars that changed
     changed = []
-    d_chars = list(dest)
-    c_chars = list(conv)
-    for i, (a, b) in enumerate(zip(d_chars, c_chars)):
+    for a, b in zip(dest, conv):
         if a != b:
-            # Skip known false positives: `a` is already simplified but zhconv
-            # incorrectly converts it in certain contexts (e.g., 么→幺 when followed
-            # by 正/子). See R11 root-cause analysis.
-            if _is_already_simplified(a):
+            # Skip R11 false positives: `a` is already simplified on its own
+            # (vendored single-char conversion leaves it unchanged).
+            if _CONV_DATA.get(a, a) == a:
                 continue
             changed.append((a, b))
     # tail length difference (rare)
-    if len(c_chars) != len(d_chars):
+    if len(conv) != len(dest):
         changed.append(('…', '…'))
     if not changed:
         return []  # all diffs were false positives
