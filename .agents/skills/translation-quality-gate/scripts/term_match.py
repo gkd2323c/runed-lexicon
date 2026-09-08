@@ -185,12 +185,17 @@ def resolve_global_bans(contract: Dict) -> List[Dict]:
         fb = [x.strip() for x in fb if x and isinstance(x, str)]
         if not eng or not fb:
             continue
-        out.append({
+        record = {
             'english': eng,
             'forbidden': fb,
             'target': str(b.get('target') or '').strip(),
             'reason': str(b.get('reason') or '').strip(),
-        })
+            # 无条件禁词（anachronism-*）：跳过英文锚检查，dest 含 forbidden 即拦
+            'unconditional': b.get('unconditional') is True,
+        }
+        if isinstance(b.get('category'), str) and b['category'].strip():
+            record['category'] = b['category'].strip()
+        out.append(record)
     return out
 
 
@@ -243,8 +248,9 @@ def find_global_ban_hits(source: str, dest: str, ban: Dict) -> List[str]:
     (2026-09-08): "第十八..天：周一...，晨星...月..日" 的 "晨星" 被报，
     而其后 "...月" 正是 target 剩余部分。
     """
-    if not list(_iter_word_matches(source, ban['english'])):
-        return []
+    if ban.get("unconditional") is not True:
+        if not list(_iter_word_matches(source, ban['english'])):
+            return []
     target = (ban.get('target') or '').strip()
     target_spans = []
     if target:

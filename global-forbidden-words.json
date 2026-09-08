@@ -1169,9 +1169,10 @@
       "forbidden": [
         "上帝"
       ],
-      "target": "神/圣灵（TES 语境）",
-      "reason": "现实宗教禁令：TES 无上帝，只有九圣灵与迪德拉；宗教词零容忍",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令：TES 无上帝，只有九圣灵与迪德拉；宗教词零容忍；原 target 说明：神/圣灵（TES 语境）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "Jesus / Christ",
@@ -1180,63 +1181,70 @@
         "基督",
         "耶和华"
       ],
-      "target": "（TES 无对应，改写）",
-      "reason": "现实宗教禁令：一神教救主概念不进入 TES 世界观",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令：一神教救主概念不进入 TES 世界观；原 target 说明：（TES 无对应，改写）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "angel (real-world)",
       "forbidden": [
         "天使"
       ],
-      "target": "（TES 无天使；魔族/灵魂类按语境）",
-      "reason": "现实宗教禁令：TES 无天使概念",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令：TES 无天使概念；原 target 说明：（TES 无天使；魔族/灵魂类按语境）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "heaven / paradise (real-world)",
       "forbidden": [
         "天堂"
       ],
-      "target": "松加德/湮灭/死后世界按 TES 语境",
-      "reason": "现实宗教禁令：TES 死后世界是松加德/灵魂石冢等",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令：TES 死后世界是松加德/灵魂石冢等；原 target 说明：松加德/湮灭/死后世界按 TES 语境",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "pope / papacy",
       "forbidden": [
         "教皇"
       ],
-      "target": "（TES 无教皇；大祭司 Archpriest 等）",
-      "reason": "现实宗教禁令",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令；原 target 说明：（TES 无教皇；大祭司 Archpriest 等）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "Madonna / Our Lady",
       "forbidden": [
         "圣母"
       ],
-      "target": "玛拉（Mara，官方）；母神类按语境",
-      "reason": "现实宗教禁令：圣母特指基督教马利亚，TES 对应玛拉；官方词典唯一先例：Skyrim 剧本台词 Blessed mother 感叹语曾译圣母（Night Mother 官方=夜母不冲突），判定为官方瑕疵先例不追随，感叹语改译天哪/诸神在上",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令：圣母特指基督教马利亚，TES 对应玛拉；官方词典唯一先例：Skyrim 剧本台词 Blessed mother 感叹语曾译圣母（Night Mother 官方=夜母不冲突），判定为官方瑕疵先例不追随，感叹语改译天哪/诸神在上；原 target 说明：玛拉（Mara，官方）；母神类按语境",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "Bible / scripture (real-world)",
       "forbidden": [
         "圣经"
       ],
-      "target": "经文/圣典（TES 书籍语境）",
-      "reason": "现实宗教禁令",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令；原 target 说明：经文/圣典（TES 书籍语境）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "Mass (real-world)",
       "forbidden": [
         "弥撒"
       ],
-      "target": "（TES 无弥撒；仪式/祭典按语境）",
-      "reason": "现实宗教禁令",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令；原 target 说明：（TES 无弥撒；仪式/祭典按语境）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "Allah / God (Islam)",
@@ -1246,9 +1254,10 @@
         "清真",
         "伊斯兰"
       ],
-      "target": "神/圣灵（TES 语境）",
-      "reason": "现实宗教禁令",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令；原 target 说明：神/圣灵（TES 语境）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "Buddha / Bodhisattva",
@@ -1259,27 +1268,30 @@
         "和尚",
         "寺庙"
       ],
-      "target": "（TES 无对应；按语境改写）",
-      "reason": "现实宗教禁令；寺庙→神殿/神庙（官方 temple=神殿）",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令；寺庙→神殿/神庙（官方 temple=神殿）；原 target 说明：（TES 无对应；按语境改写）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "Satan / devil (real-world)",
       "forbidden": [
         "撒旦"
       ],
-      "target": "（TES 对应迪德拉大君/魔族）",
-      "reason": "现实宗教禁令：撒旦是基督教概念，TES 用魔族/迪德拉",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令：撒旦是基督教概念，TES 用魔族/迪德拉；原 target 说明：（TES 对应迪德拉大君/魔族）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "priest (Catholic)",
       "forbidden": [
         "神父"
       ],
-      "target": "祭司（官方 priest=祭司）",
-      "reason": "现实宗教禁令：神父是基督教圣职，TES 官方 priest=祭司",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "现实宗教禁令：神父是基督教圣职，TES 官方 priest=祭司；原 target 说明：祭司（官方 priest=祭司）",
+      "category": "anachronism-religion",
+      "unconditional": true
     },
     {
       "english": "hell (non-Oblivion)",
@@ -1288,9 +1300,420 @@
         "地狱之门",
         "地狱湮灭"
       ],
-      "target": "湮灭之门/鬼地方（按语境）",
-      "reason": "语境禁：Oblivion=湮灭（官方），湮灭之门不加地狱前缀；口语 hell 译鬼地方",
-      "category": "anachronism-religion"
+      "target": "",
+      "reason": "语境禁：Oblivion=湮灭（官方），湮灭之门不加地狱前缀；口语 hell 译鬼地方；原 target 说明：湮灭之门/鬼地方（按语境）",
+      "category": "anachronism-religion",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:基督教",
+      "forbidden": [
+        "基督教"
+      ],
+      "target": "",
+      "reason": "现实宗教专名禁令：TES 无对应信仰体系，出现即世界观崩坏（用户钦定 2026-09-08）",
+      "category": "anachronism-religion",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:伊斯兰教",
+      "forbidden": [
+        "伊斯兰教"
+      ],
+      "target": "",
+      "reason": "现实宗教专名禁令：TES 无对应信仰体系，出现即世界观崩坏（用户钦定 2026-09-08）",
+      "category": "anachronism-religion",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:梵蒂冈",
+      "forbidden": [
+        "梵蒂冈"
+      ],
+      "target": "",
+      "reason": "现实宗教专名禁令：TES 无对应信仰体系，出现即世界观崩坏（用户钦定 2026-09-08）",
+      "category": "anachronism-religion",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:微信",
+      "forbidden": [
+        "微信"
+      ],
+      "target": "",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "category": "anachronism-internet",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:微博",
+      "forbidden": [
+        "微博"
+      ],
+      "target": "",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "category": "anachronism-internet",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:互联网",
+      "forbidden": [
+        "互联网"
+      ],
+      "target": "",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "category": "anachronism-internet",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:二维码",
+      "forbidden": [
+        "二维码"
+      ],
+      "target": "",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "category": "anachronism-internet",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:APP",
+      "forbidden": [
+        "APP"
+      ],
+      "target": "",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "category": "anachronism-internet",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:网站",
+      "forbidden": [
+        "网站"
+      ],
+      "target": "",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "category": "anachronism-internet",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:浏览器",
+      "forbidden": [
+        "浏览器"
+      ],
+      "target": "",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "category": "anachronism-internet",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:服务器",
+      "forbidden": [
+        "服务器"
+      ],
+      "target": "",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "category": "anachronism-internet",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:电子邮件",
+      "forbidden": [
+        "电子邮件"
+      ],
+      "target": "",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "category": "anachronism-internet",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:CPU",
+      "forbidden": [
+        "CPU"
+      ],
+      "target": "",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "category": "anachronism-computer",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:显卡",
+      "forbidden": [
+        "显卡"
+      ],
+      "target": "",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "category": "anachronism-computer",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:操作系统",
+      "forbidden": [
+        "操作系统"
+      ],
+      "target": "",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "category": "anachronism-computer",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:数据库",
+      "forbidden": [
+        "数据库"
+      ],
+      "target": "",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "category": "anachronism-computer",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:人工智能",
+      "forbidden": [
+        "人工智能"
+      ],
+      "target": "",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "category": "anachronism-computer",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:算法模型",
+      "forbidden": [
+        "算法模型"
+      ],
+      "target": "",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "category": "anachronism-computer",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:身份证",
+      "forbidden": [
+        "身份证"
+      ],
+      "target": "",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "category": "anachronism-society",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:派出所",
+      "forbidden": [
+        "派出所"
+      ],
+      "target": "",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "category": "anachronism-society",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:高铁",
+      "forbidden": [
+        "高铁"
+      ],
+      "target": "",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "category": "anachronism-society",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:地铁",
+      "forbidden": [
+        "地铁"
+      ],
+      "target": "",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "category": "anachronism-society",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:机场",
+      "forbidden": [
+        "机场"
+      ],
+      "target": "",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "category": "anachronism-society",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:信用卡",
+      "forbidden": [
+        "信用卡"
+      ],
+      "target": "",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "category": "anachronism-society",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:银行卡",
+      "forbidden": [
+        "银行卡"
+      ],
+      "target": "",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "category": "anachronism-society",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:CEO",
+      "forbidden": [
+        "CEO"
+      ],
+      "target": "",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "category": "anachronism-corporate",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:董事会",
+      "forbidden": [
+        "董事会"
+      ],
+      "target": "",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "category": "anachronism-corporate",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:上市公司",
+      "forbidden": [
+        "上市公司"
+      ],
+      "target": "",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "category": "anachronism-corporate",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:股东大会",
+      "forbidden": [
+        "股东大会"
+      ],
+      "target": "",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "category": "anachronism-corporate",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:市场营销",
+      "forbidden": [
+        "市场营销"
+      ],
+      "target": "",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "category": "anachronism-corporate",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:核武器",
+      "forbidden": [
+        "核武器"
+      ],
+      "target": "",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "category": "anachronism-tech",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:激光枪",
+      "forbidden": [
+        "激光枪"
+      ],
+      "target": "",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "category": "anachronism-tech",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:智能手机",
+      "forbidden": [
+        "智能手机"
+      ],
+      "target": "",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "category": "anachronism-tech",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:卫星",
+      "forbidden": [
+        "卫星"
+      ],
+      "target": "",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "category": "anachronism-tech",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:雷达",
+      "forbidden": [
+        "雷达"
+      ],
+      "target": "",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "category": "anachronism-tech",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:提示词",
+      "forbidden": [
+        "提示词"
+      ],
+      "target": "",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "category": "pollution-agent",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:系统消息",
+      "forbidden": [
+        "系统消息"
+      ],
+      "target": "",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "category": "pollution-agent",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:JSON",
+      "forbidden": [
+        "JSON"
+      ],
+      "target": "",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "category": "pollution-agent",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:API",
+      "forbidden": [
+        "API"
+      ],
+      "target": "",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "category": "pollution-agent",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:系统提示",
+      "forbidden": [
+        "系统提示"
+      ],
+      "target": "",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "category": "pollution-agent",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:用户消息",
+      "forbidden": [
+        "用户消息"
+      ],
+      "target": "",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "category": "pollution-agent",
+      "unconditional": true
     }
   ],
   "keep": []

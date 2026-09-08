@@ -511,7 +511,16 @@ def load_global_bans(path):
         reason = str(b.get('reason') or '').strip()
         if not reason:
             problems.append(f'  [{i}] ({eng or "?"}) missing "reason"')
-        bans.append({'english': eng, 'forbidden': fb, 'target': tgt, 'reason': reason})
+        # unconditional: 可选布尔，仅显式 true 开启；非布尔拒绝
+        uncond = b.get('unconditional')
+        if uncond is not None and not isinstance(uncond, bool):
+            problems.append(f'  [{i}] ({eng or "?"}) "unconditional" must be a boolean')
+        record = {'english': eng, 'forbidden': fb, 'target': tgt, 'reason': reason}
+        if uncond is True:
+            record['unconditional'] = True
+        if isinstance(b.get('category'), str) and b['category'].strip():
+            record['category'] = b['category'].strip()
+        bans.append(record)
     keep = data.get('keep')
     if keep is None:
         keep = []
