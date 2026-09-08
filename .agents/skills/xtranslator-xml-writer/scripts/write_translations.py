@@ -7,8 +7,10 @@ import argparse
 import glob
 import hashlib
 import json
+import os
 import re
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
@@ -127,8 +129,12 @@ def load_patch(
         raise WritebackError(f"Patch file does not exist: {path}") from exc
     except json.JSONDecodeError as exc:
         raise WritebackError(f"Invalid patch JSON in {path}: {exc}") from exc
-    if not isinstance(value, dict) or not value:
-        raise WritebackError(f"Patch root must be a non-empty object: {path}")
+    if not isinstance(value, dict):
+        raise WritebackError(f"Patch root must be an object: {path}")
+    if not value:
+        # 空 patch = 显式无变更（幂等重跑已完成的批）；返回空 items，main 短路处理
+        return {}
+
 
     items: dict[int, dict[str, Any]] = {}
     for raw_index, entry in value.items():
@@ -422,7 +428,7 @@ def main() -> int:
                     )
                 items[index] = item
             status_counts["TRANSLATED"] = status_counts.get("TRANSLATED", 0) + len(patch_items)
-        if not items:
+        if not items and not patch_paths and not result_paths:
             raise WritebackError("No result files or patch files supplied")
 
         translated_count = status_counts.get("TRANSLATED", 0)
@@ -479,6 +485,30 @@ def main() -> int:
         if output_path.exists() and not args.force:
             raise WritebackError(f"Output already exists; use --force to replace: {output_path}")
 
+        if not items:
+            # 幂等重跑（空 patch / 无变更）：不改文件，报告 0 变更成功
+            noop_report = {
+                "source_xml": relative(xml_path),
+                "source_sha256": source_hash,
+                "string_count": len(source_strings),
+                "result_count": 0,
+                "translated_count": 0,
+                "keep_count": 0,
+                "result_files": [],
+                "patch_files": [relative(path) for path in patch_paths],
+                "check_only": False,
+                "noop": True,
+                "output_xml": relative(output_path),
+            }
+            if args.report:
+                write_report(resolve_path(args.report), noop_report, args.force)
+            print(
+                f"No-op writeback: 0 Dest change(s) (idempotent rerun), "
+                f"{len(source_strings)} XML String(s)."
+            )
+            return 0
+
+
         source_text = source_bytes.decode("utf-8-sig")
         newline = "\r\n" if "\r\n" in source_text else "\n"
         spans = raw_dest_spans(source_text, len(source_strings))
@@ -513,7 +543,18 @@ def main() -> int:
         verify_output(source_root, source_strings, output_bytes, items)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_bytes(output_bytes)
+        # 原子写回：先写同目录临时文件再 os.replace，避免写回中断留下悬空/半截文件
+        fd, tmp_path = tempfile.mkstemp(dir=str(output_path.parent), prefix=".druadach-tmp-", suffix=".xml")
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(output_bytes)
+            os.replace(tmp_path, output_path)
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
         output_hash = sha256_bytes(output_bytes)
         report.update(
             {
