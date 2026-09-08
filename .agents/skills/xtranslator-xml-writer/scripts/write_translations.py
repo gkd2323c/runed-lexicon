@@ -543,12 +543,31 @@ def main() -> int:
         verify_output(source_root, source_strings, output_bytes, items)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        # 原子写回：先写同目录临时文件再 os.replace，避免写回中断留下悬空/半截文件
+        # 原子写回：先写同目录临时文件再替换目标，避免写回中断留下悬空/半截文件。
+        # Windows 上 os.replace 对可能被文件监视/杀毒短暂持有的目标会 PermissionError，
+        # fallback：先 rename 目标到 .bak（同目录，不跨卷），再 rename 临时文件到目标。
         fd, tmp_path = tempfile.mkstemp(dir=str(output_path.parent), prefix=".druadach-tmp-", suffix=".xml")
+        bak_path = str(output_path) + ".old"
         try:
             with os.fdopen(fd, "wb") as fh:
                 fh.write(output_bytes)
-            os.replace(tmp_path, output_path)
+            try:
+                os.replace(tmp_path, output_path)
+            except OSError:
+                # fallback: 两步 rename 绕开覆盖删除语义
+                if os.path.exists(bak_path):
+                    os.unlink(bak_path)
+                os.rename(output_path, bak_path)
+                try:
+                    os.rename(tmp_path, output_path)
+                except BaseException:
+                    os.rename(bak_path, output_path)  # 回滚
+                    raise
+                else:
+                    try:
+                        os.unlink(bak_path)
+                    except OSError:
+                        pass
         except BaseException:
             try:
                 os.unlink(tmp_path)
