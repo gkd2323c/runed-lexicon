@@ -20,6 +20,13 @@ LLM 做语义层判断，兜住这类漏网。
 后者是抽象风格判断，模型没有完整世界观时会乱猜；前者只需常识违和感
 （云端/KPI/快递放进中世纪世界当然荒唐），实测准确率高且明显荒唐零漏报。
 
+采用「语境异常检测器」模板：默认放行（无罪推定），只报高置信度明显荒唐；
+内置同形反例（“中国”在“国王下令封锁城门”、“夜总会”在“夜晚总会”、
+“西藏”在“东躲西藏”）防止字符串误报；输出 PASS / FAIL|<片段>|<类别>|<原因>，
+类别取 MODERN_TECH/MODERN_INTERNET/MODERN_SOCIAL/MODERN_FINANCE/
+MODERN_ADMIN/REAL_WORLD_ENTITY/REAL_WORLD_RELIGION/AI_META/OTHER_INTRUSION。
+模板全文在 `scripts/fantasy_audit.py` 的 PREFIX（改动需回归）。
+
 **定位是预筛排序器，不是判决器**：出戏候选含少量边界误报（如「写个报告」——
 古代也有军事文书，但模型可能不认），必须由 Agent 人眼复核后裁决。不自动
 FAIL，不改任何文件。

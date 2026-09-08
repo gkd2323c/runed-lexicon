@@ -39,12 +39,39 @@ MODEL = 'qwen3.5:9b'
 CACHE = '_tmp/data/fantasy-audit-cache.json'
 
 PREFIX = (
-    '这是一款剑与魔法奇幻游戏（类似上古卷轴：中世纪世界，有龙、法师、城堡、'
-    '兽人、精灵、炼金术。游戏内有完整的九圣灵信仰体系（斯坦达尔、玛拉、塔洛斯、'
-    '凯娜瑞斯等诸神）、圣骑士、祭司、神殿，有王国、领主、商会、税收、军队、'
-    '报告文书、骑士团。没有现代科技、互联网、现代企业制度）。'
-    '下面是一句游戏台词。判断它是否明显出戏（提到现实世界才有的事物或概念，'
-    '在奇幻世界显得荒唐）。只输出：正常 或 出戏。'
+    '你是一名文本语境异常检测器。\n'
+    '你的任务不是检查翻译质量，也不是润色文本。你只需要判断给定文本中，是否出现了'
+    '明显不属于传统奇幻 / 中世纪奇幻语境、会让普通玩家立刻感到出戏或荒唐的内容。\n'
+    '重点检测以下情况：\n'
+    '- 明显的现代科技、计算机、互联网、电子设备或数字服务概念\n'
+    '- 明显的现代行政、金融、商业、交通或社会制度概念\n'
+    '- 明显的现实世界品牌、国家机构、互联网平台或现代专名\n'
+    '- 明显的现实宗教专名或只属于现实宗教体系的表达\n'
+    '- AI、提示词、模型、工具调用、翻译过程、系统消息等生成流程泄漏\n'
+    '- 其他明显与传统奇幻世界不相容的现代或现实概念\n'
+    '判断时必须依据整句话的实际语义，而不是字符串匹配。\n'
+    '例如：\n'
+    '“其中国王下令封锁城门”——这里的“中国”不是现实国家名称，不应判异常。\n'
+    '“夜总会黑得伸手不见五指”——这里的“夜总会”实际语义是“夜晚总会”，不应判异常。\n'
+    '“他一路东躲西藏，终于逃脱追兵”——这里的“西藏”不是现实地名，不应判异常。\n'
+    '“请连接服务器重新登录”——包含明显现代计算机语境，应判异常。\n'
+    '“扫描二维码完成付款”——包含明显现代数字技术和支付语境，应判异常。\n'
+    '“作为一个AI，我无法回答这个问题”——属于生成过程泄漏，应判异常。\n'
+    '你必须遵守以下原则：\n'
+    '1. 默认放行。\n'
+    '2. 只报告高置信度、明显荒唐的情况。\n'
+    '3. 不检查普通措辞、文风、术语一致性、翻译准确度或轻微时代感。\n'
+    '4. 不因为某个字符串恰好包含现实词汇就报警。\n'
+    '5. 如果一个表达在奇幻世界中存在合理解释，则放行。\n'
+    '6. 如果你不确定，放行。\n'
+    '7. 不修改原文，不提供重译方案。\n'
+    '输出格式严格如下：\n'
+    '若没有明显异常，只输出：PASS\n'
+    '若存在明显异常，只输出一行：FAIL | <异常片段> | <异常类别> | <简短原因>\n'
+    '异常类别只能从以下类别中选择：MODERN_TECH MODERN_INTERNET MODERN_SOCIAL '
+    'MODERN_FINANCE MODERN_ADMIN REAL_WORLD_ENTITY REAL_WORLD_RELIGION '
+    'AI_META OTHER_INTRUSION\n'
+    '不要输出任何额外解释。'
 )
 
 
@@ -71,7 +98,7 @@ def ask(text: str, model: str, host: str, timeout: int = 300) -> str:
                ],
                'stream': False,
                'think': False,
-               'options': {'temperature': 0, 'num_predict': 10}}
+               'options': {'temperature': 0, 'num_predict': 120}}
     req = urllib.request.Request(host + '/api/chat',
                                  data=json.dumps(payload).encode('utf-8'),
                                  headers={'Content-Type': 'application/json'})
@@ -95,8 +122,12 @@ def audit(texts: list[str], model: str, host: str, cache: dict) -> list[dict]:
                 print(f'ERR {t[:20]}: {e}', file=sys.stderr)
                 continue
             cache[t] = verdict
-        if '出戏' in verdict:
-            out.append({'text': t, 'verdict': verdict})
+        # 新模板输出：PASS 或 'FAIL | <片段> | <类别> | <原因>'
+        if verdict.startswith('FAIL'):
+            parts = [x.strip() for x in verdict.split('|')]
+            out.append({'text': t, 'verdict': verdict,
+                        'fragment': parts[1] if len(parts) > 1 else '',
+                        'category': parts[2] if len(parts) > 2 else ''})
     return out
 
 
