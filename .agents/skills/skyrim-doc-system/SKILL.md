@@ -34,7 +34,7 @@ GLOSSARY.md（跨 MOD 决策）之外的第三类项目级文件：不记正确�
 “官方名词的错误中文形态 + 正确形态 + 为什么禁”，由 term-contract-compiler
 以 `--global-bans` 编译进各 MOD 契约，translation-quality-gate 以 TERM004 执行。
 
-**收录判据总纲（2026-09-08 确立）：禁用与否看该词在 TES 世界观有没有合理存在理由。**
+**收录判据总纲：禁用与否看该词在 TES 世界观有没有合理存在理由。**
 有理由则不禁——哪怕听感现代（council=议会、network=联络网、scalpel=手术刀、
 Lieutenant=中尉都是源文或官方合法概念）；无理由则禁——哪怕只是嫌疑（现实一神教
 专属概念上帝/天堂/教皇/基督在泰姆瑞尔无对应物）。category 字段按异物类别标注

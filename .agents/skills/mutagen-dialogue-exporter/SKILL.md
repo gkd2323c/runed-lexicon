@@ -16,7 +16,7 @@ Druadach.esm（约 98MB，5235 DIAL）上超过 10 分钟不出完成标记，Mu
 ## 前置条件（一次性）
 
 1. `tools/Mutagen/` 存在（克隆自 <https://github.com/Mutagen-Modding/Mutagen>，已加 .gitignore）。
-2. .NET SDK：本机 `C:\Program Files\dotnet` 需有 9 或 10 的 SDK（0.54.x 版 NuGet 包目标框架为 net9.0/net10.0；SDK 8 编不动）。检查：`dotnet --list-sdks`。
+2. .NET SDK：环境需安装 .NET 9 或 10 SDK（0.54.x 版 NuGet 包目标框架为 net9.0/net10.0；SDK 8 编不动）。检查：`dotnet --list-sdks`。
 3. **不要走 NuGet 老包**：本地 nuget 缓存里的 `Mutagen.Bethesda.Skyrim 7.1.0` 是 2020 年旧版，API 完全不同（`SkyrimMod` 无 `CreateFromBinaryOverlay`）。本工程直接用 `ProjectReference` 指向 `tools/Mutagen/Mutagen.Bethesda.Skyrim/Mutagen.Bethesda.Skyrim.csproj`，与仓库源码同版。
 
 ## 导出器：scripts/DialogueExport

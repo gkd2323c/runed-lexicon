@@ -1,5 +1,5 @@
 {
-  "doc": "项目级全局禁用词库（Global Forbidden Words）。canonical 机器源，供 term-contract-compiler 编译进各 MOD 的 Translation Contract，由 translation-quality-gate 以 TERM004 对每个已翻译单元独立执行（source 英文锚点整词命中 + dest 含坏形态才报）。收录与维护规则见 GLOSSARY.md §7 与 skyrim-doc-system：只收跨 MOD 有复用价值的官方名词系统性错误形态，不收入普通词、MOD 专有词、以及依赖上下文才成立的禁令。每条 reason 必须能说清'为什么禁'，让 gate 报错可解释。 收录判据（2026-09-08 确立）：是否禁用取决于【该词在上古卷轴世界观中有没有合理存在理由】——有理由则不禁（哪怕听感现代，如 council=议会、network=联络网、scalpel=手术刀、修士/修女/小恶魔均是源文或官方合法概念）；无理由则禁（哪怕只是嫌疑，如现实一神教专属概念上帝/天堂/教皇/基督，泰姆瑞尔没有任何对应物）。category 字段：lore-name=官方专名译名裁决；anachronism-religion=现实宗教异物；未来异物类（现代行政/军事/商业/技术）按同一判据逐条评估后以 category=anachronism-* 收录，不建自动大词表（误伤率高），用 hardfix-triage 的 ANACHRONISM-CANDIDATE 候选层做人工判定。 同形误报处置纪律（2026-09-08）：unconditional 条目若在真实译文中被发现同形误报（禁词是成语/句子/跨词组合的子串，如 西藏←东躲西藏、夜总会←这一夜总会过去、德国←戈斯里德国王、钉钉←板上钉钉），立即从 bans 撤除或收窄为更长短语/加词边界，并记录到 _retracted 防止重复收录。2 字短词收录前先脑放常见成语/拟声/战斗语（已撤：滴滴←滴滴答答拟声、秒杀←一击秒杀战斗语）。中文无空格无词边界，跨词同形（两相邻词拼出禁词）无法用通用规则区分，个案撤除是既定处置路径。 同形误报实证排查（2026-09-08）：400+ TES 叙事高频成语与 2字禁词碰撞=0（现代专属词天然不嵌成语）；真实风险在跨词组合（相邻词拼出禁词，如“这一夜总会过去”拼出夜总会），无法穷举也无法用词边界规则区分（中文无空格，真实污染与同形误报的左右邻几乎都是汉字）。结论：个案撤除是唯一可靠处置路径，不引入分词依赖（jieba 对夜总会类也有歧义）。",
+  "doc": "项目级全局禁用词库（Global Forbidden Words）。canonical 机器源，供 term-contract-compiler 编译进各 MOD 的 Translation Contract，由 translation-quality-gate 以 TERM004 对每个已翻译单元执行。收录规则见 GLOSSARY.md §7 与 skyrim-doc-system §4；每条 reason 必须说清\"为什么禁\"，让 gate 报错可解释。两类条目：1. lore-name：官方专名译名裁决（english 为真实英文锚，source 整词命中才检查 dest）。2. anachronism-* / pollution-*（unconditional: true）：世界观荒谬词，不看源文、dest 出现即拦。收录判据：【该词在 TES 世界观中有没有合理存在理由】——有理由则不禁（哪怕听感现代，如 council=议会、network=联络网、scalpel=手术刀、修士/修女/小恶魔均有源文或官方依据）；无理由则禁（现实一神教/现代科技/互联网/企业制度等泰姆瑞尔无对应物）。宁缺毋滥：拿不准就不收；不建自动大词表，现代感候选词先经人工判定再入库。同形误报处置：unconditional 条目若在真实译文被证实同形误报（禁词是成语/跨词组合的子串），立即撤除或收窄为更长短语，并记入 _retracted 防重复收录。中文无词边界，跨词同形无法用通用规则区分，个案撤除是既定路径。",
   "bans": [
     {
       "english": "Alduin",
@@ -1170,7 +1170,7 @@
         "上帝"
       ],
       "target": "",
-      "reason": "现实宗教禁令：TES 无上帝，只有九圣灵与迪德拉；宗教词零容忍；原 target 说明：神/圣灵（TES 语境）",
+      "reason": "现实宗教禁令：TES 无上帝，只有九圣灵与迪德拉；宗教词零容忍；建议改写：神/圣灵（TES 语境）",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1182,7 +1182,7 @@
         "耶和华"
       ],
       "target": "",
-      "reason": "现实宗教禁令：一神教救主概念不进入 TES 世界观；原 target 说明：（TES 无对应，改写）",
+      "reason": "现实宗教禁令：一神教救主概念不进入 TES 世界观；建议改写：TES 无对应，改写",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1192,7 +1192,7 @@
         "天使"
       ],
       "target": "",
-      "reason": "现实宗教禁令：TES 无天使概念；原 target 说明：（TES 无天使；魔族/灵魂类按语境）",
+      "reason": "现实宗教禁令：TES 无天使概念；建议改写：TES 无天使；魔族/灵魂类按语境",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1202,7 +1202,7 @@
         "天堂"
       ],
       "target": "",
-      "reason": "现实宗教禁令：TES 死后世界是松加德/灵魂石冢等；原 target 说明：松加德/湮灭/死后世界按 TES 语境",
+      "reason": "现实宗教禁令：TES 死后世界是松加德/灵魂石冢等；建议改写：松加德/湮灭/死后世界按 TES 语境",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1212,7 +1212,7 @@
         "教皇"
       ],
       "target": "",
-      "reason": "现实宗教禁令；原 target 说明：（TES 无教皇；大祭司 Archpriest 等）",
+      "reason": "现实宗教禁令；建议改写：TES 无教皇；大祭司 Archpriest 等",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1222,7 +1222,7 @@
         "圣母"
       ],
       "target": "",
-      "reason": "现实宗教禁令：圣母特指基督教马利亚，TES 对应玛拉；官方词典唯一先例：Skyrim 剧本台词 Blessed mother 感叹语曾译圣母（Night Mother 官方=夜母不冲突），判定为官方瑕疵先例不追随，感叹语改译天哪/诸神在上；原 target 说明：玛拉（Mara，官方）；母神类按语境",
+      "reason": "现实宗教禁令：圣母特指基督教马利亚，TES 对应玛拉；官方词典唯一先例：Skyrim 剧本台词 Blessed mother 感叹语曾译圣母（Night Mother 官方=夜母不冲突），判定为官方瑕疵先例不追随，感叹语改译天哪/诸神在上；建议改写：玛拉（Mara，官方）；母神类按语境",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1232,7 +1232,7 @@
         "圣经"
       ],
       "target": "",
-      "reason": "现实宗教禁令；原 target 说明：经文/圣典（TES 书籍语境）",
+      "reason": "现实宗教禁令；建议改写：经文/圣典（TES 书籍语境）",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1242,7 +1242,7 @@
         "弥撒"
       ],
       "target": "",
-      "reason": "现实宗教禁令；原 target 说明：（TES 无弥撒；仪式/祭典按语境）",
+      "reason": "现实宗教禁令；建议改写：TES 无弥撒；仪式/祭典按语境",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1255,7 +1255,7 @@
         "伊斯兰"
       ],
       "target": "",
-      "reason": "现实宗教禁令；原 target 说明：神/圣灵（TES 语境）",
+      "reason": "现实宗教禁令；建议改写：神/圣灵（TES 语境）",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1269,7 +1269,7 @@
         "寺庙"
       ],
       "target": "",
-      "reason": "现实宗教禁令；寺庙→神殿/神庙（官方 temple=神殿）；原 target 说明：（TES 无对应；按语境改写）",
+      "reason": "现实宗教禁令；寺庙→神殿/神庙（官方 temple=神殿）；建议改写：TES 无对应；按语境改写",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1279,7 +1279,7 @@
         "撒旦"
       ],
       "target": "",
-      "reason": "现实宗教禁令：撒旦是基督教概念，TES 用魔族/迪德拉；原 target 说明：（TES 对应迪德拉大君/魔族）",
+      "reason": "现实宗教禁令：撒旦是基督教概念，TES 用魔族/迪德拉；建议改写：TES 对应迪德拉大君/魔族",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1289,7 +1289,7 @@
         "神父"
       ],
       "target": "",
-      "reason": "现实宗教禁令：神父是基督教圣职，TES 官方 priest=祭司；原 target 说明：祭司（官方 priest=祭司）",
+      "reason": "现实宗教禁令：神父是基督教圣职，TES 官方 priest=祭司；建议改写：祭司（官方 priest=祭司）",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1301,7 +1301,7 @@
         "地狱湮灭"
       ],
       "target": "",
-      "reason": "语境禁：Oblivion=湮灭（官方），湮灭之门不加地狱前缀；口语 hell 译鬼地方；原 target 说明：湮灭之门/鬼地方（按语境）",
+      "reason": "语境禁：Oblivion=湮灭（官方），湮灭之门不加地狱前缀；口语 hell 译鬼地方；建议改写：湮灭之门/鬼地方（按语境）",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1311,7 +1311,7 @@
         "基督教"
       ],
       "target": "",
-      "reason": "现实宗教专名禁令：TES 无对应信仰体系，出现即世界观崩坏（用户钦定 2026-09-08）",
+      "reason": "现实宗教专名禁令：TES 无对应信仰体系，出现即世界观崩坏",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1321,7 +1321,7 @@
         "伊斯兰教"
       ],
       "target": "",
-      "reason": "现实宗教专名禁令：TES 无对应信仰体系，出现即世界观崩坏（用户钦定 2026-09-08）",
+      "reason": "现实宗教专名禁令：TES 无对应信仰体系，出现即世界观崩坏",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1331,7 +1331,7 @@
         "梵蒂冈"
       ],
       "target": "",
-      "reason": "现实宗教专名禁令：TES 无对应信仰体系，出现即世界观崩坏（用户钦定 2026-09-08）",
+      "reason": "现实宗教专名禁令：TES 无对应信仰体系，出现即世界观崩坏",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -1341,7 +1341,7 @@
         "微信"
       ],
       "target": "",
-      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -1351,7 +1351,7 @@
         "微博"
       ],
       "target": "",
-      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -1361,7 +1361,7 @@
         "互联网"
       ],
       "target": "",
-      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -1371,7 +1371,7 @@
         "二维码"
       ],
       "target": "",
-      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -1381,7 +1381,7 @@
         "APP"
       ],
       "target": "",
-      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -1391,7 +1391,7 @@
         "网站"
       ],
       "target": "",
-      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -1401,7 +1401,7 @@
         "浏览器"
       ],
       "target": "",
-      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -1411,7 +1411,7 @@
         "服务器"
       ],
       "target": "",
-      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -1421,7 +1421,7 @@
         "电子邮件"
       ],
       "target": "",
-      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态（用户钦定 2026-09-08）",
+      "reason": "现代互联网词禁令：泰姆瑞尔无互联网/软件生态",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -1431,7 +1431,7 @@
         "CPU"
       ],
       "target": "",
-      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -1441,7 +1441,7 @@
         "显卡"
       ],
       "target": "",
-      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -1451,7 +1451,7 @@
         "操作系统"
       ],
       "target": "",
-      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -1461,7 +1461,7 @@
         "数据库"
       ],
       "target": "",
-      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -1471,7 +1471,7 @@
         "人工智能"
       ],
       "target": "",
-      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -1481,7 +1481,7 @@
         "算法模型"
       ],
       "target": "",
-      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备（用户钦定 2026-09-08）",
+      "reason": "现代计算机词禁令：泰姆瑞尔无计算机/电子设备",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -1491,7 +1491,7 @@
         "身份证"
       ],
       "target": "",
-      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施",
       "category": "anachronism-society",
       "unconditional": true
     },
@@ -1501,7 +1501,7 @@
         "派出所"
       ],
       "target": "",
-      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施",
       "category": "anachronism-society",
       "unconditional": true
     },
@@ -1511,7 +1511,7 @@
         "高铁"
       ],
       "target": "",
-      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施",
       "category": "anachronism-society",
       "unconditional": true
     },
@@ -1521,7 +1521,7 @@
         "地铁"
       ],
       "target": "",
-      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施",
       "category": "anachronism-society",
       "unconditional": true
     },
@@ -1531,7 +1531,7 @@
         "机场"
       ],
       "target": "",
-      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施",
       "category": "anachronism-society",
       "unconditional": true
     },
@@ -1541,7 +1541,7 @@
         "信用卡"
       ],
       "target": "",
-      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施",
       "category": "anachronism-society",
       "unconditional": true
     },
@@ -1551,7 +1551,7 @@
         "银行卡"
       ],
       "target": "",
-      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施（用户钦定 2026-09-08）",
+      "reason": "现代社会制度/设施禁令：泰姆瑞尔无此类国家机器与设施",
       "category": "anachronism-society",
       "unconditional": true
     },
@@ -1561,7 +1561,7 @@
         "CEO"
       ],
       "target": "",
-      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -1571,7 +1571,7 @@
         "董事会"
       ],
       "target": "",
-      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -1581,7 +1581,7 @@
         "上市公司"
       ],
       "target": "",
-      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -1591,7 +1591,7 @@
         "股东大会"
       ],
       "target": "",
-      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -1601,7 +1601,7 @@
         "市场营销"
       ],
       "target": "",
-      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度（用户钦定 2026-09-08）",
+      "reason": "现代企业语汇禁令：泰姆瑞尔无现代公司制度",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -1611,7 +1611,7 @@
         "核武器"
       ],
       "target": "",
-      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术",
       "category": "anachronism-tech",
       "unconditional": true
     },
@@ -1621,7 +1621,7 @@
         "激光枪"
       ],
       "target": "",
-      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术",
       "category": "anachronism-tech",
       "unconditional": true
     },
@@ -1631,7 +1631,7 @@
         "智能手机"
       ],
       "target": "",
-      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术",
       "category": "anachronism-tech",
       "unconditional": true
     },
@@ -1641,7 +1641,7 @@
         "卫星"
       ],
       "target": "",
-      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术",
       "category": "anachronism-tech",
       "unconditional": true
     },
@@ -1651,7 +1651,7 @@
         "雷达"
       ],
       "target": "",
-      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术（用户钦定 2026-09-08）",
+      "reason": "明显现代科技禁令：泰姆瑞尔无核/激光/卫星等技术",
       "category": "anachronism-tech",
       "unconditional": true
     },
@@ -1661,7 +1661,7 @@
         "提示词"
       ],
       "target": "",
-      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -1671,7 +1671,7 @@
         "系统消息"
       ],
       "target": "",
-      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -1681,7 +1681,7 @@
         "JSON"
       ],
       "target": "",
-      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -1691,7 +1691,7 @@
         "API"
       ],
       "target": "",
-      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -1701,7 +1701,7 @@
         "系统提示"
       ],
       "target": "",
-      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -1711,7 +1711,7 @@
         "用户消息"
       ],
       "target": "",
-      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文（用户钦定 2026-09-08）",
+      "reason": "翻译/Agent 污染事故级：译文出现该词说明模型把系统提示/元数据翻入译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -1721,7 +1721,7 @@
         "耶稣基督"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1731,7 +1731,7 @@
         "基督徒"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1741,7 +1741,7 @@
         "天主教"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1751,7 +1751,7 @@
         "天主教徒"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1761,7 +1761,7 @@
         "东正教"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1771,7 +1771,7 @@
         "新教"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1781,7 +1781,7 @@
         "新教徒"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1791,7 +1791,7 @@
         "福音派"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1801,7 +1801,7 @@
         "教宗"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1811,7 +1811,7 @@
         "旧约圣经"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1821,7 +1821,7 @@
         "新约圣经"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1831,7 +1831,7 @@
         "弥赛亚"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1841,7 +1841,7 @@
         "使徒保罗"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1851,7 +1851,7 @@
         "圣彼得"
       ],
       "target": "",
-      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏（ban.txt 2026-09-08）",
+      "reason": "现实宗教-基督教系禁令：TES 无对应，出现即世界观崩坏",
       "category": "anachronism-religion-christian",
       "unconditional": true
     },
@@ -1861,7 +1861,7 @@
         "穆罕默德"
       ],
       "target": "",
-      "reason": "现实宗教-伊斯兰系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-伊斯兰系禁令",
       "category": "anachronism-religion-islam",
       "unconditional": true
     },
@@ -1871,7 +1871,7 @@
         "穆斯林"
       ],
       "target": "",
-      "reason": "现实宗教-伊斯兰系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-伊斯兰系禁令",
       "category": "anachronism-religion-islam",
       "unconditional": true
     },
@@ -1881,7 +1881,7 @@
         "古兰经"
       ],
       "target": "",
-      "reason": "现实宗教-伊斯兰系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-伊斯兰系禁令",
       "category": "anachronism-religion-islam",
       "unconditional": true
     },
@@ -1891,7 +1891,7 @@
         "清真寺"
       ],
       "target": "",
-      "reason": "现实宗教-伊斯兰系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-伊斯兰系禁令",
       "category": "anachronism-religion-islam",
       "unconditional": true
     },
@@ -1901,7 +1901,7 @@
         "麦加"
       ],
       "target": "",
-      "reason": "现实宗教-伊斯兰系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-伊斯兰系禁令",
       "category": "anachronism-religion-islam",
       "unconditional": true
     },
@@ -1911,7 +1911,7 @@
         "麦地那"
       ],
       "target": "",
-      "reason": "现实宗教-伊斯兰系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-伊斯兰系禁令",
       "category": "anachronism-religion-islam",
       "unconditional": true
     },
@@ -1921,7 +1921,7 @@
         "斋月"
       ],
       "target": "",
-      "reason": "现实宗教-伊斯兰系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-伊斯兰系禁令",
       "category": "anachronism-religion-islam",
       "unconditional": true
     },
@@ -1931,7 +1931,7 @@
         "哈吉"
       ],
       "target": "",
-      "reason": "现实宗教-伊斯兰系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-伊斯兰系禁令",
       "category": "anachronism-religion-islam",
       "unconditional": true
     },
@@ -1941,7 +1941,7 @@
         "朝觐"
       ],
       "target": "",
-      "reason": "现实宗教-伊斯兰系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-伊斯兰系禁令",
       "category": "anachronism-religion-islam",
       "unconditional": true
     },
@@ -1951,7 +1951,7 @@
         "佛祖"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -1961,7 +1961,7 @@
         "释迦牟尼"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -1971,7 +1971,7 @@
         "如来佛"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -1981,7 +1981,7 @@
         "阿弥陀佛"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -1991,7 +1991,7 @@
         "观世音"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -2001,7 +2001,7 @@
         "观音菩萨"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -2011,7 +2011,7 @@
         "罗汉"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -2021,7 +2021,7 @@
         "大乘佛教"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -2031,7 +2031,7 @@
         "小乘佛教"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -2041,7 +2041,7 @@
         "禅宗"
       ],
       "target": "",
-      "reason": "现实宗教-佛教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-佛教系禁令",
       "category": "anachronism-religion-buddhist",
       "unconditional": true
     },
@@ -2051,7 +2051,7 @@
         "道教"
       ],
       "target": "",
-      "reason": "现实宗教-道教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-道教系禁令",
       "category": "anachronism-religion-taoist",
       "unconditional": true
     },
@@ -2061,7 +2061,7 @@
         "太上老君"
       ],
       "target": "",
-      "reason": "现实宗教-道教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-道教系禁令",
       "category": "anachronism-religion-taoist",
       "unconditional": true
     },
@@ -2071,7 +2071,7 @@
         "玉皇大帝"
       ],
       "target": "",
-      "reason": "现实宗教-道教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-道教系禁令",
       "category": "anachronism-religion-taoist",
       "unconditional": true
     },
@@ -2081,7 +2081,7 @@
         "元始天尊"
       ],
       "target": "",
-      "reason": "现实宗教-道教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-道教系禁令",
       "category": "anachronism-religion-taoist",
       "unconditional": true
     },
@@ -2091,7 +2091,7 @@
         "灵宝天尊"
       ],
       "target": "",
-      "reason": "现实宗教-道教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-道教系禁令",
       "category": "anachronism-religion-taoist",
       "unconditional": true
     },
@@ -2101,7 +2101,7 @@
         "道德天尊"
       ],
       "target": "",
-      "reason": "现实宗教-道教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-道教系禁令",
       "category": "anachronism-religion-taoist",
       "unconditional": true
     },
@@ -2111,7 +2111,7 @@
         "三清"
       ],
       "target": "",
-      "reason": "现实宗教-道教系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-道教系禁令",
       "category": "anachronism-religion-taoist",
       "unconditional": true
     },
@@ -2121,7 +2121,7 @@
         "印度教"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2131,7 +2131,7 @@
         "梵天"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2141,7 +2141,7 @@
         "湿婆"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2151,7 +2151,7 @@
         "毗湿奴"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2161,7 +2161,7 @@
         "克里希纳"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2171,7 +2171,7 @@
         "犹太教"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2181,7 +2181,7 @@
         "犹太教堂"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2191,7 +2191,7 @@
         "妥拉"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2201,7 +2201,7 @@
         "塔木德"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2211,7 +2211,7 @@
         "锡克教"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2221,7 +2221,7 @@
         "耆那教"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2231,7 +2231,7 @@
         "神道教"
       ],
       "target": "",
-      "reason": "现实宗教-其他系禁令（ban.txt 2026-09-08）",
+      "reason": "现实宗教-其他系禁令",
       "category": "anachronism-religion-other",
       "unconditional": true
     },
@@ -2241,7 +2241,7 @@
         "因特网"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2251,7 +2251,7 @@
         "万维网"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2261,7 +2261,7 @@
         "网页"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2271,7 +2271,7 @@
         "网址"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2281,7 +2281,7 @@
         "搜索引擎"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2291,7 +2291,7 @@
         "服务器端"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2301,7 +2301,7 @@
         "客户端软件"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2311,7 +2311,7 @@
         "数据中心"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2321,7 +2321,7 @@
         "云计算"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2331,7 +2331,7 @@
         "云服务器"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2341,7 +2341,7 @@
         "云存储"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2351,7 +2351,7 @@
         "云端"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2361,7 +2361,7 @@
         "局域网"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2371,7 +2371,7 @@
         "广域网"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2381,7 +2381,7 @@
         "VPN"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2391,7 +2391,7 @@
         "代理服务器"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2401,7 +2401,7 @@
         "防火墙"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2411,7 +2411,7 @@
         "路由器"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2421,7 +2421,7 @@
         "交换机"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2431,7 +2431,7 @@
         "网关"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2441,7 +2441,7 @@
         "IP地址"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2451,7 +2451,7 @@
         "IPv4"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2461,7 +2461,7 @@
         "IPv6"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2471,7 +2471,7 @@
         "MAC地址"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2481,7 +2481,7 @@
         "HTTP"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2491,7 +2491,7 @@
         "HTTPS"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2501,7 +2501,7 @@
         "TCP"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2511,7 +2511,7 @@
         "UDP"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2521,7 +2521,7 @@
         "DNS"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2531,7 +2531,7 @@
         "SSH"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2541,7 +2541,7 @@
         "FTP"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2551,7 +2551,7 @@
         "Wi-Fi"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2561,7 +2561,7 @@
         "WIFI"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2571,7 +2571,7 @@
         "无线网络"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2581,7 +2581,7 @@
         "蓝牙"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2591,7 +2591,7 @@
         "条形码"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2601,7 +2601,7 @@
         "软件"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2611,7 +2611,7 @@
         "应用程序"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2621,7 +2621,7 @@
         "Windows"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2631,7 +2631,7 @@
         "Linux"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2641,7 +2641,7 @@
         "macOS"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2651,7 +2651,7 @@
         "Android"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2661,7 +2661,7 @@
         "iOS"
       ],
       "target": "",
-      "reason": "现代互联网/软件禁令（ban.txt 2026-09-08）",
+      "reason": "现代互联网/软件禁令",
       "category": "anachronism-internet",
       "unconditional": true
     },
@@ -2671,7 +2671,7 @@
         "GPU"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2681,7 +2681,7 @@
         "处理器"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2691,7 +2691,7 @@
         "主板"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2701,7 +2701,7 @@
         "内存"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2711,7 +2711,7 @@
         "缓存"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2721,7 +2721,7 @@
         "硬盘"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2731,7 +2731,7 @@
         "固态硬盘"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2741,7 +2741,7 @@
         "SSD"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2751,7 +2751,7 @@
         "U盘"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2761,7 +2761,7 @@
         "USB"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2771,7 +2771,7 @@
         "驱动程序"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2781,7 +2781,7 @@
         "固件"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2791,7 +2791,7 @@
         "BIOS"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2801,7 +2801,7 @@
         "鼠标"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2811,7 +2811,7 @@
         "鼠标指针"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2821,7 +2821,7 @@
         "触摸屏"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2831,7 +2831,7 @@
         "显示器"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2841,7 +2841,7 @@
         "液晶屏"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2851,7 +2851,7 @@
         "键盘快捷键"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2861,7 +2861,7 @@
         "剪贴板"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2871,7 +2871,7 @@
         "下载"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2881,7 +2881,7 @@
         "上传"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2891,7 +2891,7 @@
         "下载安装"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2901,7 +2901,7 @@
         "在线下载"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2911,7 +2911,7 @@
         "文件格式"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2921,7 +2921,7 @@
         "压缩包"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2931,7 +2931,7 @@
         "ZIP文件"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2941,7 +2941,7 @@
         "RAR文件"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2951,7 +2951,7 @@
         "EXE文件"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2961,7 +2961,7 @@
         "DLL文件"
       ],
       "target": "",
-      "reason": "现代计算机硬件禁令（ban.txt 2026-09-08）",
+      "reason": "现代计算机硬件禁令",
       "category": "anachronism-computer",
       "unconditional": true
     },
@@ -2971,7 +2971,7 @@
         "生成式人工智能"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -2981,7 +2981,7 @@
         "大语言模型"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -2991,7 +2991,7 @@
         "语言模型"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3001,7 +3001,7 @@
         "大模型"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3011,7 +3011,7 @@
         "神经网络模型"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3021,7 +3021,7 @@
         "ChatGPT"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3031,7 +3031,7 @@
         "GPT"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3041,7 +3041,7 @@
         "GPT-4"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3051,7 +3051,7 @@
         "GPT-5"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3061,7 +3061,7 @@
         "Claude"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3071,7 +3071,7 @@
         "Gemini"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3081,7 +3081,7 @@
         "DeepSeek"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3091,7 +3091,7 @@
         "OpenAI"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3101,7 +3101,7 @@
         "Anthropic"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3111,7 +3111,7 @@
         "系统提示词"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3121,7 +3121,7 @@
         "用户提示词"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3131,7 +3131,7 @@
         "Prompt"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3141,7 +3141,7 @@
         "System Prompt"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3151,7 +3151,7 @@
         "上下文窗口"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3161,7 +3161,7 @@
         "上下文长度"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3171,7 +3171,7 @@
         "Token"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3181,7 +3181,7 @@
         "tokens"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3191,7 +3191,7 @@
         "思维链"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3201,7 +3201,7 @@
         "Chain of Thought"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3211,7 +3211,7 @@
         "工具调用"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3221,7 +3221,7 @@
         "函数调用"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3231,7 +3231,7 @@
         "Function Calling"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3241,7 +3241,7 @@
         "Agent"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3251,7 +3251,7 @@
         "智能体"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3261,7 +3261,7 @@
         "MCP"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3271,7 +3271,7 @@
         "API调用"
       ],
       "target": "",
-      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文（ban.txt 2026-09-08）",
+      "reason": "AI/Agent 污染事故级：模型把自身工作过程写进译文",
       "category": "pollution-agent",
       "unconditional": true
     },
@@ -3281,7 +3281,7 @@
         "作为一个AI"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3291,7 +3291,7 @@
         "作为AI"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3301,7 +3301,7 @@
         "作为一个人工智能"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3311,7 +3311,7 @@
         "作为语言模型"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3321,7 +3321,7 @@
         "作为一个语言模型"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3331,7 +3331,7 @@
         "我是一个AI"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3341,7 +3341,7 @@
         "我是人工智能"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3351,7 +3351,7 @@
         "我无法访问"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3361,7 +3361,7 @@
         "我无法浏览"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3371,7 +3371,7 @@
         "我无法联网"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3381,7 +3381,7 @@
         "我没有实时信息"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3391,7 +3391,7 @@
         "超出了我的知识截止日期"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3401,7 +3401,7 @@
         "根据我的训练数据"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3411,7 +3411,7 @@
         "根据提供的上下文"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3421,7 +3421,7 @@
         "根据您的提示"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3431,7 +3431,7 @@
         "根据你的提示"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3441,7 +3441,7 @@
         "根据用户要求"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3451,7 +3451,7 @@
         "以下是翻译"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3461,7 +3461,7 @@
         "以下为翻译"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3471,7 +3471,7 @@
         "翻译如下"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3481,7 +3481,7 @@
         "译文如下"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3491,7 +3491,7 @@
         "润色如下"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3501,7 +3501,7 @@
         "修改后的版本"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3511,7 +3511,7 @@
         "优化后的版本"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3521,7 +3521,7 @@
         "以下是润色后的"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3531,7 +3531,7 @@
         "我将为您翻译"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3541,7 +3541,7 @@
         "希望这个翻译"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3551,7 +3551,7 @@
         "抱歉，我无法"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3561,7 +3561,7 @@
         "我不能协助"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3571,7 +3571,7 @@
         "```json"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3581,7 +3581,7 @@
         "```yaml"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3591,7 +3591,7 @@
         "```markdown"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3601,7 +3601,7 @@
         "<assistant>"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3611,7 +3611,7 @@
         "<user>"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3621,7 +3621,7 @@
         "<system>"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3631,7 +3631,7 @@
         "</assistant>"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3641,7 +3641,7 @@
         "</user>"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3651,7 +3651,7 @@
         "</system>"
       ],
       "target": "",
-      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文（ban.txt 2026-09-08）",
+      "reason": "模型泄漏话术事故级：AI 解释/拒答/包装混入译文",
       "category": "anachronism-ai-leak",
       "unconditional": true
     },
@@ -3661,7 +3661,7 @@
         "手机"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3671,7 +3671,7 @@
         "移动电话"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3681,7 +3681,7 @@
         "电话号码"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3691,7 +3691,7 @@
         "手机号"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3701,7 +3701,7 @@
         "手机号码"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3711,7 +3711,7 @@
         "座机"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3721,7 +3721,7 @@
         "短信"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3731,7 +3731,7 @@
         "彩信"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3741,7 +3741,7 @@
         "验证码"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3751,7 +3751,7 @@
         "电子邮箱"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3761,7 +3761,7 @@
         "邮件地址"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3771,7 +3771,7 @@
         "传真机"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3781,7 +3781,7 @@
         "视频通话"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3791,7 +3791,7 @@
         "电视"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3801,7 +3801,7 @@
         "电视机"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3811,7 +3811,7 @@
         "电视台"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3821,7 +3821,7 @@
         "收音机"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3831,7 +3831,7 @@
         "广播电台"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3841,7 +3841,7 @@
         "播客"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3851,7 +3851,7 @@
         "视频网站"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3861,7 +3861,7 @@
         "社交媒体"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3871,7 +3871,7 @@
         "社交网络"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3881,7 +3881,7 @@
         "自媒体"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3891,7 +3891,7 @@
         "直播间"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3901,7 +3901,7 @@
         "主播"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3911,7 +3911,7 @@
         "网红"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3921,7 +3921,7 @@
         "短视频"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3931,7 +3931,7 @@
         "朋友圈"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3941,7 +3941,7 @@
         "公众号"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3951,7 +3951,7 @@
         "微信群"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3961,7 +3961,7 @@
         "QQ群"
       ],
       "target": "",
-      "reason": "现代通讯/媒体禁令（ban.txt 2026-09-08）",
+      "reason": "现代通讯/媒体禁令",
       "category": "anachronism-communication",
       "unconditional": true
     },
@@ -3971,7 +3971,7 @@
         "WeChat"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -3981,7 +3981,7 @@
         "新浪微博"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -3991,7 +3991,7 @@
         "QQ"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4001,7 +4001,7 @@
         "腾讯QQ"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4011,7 +4011,7 @@
         "抖音"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4021,7 +4021,7 @@
         "TikTok"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4031,7 +4031,7 @@
         "快手"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4041,7 +4041,7 @@
         "哔哩哔哩"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4051,7 +4051,7 @@
         "Bilibili"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4061,7 +4061,7 @@
         "B站"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4071,7 +4071,7 @@
         "知乎"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4081,7 +4081,7 @@
         "贴吧"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4091,7 +4091,7 @@
         "百度"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4101,7 +4101,7 @@
         "Google"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4111,7 +4111,7 @@
         "谷歌"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4121,7 +4121,7 @@
         "YouTube"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4131,7 +4131,7 @@
         "Facebook"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4141,7 +4141,7 @@
         "Instagram"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4151,7 +4151,7 @@
         "Twitter"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4161,7 +4161,7 @@
         "Reddit"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4171,7 +4171,7 @@
         "Discord"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4181,7 +4181,7 @@
         "Telegram"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4191,7 +4191,7 @@
         "WhatsApp"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4201,7 +4201,7 @@
         "GitHub"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4211,7 +4211,7 @@
         "GitLab"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4221,7 +4221,7 @@
         "Steam"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4231,7 +4231,7 @@
         "Epic"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4241,7 +4241,7 @@
         "淘宝"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4251,7 +4251,7 @@
         "天猫"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4261,7 +4261,7 @@
         "京东"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4271,7 +4271,7 @@
         "拼多多"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4281,7 +4281,7 @@
         "亚马逊"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4291,7 +4291,7 @@
         "Amazon"
       ],
       "target": "",
-      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单（ban.txt 2026-09-08）",
+      "reason": "现实互联网平台/品牌禁令；MOD 故意恶搞需白名单",
       "category": "anachronism-brand",
       "unconditional": true
     },
@@ -4301,7 +4301,7 @@
         "扫码支付"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4311,7 +4311,7 @@
         "扫码登录"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4321,7 +4321,7 @@
         "扫码下载"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4331,7 +4331,7 @@
         "点击链接"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4341,7 +4341,7 @@
         "打开网页"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4351,7 +4351,7 @@
         "访问网站"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4361,7 +4361,7 @@
         "刷新页面"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4371,7 +4371,7 @@
         "关注公众号"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4381,7 +4381,7 @@
         "添加好友"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4391,7 +4391,7 @@
         "加我微信"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4401,7 +4401,7 @@
         "加个微信"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4411,7 +4411,7 @@
         "发朋友圈"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4421,7 +4421,7 @@
         "点赞关注"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4431,7 +4431,7 @@
         "点赞收藏"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4441,7 +4441,7 @@
         "订阅频道"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4451,7 +4451,7 @@
         "开通会员"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4461,7 +4461,7 @@
         "会员充值"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4471,7 +4471,7 @@
         "网络直播"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4481,7 +4481,7 @@
         "上传视频"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4491,7 +4491,7 @@
         "下载客户端"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4501,7 +4501,7 @@
         "注册账号"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4511,7 +4511,7 @@
         "登录账号"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4521,7 +4521,7 @@
         "退出登录"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4531,7 +4531,7 @@
         "找回密码"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4541,7 +4541,7 @@
         "重置密码"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4551,7 +4551,7 @@
         "验证码登录"
       ],
       "target": "",
-      "reason": "现代网络行为短语禁令（ban.txt 2026-09-08）",
+      "reason": "现代网络行为短语禁令",
       "category": "anachronism-online-actions",
       "unconditional": true
     },
@@ -4561,7 +4561,7 @@
         "人民币"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4571,7 +4571,7 @@
         "美元"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4581,7 +4581,7 @@
         "美金"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4591,7 +4591,7 @@
         "欧元"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4601,7 +4601,7 @@
         "日元"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4611,7 +4611,7 @@
         "英镑"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4621,7 +4621,7 @@
         "港币"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4631,7 +4631,7 @@
         "借记卡"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4641,7 +4641,7 @@
         "储蓄卡"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4651,7 +4651,7 @@
         "银行卡号"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4661,7 +4661,7 @@
         "信用卡号"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4671,7 +4671,7 @@
         "ATM"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4681,7 +4681,7 @@
         "自动取款机"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4691,7 +4691,7 @@
         "POS机"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4701,7 +4701,7 @@
         "支付宝"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4711,7 +4711,7 @@
         "微信支付"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4721,7 +4721,7 @@
         "银联"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4731,7 +4731,7 @@
         "Apple Pay"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4741,7 +4741,7 @@
         "Google Pay"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4751,7 +4751,7 @@
         "电子支付"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4761,7 +4761,7 @@
         "移动支付"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4771,7 +4771,7 @@
         "扫码付款"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4781,7 +4781,7 @@
         "二维码付款"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4791,7 +4791,7 @@
         "网上银行"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4801,7 +4801,7 @@
         "网银"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4811,7 +4811,7 @@
         "比特币"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4821,7 +4821,7 @@
         "Bitcoin"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4831,7 +4831,7 @@
         "以太坊"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4841,7 +4841,7 @@
         "Ethereum"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4851,7 +4851,7 @@
         "加密货币"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4861,7 +4861,7 @@
         "虚拟货币"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4871,7 +4871,7 @@
         "区块链"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4881,7 +4881,7 @@
         "NFT"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4891,7 +4891,7 @@
         "股票市场"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4901,7 +4901,7 @@
         "股市"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4911,7 +4911,7 @@
         "股票代码"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4921,7 +4921,7 @@
         "证券交易所"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4931,7 +4931,7 @@
         "证券账户"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4941,7 +4941,7 @@
         "基金账户"
       ],
       "target": "",
-      "reason": "现代金融/支付禁令（ban.txt 2026-09-08）",
+      "reason": "现代金融/支付禁令",
       "category": "anachronism-finance",
       "unconditional": true
     },
@@ -4951,7 +4951,7 @@
         "身份证号"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -4961,7 +4961,7 @@
         "居民身份证"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -4971,7 +4971,7 @@
         "户口"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -4981,7 +4981,7 @@
         "户口本"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -4991,7 +4991,7 @@
         "户籍"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5001,7 +5001,7 @@
         "暂住证"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5011,7 +5011,7 @@
         "居住证"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5021,7 +5021,7 @@
         "社会保障卡"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5031,7 +5031,7 @@
         "社保卡"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5041,7 +5041,7 @@
         "医保卡"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5051,7 +5051,7 @@
         "公积金"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5061,7 +5061,7 @@
         "公安局"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5071,7 +5071,7 @@
         "公安机关"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5081,7 +5081,7 @@
         "交警"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5091,7 +5091,7 @@
         "交警队"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5101,7 +5101,7 @@
         "城管"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5111,7 +5111,7 @@
         "街道办"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5121,7 +5121,7 @@
         "居委会"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5131,7 +5131,7 @@
         "村委会"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5141,7 +5141,7 @@
         "国务院"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5151,7 +5151,7 @@
         "省政府"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5161,7 +5161,7 @@
         "市政府"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5171,7 +5171,7 @@
         "县政府"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5181,7 +5181,7 @@
         "省委"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5191,7 +5191,7 @@
         "市委"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5201,7 +5201,7 @@
         "县委"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5211,7 +5211,7 @@
         "纪委"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5221,7 +5221,7 @@
         "政协"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5231,7 +5231,7 @@
         "人大常委会"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5241,7 +5241,7 @@
         "人民代表大会"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5251,7 +5251,7 @@
         "公务员"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5261,7 +5261,7 @@
         "事业单位"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5271,7 +5271,7 @@
         "事业编"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5281,7 +5281,7 @@
         "行政编"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5291,7 +5291,7 @@
         "编制内"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5301,7 +5301,7 @@
         "五险一金"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5311,7 +5311,7 @@
         "社保"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5321,7 +5321,7 @@
         "医保"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5331,7 +5331,7 @@
         "个人所得税"
       ],
       "target": "",
-      "reason": "现代中国行政禁令（ban.txt 2026-09-08）",
+      "reason": "现代中国行政禁令",
       "category": "anachronism-admin",
       "unconditional": true
     },
@@ -5341,7 +5341,7 @@
         "高考"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5351,7 +5351,7 @@
         "中考"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5361,7 +5361,7 @@
         "考研"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5371,7 +5371,7 @@
         "研究生考试"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5381,7 +5381,7 @@
         "公务员考试"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5391,7 +5391,7 @@
         "国考"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5401,7 +5401,7 @@
         "省考"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5411,7 +5411,7 @@
         "四六级"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5421,7 +5421,7 @@
         "英语四级"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5431,7 +5431,7 @@
         "英语六级"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5441,7 +5441,7 @@
         "托福"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5451,7 +5451,7 @@
         "雅思"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5461,7 +5461,7 @@
         "SAT"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5471,7 +5471,7 @@
         "GRE"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5481,7 +5481,7 @@
         "GMAT"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5491,7 +5491,7 @@
         "高考分数"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5501,7 +5501,7 @@
         "录取通知书"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5511,7 +5511,7 @@
         "高考志愿"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5521,7 +5521,7 @@
         "大学英语四级"
       ],
       "target": "",
-      "reason": "现代教育考试禁令（ban.txt 2026-09-08）",
+      "reason": "现代教育考试禁令",
       "category": "anachronism-education",
       "unconditional": true
     },
@@ -5531,7 +5531,7 @@
         "汽车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5541,7 +5541,7 @@
         "轿车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5551,7 +5551,7 @@
         "小汽车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5561,7 +5561,7 @@
         "卡车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5571,7 +5571,7 @@
         "货车司机"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5581,7 +5581,7 @@
         "公交车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5591,7 +5591,7 @@
         "公共汽车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5601,7 +5601,7 @@
         "出租车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5611,7 +5611,7 @@
         "网约车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5621,7 +5621,7 @@
         "摩托车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5631,7 +5631,7 @@
         "电动车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5641,7 +5641,7 @@
         "共享单车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5651,7 +5651,7 @@
         "高速公路"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5661,7 +5661,7 @@
         "高速路"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5671,7 +5671,7 @@
         "收费站"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5681,7 +5681,7 @@
         "服务区"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5691,7 +5691,7 @@
         "红绿灯"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5701,7 +5701,7 @@
         "交通信号灯"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5711,7 +5711,7 @@
         "斑马线"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5721,7 +5721,7 @@
         "停车场"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5731,7 +5731,7 @@
         "停车位"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5741,7 +5741,7 @@
         "驾照"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5751,7 +5751,7 @@
         "驾驶证"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5761,7 +5761,7 @@
         "行驶证"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5771,7 +5771,7 @@
         "车牌号"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5781,7 +5781,7 @@
         "汽车保险"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5791,7 +5791,7 @@
         "加油站"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5801,7 +5801,7 @@
         "汽油"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5811,7 +5811,7 @@
         "柴油"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5821,7 +5821,7 @@
         "地铁站"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5831,7 +5831,7 @@
         "动车"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5841,7 +5841,7 @@
         "动车组"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5851,7 +5851,7 @@
         "火车站"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5861,7 +5861,7 @@
         "航空公司"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5871,7 +5871,7 @@
         "航班"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5881,7 +5881,7 @@
         "登机牌"
       ],
       "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
+      "reason": "现代交通禁令",
       "category": "anachronism-transport",
       "unconditional": true
     },
@@ -5891,7 +5891,7 @@
         "冰箱"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5901,7 +5901,7 @@
         "电冰箱"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5911,7 +5911,7 @@
         "洗衣机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5921,7 +5921,7 @@
         "洗碗机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5931,7 +5931,7 @@
         "微波炉"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5941,7 +5941,7 @@
         "电磁炉"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5951,7 +5951,7 @@
         "电饭煲"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5961,7 +5961,7 @@
         "烤面包机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5971,7 +5971,7 @@
         "吸尘器"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5981,7 +5981,7 @@
         "吹风机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -5991,7 +5991,7 @@
         "空调"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6001,7 +6001,7 @@
         "空调机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6011,7 +6011,7 @@
         "热水器"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6021,7 +6021,7 @@
         "电脑"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6031,7 +6031,7 @@
         "计算机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6041,7 +6041,7 @@
         "台式电脑"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6051,7 +6051,7 @@
         "笔记本电脑"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6061,7 +6061,7 @@
         "平板电脑"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6071,7 +6071,7 @@
         "打印机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6081,7 +6081,7 @@
         "复印机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6091,7 +6091,7 @@
         "扫描仪"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6101,7 +6101,7 @@
         "投影仪"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6111,7 +6111,7 @@
         "数码相机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6121,7 +6121,7 @@
         "摄像机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6131,7 +6131,7 @@
         "摄像头"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6141,7 +6141,7 @@
         "监控摄像头"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6151,7 +6151,7 @@
         "耳机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6161,7 +6161,7 @@
         "蓝牙耳机"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6171,7 +6171,7 @@
         "充电器"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6181,7 +6181,7 @@
         "充电宝"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6191,7 +6191,7 @@
         "数据线"
       ],
       "target": "",
-      "reason": "现代家电/消费电子禁令（ban.txt 2026-09-08）",
+      "reason": "现代家电/消费电子禁令",
       "category": "anachronism-appliance",
       "unconditional": true
     },
@@ -6201,7 +6201,7 @@
         "DNA"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6211,7 +6211,7 @@
         "RNA"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6221,7 +6221,7 @@
         "脱氧核糖核酸"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6231,7 +6231,7 @@
         "核糖核酸"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6241,7 +6241,7 @@
         "基因组"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6251,7 +6251,7 @@
         "基因测序"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6261,7 +6261,7 @@
         "基因编辑"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6271,7 +6271,7 @@
         "CRISPR"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6281,7 +6281,7 @@
         "核酸检测"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6291,7 +6291,7 @@
         "PCR"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6301,7 +6301,7 @@
         "新冠"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6311,7 +6311,7 @@
         "COVID"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6321,7 +6321,7 @@
         "COVID-19"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6331,7 +6331,7 @@
         "艾滋病"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6341,7 +6341,7 @@
         "HIV"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6351,7 +6351,7 @@
         "抗生素"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6361,7 +6361,7 @@
         "青霉素"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6371,7 +6371,7 @@
         "阿司匹林"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6381,7 +6381,7 @@
         "胰岛素"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6391,7 +6391,7 @@
         "CT扫描"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6401,7 +6401,7 @@
         "CT检查"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6411,7 +6411,7 @@
         "核磁共振"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6421,7 +6421,7 @@
         "MRI"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6431,7 +6431,7 @@
         "X光机"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6441,7 +6441,7 @@
         "X射线检查"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6451,7 +6451,7 @@
         "化疗"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6461,7 +6461,7 @@
         "放疗"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6471,7 +6471,7 @@
         "疫苗接种"
       ],
       "target": "",
-      "reason": "现代生物医学禁令（ban.txt 2026-09-08）",
+      "reason": "现代生物医学禁令",
       "category": "anachronism-biomed",
       "unconditional": true
     },
@@ -6481,7 +6481,7 @@
         "核弹"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6491,7 +6491,7 @@
         "原子弹"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6501,7 +6501,7 @@
         "氢弹"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6511,7 +6511,7 @@
         "洲际导弹"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6521,7 +6521,7 @@
         "弹道导弹"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6531,7 +6531,7 @@
         "巡航导弹"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6541,7 +6541,7 @@
         "坦克"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6551,7 +6551,7 @@
         "主战坦克"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6561,7 +6561,7 @@
         "装甲车"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6571,7 +6571,7 @@
         "装甲运兵车"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6581,7 +6581,7 @@
         "航空母舰"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6591,7 +6591,7 @@
         "航母"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6601,7 +6601,7 @@
         "战斗机"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6611,7 +6611,7 @@
         "轰炸机"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6621,7 +6621,7 @@
         "直升机"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6631,7 +6631,7 @@
         "无人机"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6641,7 +6641,7 @@
         "声呐"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6651,7 +6651,7 @@
         "卫星导航"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6661,7 +6661,7 @@
         "GPS"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6671,7 +6671,7 @@
         "全球定位系统"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6681,7 +6681,7 @@
         "夜视仪"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6691,7 +6691,7 @@
         "热成像仪"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6701,7 +6701,7 @@
         "AK-47"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6711,7 +6711,7 @@
         "AK47"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6721,7 +6721,7 @@
         "M16"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6731,7 +6731,7 @@
         "M4A1"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6741,7 +6741,7 @@
         "RPG-7"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6751,7 +6751,7 @@
         "F-16"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6761,7 +6761,7 @@
         "F-35"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6771,7 +6771,7 @@
         "B-2"
       ],
       "target": "",
-      "reason": "现代军事科技禁令（ban.txt 2026-09-08）",
+      "reason": "现代军事科技禁令",
       "category": "anachronism-military",
       "unconditional": true
     },
@@ -6781,7 +6781,7 @@
         "中华人民共和国"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6791,7 +6791,7 @@
         "中国"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6801,7 +6801,7 @@
         "美国"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6811,7 +6811,7 @@
         "美利坚"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6821,7 +6821,7 @@
         "英国"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6831,7 +6831,7 @@
         "法国"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6841,7 +6841,7 @@
         "俄罗斯"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6851,7 +6851,7 @@
         "日本"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6861,7 +6861,7 @@
         "韩国"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6871,7 +6871,7 @@
         "加拿大"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6881,7 +6881,7 @@
         "澳大利亚"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6891,7 +6891,7 @@
         "印度"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6901,7 +6901,7 @@
         "北京"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6911,7 +6911,7 @@
         "上海"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6921,7 +6921,7 @@
         "广州"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6931,7 +6931,7 @@
         "深圳"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6941,7 +6941,7 @@
         "纽约"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6951,7 +6951,7 @@
         "洛杉矶"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6961,7 +6961,7 @@
         "华盛顿"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6971,7 +6971,7 @@
         "伦敦"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6981,7 +6981,7 @@
         "巴黎"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -6991,7 +6991,7 @@
         "柏林"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7001,7 +7001,7 @@
         "莫斯科"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7011,7 +7011,7 @@
         "东京"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7021,7 +7021,7 @@
         "首尔"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7031,7 +7031,7 @@
         "亚洲"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7041,7 +7041,7 @@
         "欧洲"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7051,7 +7051,7 @@
         "非洲"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7061,7 +7061,7 @@
         "北美洲"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7071,7 +7071,7 @@
         "南美洲"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7081,7 +7081,7 @@
         "大洋洲"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7091,7 +7091,7 @@
         "南极洲"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7101,7 +7101,7 @@
         "联合国"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7111,7 +7111,7 @@
         "UN"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7121,7 +7121,7 @@
         "北约"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7131,7 +7131,7 @@
         "NATO"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7141,7 +7141,7 @@
         "欧盟"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7151,7 +7151,7 @@
         "EU"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7161,7 +7161,7 @@
         "世界卫生组织"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7171,7 +7171,7 @@
         "WHO"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7181,7 +7181,7 @@
         "国际货币基金组织"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7191,7 +7191,7 @@
         "IMF"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7201,7 +7201,7 @@
         "世界银行"
       ],
       "target": "",
-      "reason": "现实国家/城市/国际组织禁令（ban.txt 2026-09-08）",
+      "reason": "现实国家/城市/国际组织禁令",
       "category": "anachronism-realgeo",
       "unconditional": true
     },
@@ -7211,7 +7211,7 @@
         "马克思"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7221,7 +7221,7 @@
         "恩格斯"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7231,7 +7231,7 @@
         "列宁"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7241,7 +7241,7 @@
         "斯大林"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7251,7 +7251,7 @@
         "毛泽东"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7261,7 +7261,7 @@
         "拿破仑"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7271,7 +7271,7 @@
         "希特勒"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7281,7 +7281,7 @@
         "丘吉尔"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7291,7 +7291,7 @@
         "罗斯福"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7301,7 +7301,7 @@
         "特朗普"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7311,7 +7311,7 @@
         "拜登"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7321,7 +7321,7 @@
         "普京"
       ],
       "target": "",
-      "reason": "现实政治人物专名禁令（ban.txt 2026-09-08）",
+      "reason": "现实政治人物专名禁令",
       "category": "anachronism-polfigures",
       "unconditional": true
     },
@@ -7331,7 +7331,7 @@
         "PPT"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7341,7 +7341,7 @@
         "PowerPoint"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7351,7 +7351,7 @@
         "Excel"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7361,7 +7361,7 @@
         "Word文档"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7371,7 +7371,7 @@
         "PDF文件"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7381,7 +7381,7 @@
         "电子表格"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7391,7 +7391,7 @@
         "KPI"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7401,7 +7401,7 @@
         "OKR"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7411,7 +7411,7 @@
         "996"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7421,7 +7421,7 @@
         "打卡机"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7431,7 +7431,7 @@
         "考勤系统"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7441,7 +7441,7 @@
         "企业微信"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7451,7 +7451,7 @@
         "视频会议"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7461,7 +7461,7 @@
         "Zoom会议"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7471,7 +7471,7 @@
         "腾讯会议"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7481,7 +7481,7 @@
         "办公软件"
       ],
       "target": "",
-      "reason": "现代办公/企业黑话禁令（ban.txt 2026-09-08）",
+      "reason": "现代办公/企业黑话禁令",
       "category": "anachronism-corporate",
       "unconditional": true
     },
@@ -7491,7 +7491,7 @@
         "网购"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7501,7 +7501,7 @@
         "网上购物"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7511,7 +7511,7 @@
         "电商"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7521,7 +7521,7 @@
         "电子商务"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7531,7 +7531,7 @@
         "购物车"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7541,7 +7541,7 @@
         "加入购物车"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7551,7 +7551,7 @@
         "下单"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7561,7 +7561,7 @@
         "订单号"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7571,7 +7571,7 @@
         "快递"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7581,7 +7581,7 @@
         "快递员"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7591,7 +7591,7 @@
         "快递单号"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7601,7 +7601,7 @@
         "物流信息"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7611,7 +7611,7 @@
         "外卖"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7621,7 +7621,7 @@
         "外卖员"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7631,7 +7631,7 @@
         "团购"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7641,7 +7641,7 @@
         "优惠券"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7651,7 +7651,7 @@
         "满减"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7661,7 +7661,7 @@
         "包邮"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7671,7 +7671,7 @@
         "七天无理由"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7681,7 +7681,7 @@
         "客服热线"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7691,7 +7691,7 @@
         "售后客服"
       ],
       "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
+      "reason": "电商/物流/现代服务禁令",
       "category": "anachronism-ecommerce",
       "unconditional": true
     },
@@ -7701,7 +7701,7 @@
         "电子游戏"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7711,7 +7711,7 @@
         "网游"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7721,7 +7721,7 @@
         "网络游戏"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7731,7 +7731,7 @@
         "手游"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7741,7 +7741,7 @@
         "手机游戏"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7751,7 +7751,7 @@
         "电竞"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7761,7 +7761,7 @@
         "电子竞技"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7771,7 +7771,7 @@
         "游戏服务器"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7781,7 +7781,7 @@
         "玩家账号"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7791,7 +7791,7 @@
         "氪金"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7801,7 +7801,7 @@
         "充值"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7811,7 +7811,7 @@
         "抽卡"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7821,7 +7821,7 @@
         "十连抽"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7831,7 +7831,7 @@
         "DLC"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7841,7 +7841,7 @@
         "Season Pass"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7851,7 +7851,7 @@
         "战斗通行证"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7861,7 +7861,7 @@
         "成就系统"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7871,7 +7871,7 @@
         "排行榜"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7881,7 +7881,7 @@
         "匹配系统"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7891,7 +7891,7 @@
         "排位赛"
       ],
       "target": "",
-      "reason": "现代娱乐/游戏元词禁令（ban.txt 2026-09-08）",
+      "reason": "现代娱乐/游戏元词禁令",
       "category": "anachronism-gaming",
       "unconditional": true
     },
@@ -7901,7 +7901,7 @@
         "xTranslator"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -7911,7 +7911,7 @@
         "xEdit"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -7921,7 +7921,7 @@
         "SSEEdit"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -7931,7 +7931,7 @@
         "TES5Edit"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -7941,7 +7941,7 @@
         "ESP文件"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -7951,7 +7951,7 @@
         "ESM文件"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -7961,7 +7961,7 @@
         "ESL文件"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -7971,7 +7971,7 @@
         "PEX文件"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -7981,7 +7981,7 @@
         "FormID"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -7991,7 +7991,7 @@
         "EditorID"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8001,7 +8001,7 @@
         "EDID"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8011,7 +8011,7 @@
         "VMAD"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8021,7 +8021,7 @@
         "Papyrus脚本"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8031,7 +8031,7 @@
         "Creation Kit"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8041,7 +8041,7 @@
         "Nexus Mods"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8051,7 +8051,7 @@
         "Nexus"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8061,7 +8061,7 @@
         "LOOT"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8071,7 +8071,7 @@
         "MO2"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8081,7 +8081,7 @@
         "Mod Organizer"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8091,7 +8091,7 @@
         "Vortex"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8101,7 +8101,7 @@
         "SKSE"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8111,7 +8111,7 @@
         "SKSE64"
       ],
       "target": "",
-      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行（ban.txt 2026-09-08）",
+      "reason": "TES 工具链泄漏禁令：对白/书籍正文出现即处理过程泄漏；MCM/安装说明按 REC 放行",
       "category": "anachronism-tes-tools",
       "unconditional": true
     },
@@ -8121,7 +8121,7 @@
         "Python"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8131,7 +8131,7 @@
         "JavaScript"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8141,7 +8141,7 @@
         "TypeScript"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8151,7 +8151,7 @@
         "Java"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8161,7 +8161,7 @@
         "C++"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8171,7 +8171,7 @@
         "C#"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8181,7 +8181,7 @@
         "Rust"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8191,7 +8191,7 @@
         "Go语言"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8201,7 +8201,7 @@
         "PHP"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8211,7 +8211,7 @@
         "Ruby"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8221,7 +8221,7 @@
         "Visual Studio"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8231,7 +8231,7 @@
         "VS Code"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8241,7 +8241,7 @@
         "IntelliJ"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8251,7 +8251,7 @@
         "Git"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8261,7 +8261,7 @@
         "commit"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8271,7 +8271,7 @@
         "pull request"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8281,7 +8281,7 @@
         "Pull Request"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8291,7 +8291,7 @@
         "PR提交"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8301,7 +8301,7 @@
         "代码仓库"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8311,7 +8311,7 @@
         "repository"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8321,7 +8321,7 @@
         "编译器"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8331,7 +8331,7 @@
         "源代码"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8341,7 +8341,7 @@
         "源码"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8351,7 +8351,7 @@
         "编程语言"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     },
@@ -8361,7 +8361,7 @@
         "脚本语言"
       ],
       "target": "",
-      "reason": "编程语言/开发工具禁令（ban.txt 2026-09-08）",
+      "reason": "编程语言/开发工具禁令",
       "category": "anachronism-programming",
       "unconditional": true
     }
