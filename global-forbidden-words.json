@@ -1,5 +1,5 @@
 {
-  "doc": "项目级全局禁用词库（Global Forbidden Words）。canonical 机器源，供 term-contract-compiler 编译进各 MOD 的 Translation Contract，由 translation-quality-gate 以 TERM004 对每个已翻译单元独立执行（source 英文锚点整词命中 + dest 含坏形态才报）。收录与维护规则见 GLOSSARY.md §7 与 skyrim-doc-system：只收跨 MOD 有复用价值的官方名词系统性错误形态，不收入普通词、MOD 专有词、以及依赖上下文才成立的禁令。每条 reason 必须能说清'为什么禁'，让 gate 报错可解释。 收录判据（2026-09-08 确立）：是否禁用取决于【该词在上古卷轴世界观中有没有合理存在理由】——有理由则不禁（哪怕听感现代，如 council=议会、network=联络网、scalpel=手术刀、修士/修女/小恶魔均是源文或官方合法概念）；无理由则禁（哪怕只是嫌疑，如现实一神教专属概念上帝/天堂/教皇/基督，泰姆瑞尔没有任何对应物）。category 字段：lore-name=官方专名译名裁决；anachronism-religion=现实宗教异物；未来异物类（现代行政/军事/商业/技术）按同一判据逐条评估后以 category=anachronism-* 收录，不建自动大词表（误伤率高），用 hardfix-triage 的 ANACHRONISM-CANDIDATE 候选层做人工判定。",
+  "doc": "项目级全局禁用词库（Global Forbidden Words）。canonical 机器源，供 term-contract-compiler 编译进各 MOD 的 Translation Contract，由 translation-quality-gate 以 TERM004 对每个已翻译单元独立执行（source 英文锚点整词命中 + dest 含坏形态才报）。收录与维护规则见 GLOSSARY.md §7 与 skyrim-doc-system：只收跨 MOD 有复用价值的官方名词系统性错误形态，不收入普通词、MOD 专有词、以及依赖上下文才成立的禁令。每条 reason 必须能说清'为什么禁'，让 gate 报错可解释。 收录判据（2026-09-08 确立）：是否禁用取决于【该词在上古卷轴世界观中有没有合理存在理由】——有理由则不禁（哪怕听感现代，如 council=议会、network=联络网、scalpel=手术刀、修士/修女/小恶魔均是源文或官方合法概念）；无理由则禁（哪怕只是嫌疑，如现实一神教专属概念上帝/天堂/教皇/基督，泰姆瑞尔没有任何对应物）。category 字段：lore-name=官方专名译名裁决；anachronism-religion=现实宗教异物；未来异物类（现代行政/军事/商业/技术）按同一判据逐条评估后以 category=anachronism-* 收录，不建自动大词表（误伤率高），用 hardfix-triage 的 ANACHRONISM-CANDIDATE 候选层做人工判定。 同形误报处置纪律（2026-09-08）：unconditional 条目若在真实译文中被发现同形误报（禁词是成语/句子/跨词组合的子串，如 西藏←东躲西藏、夜总会←这一夜总会过去、德国←戈斯里德国王、钉钉←板上钉钉），立即从 bans 撤除或收窄为更长短语/加词边界，并记录到 _retracted 防止重复收录。2 字短词收录前先脑放常见成语/拟声/战斗语（已撤：滴滴←滴滴答答拟声、秒杀←一击秒杀战斗语）。中文无空格无词边界，跨词同形（两相邻词拼出禁词）无法用通用规则区分，个案撤除是既定处置路径。 同形误报实证排查（2026-09-08）：400+ TES 叙事高频成语与 2字禁词碰撞=0（现代专属词天然不嵌成语）；真实风险在跨词组合（相邻词拼出禁词，如“这一夜总会过去”拼出夜总会），无法穷举也无法用词边界规则区分（中文无空格，真实污染与同形误报的左右邻几乎都是汉字）。结论：个案撤除是唯一可靠处置路径，不引入分词依赖（jieba 对夜总会类也有歧义）。",
   "bans": [
     {
       "english": "Alduin",
@@ -5616,16 +5616,6 @@
       "unconditional": true
     },
     {
-      "english": "anachronism:滴滴",
-      "forbidden": [
-        "滴滴"
-      ],
-      "target": "",
-      "reason": "现代交通禁令（ban.txt 2026-09-08）",
-      "category": "anachronism-transport",
-      "unconditional": true
-    },
-    {
       "english": "anachronism:摩托车",
       "forbidden": [
         "摩托车"
@@ -7639,16 +7629,6 @@
       "english": "anachronism:团购",
       "forbidden": [
         "团购"
-      ],
-      "target": "",
-      "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
-      "category": "anachronism-ecommerce",
-      "unconditional": true
-    },
-    {
-      "english": "anachronism:秒杀",
-      "forbidden": [
-        "秒杀"
       ],
       "target": "",
       "reason": "电商/物流/现代服务禁令（ban.txt 2026-09-08）",
