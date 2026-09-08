@@ -1,298 +1,522 @@
 {
-  "schema_version": "1.0",
-  "purpose": "项目级全局禁用词库（global-forbidden-words.json）机制回归用例（gate 层）。失败模式来自真实项目事故，公开句子均为 synthetic rewrite。验证 TERM004 对无 binding 单元也能独立触发、source 英文锚点整词/复数/'s 触发，以及 canonical 形态、无锚点、未翻译行不误报。2026-09-08 增补：月名 canonical 覆盖豁免（forbidden 子串完整落在 target 出现区间内不报，裸译缺月仍报；Druadach-book 20 条假 FAIL 机制）。",
-  "collection_date": "2026-09-06",
-  "provenance": "synthetic_rewrite_of_confirmed_real_project_incidents",
-  "source_docs": [
-    "global-forbidden-words.json",
-    "GLOSSARY.md §7",
-    "private incident ledger (not distributed)"
-  ],
-  "cases": [
-    {
-      "case_id": "global-bans.solstheim-001-unbound-hit",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "At sunrise, our boat finally reached Solstheim.",
-        "translation": "日出时，我们的船终于抵达索瑟姆。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Solstheim", "forbidden": ["索瑟姆", "索瑟姆岛"], "target": "索瑟海姆", "reason": "官方词典：龙裔 DLC 岛名" }
-          ]
-        }
-      },
-      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
-      "golden": "日出时，我们的船终于抵达索瑟海姆。",
-      "origin": "real_project_incident_rewritten",
-      "note": "核心价值用例：单元无任何 binding（空 bindings），错误形态仍被全局词库拦下。"
-    },
-    {
-      "case_id": "global-bans.hermaeus-mora-002-reason",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "A scholar warned that Hermaeus Mora still watches Apocrypha.",
-        "translation": "一位学者警告说，赫尔墨斯仍在注视异典。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Hermaeus Mora", "forbidden": ["赫尔迈乌斯", "赫迈厄斯", "赫尔墨斯", "莫拉魔神"], "target": "赫麦尤斯·莫拉", "reason": "知识与命运魔神；实测 4 种错音译" }
-          ]
-        }
-      },
-      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
-      "golden": "一位学者警告说，赫麦尤斯·莫拉仍在注视异典。",
-      "origin": "real_project_incident_rewritten",
-      "note": "detail 需携带 reason，供 Agent 判断误报还是回归。"
-    },
-    {
-      "case_id": "global-bans.argonians-003-plural-anchor",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "Several Argonians from the marsh avoid the main road.",
-        "translation": "几个来自沼泽的亚龙人避开了大路。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Argonian", "forbidden": ["亚龙人", "阿戈尼安", "阿戈尼亚", "阿贡人"], "target": "阿尔贡", "reason": "官方 RACE:FULL 种族名" }
-          ]
-        }
-      },
-      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
-      "golden": "几个来自沼泽的阿尔贡人避开了大路。",
-      "origin": "real_project_incident_rewritten",
-      "note": "英文锚点 Argonian 需命中复数 Argonians（整词匹配允许尾 s）。"
-    },
-    {
-      "case_id": "global-bans.delphine-004-possessive-anchor",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "I found Delphine's note beside the map.",
-        "translation": "我在地图旁找到了德尔菲娜的便条。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Delphine", "forbidden": ["德尔菲娜", "黛尔芬", "德尔芬", "德菲妮"], "target": "戴尔芬", "reason": "官方词典：刀锋会核心成员" }
-          ]
-        }
-      },
-      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
-      "golden": "我在地图旁找到了戴尔芬的便条。",
-      "origin": "real_project_incident_rewritten",
-      "note": "锚点带 's 所有格仍命中。"
-    },
-    {
-      "case_id": "global-bans.mudcrab-005-plural",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "Mudcrabs crawled between the rocks at low tide.",
-        "translation": "退潮时，几只泥蟹在岩石间爬行。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Mudcrab", "forbidden": ["泥蟹"], "target": "泥沼蟹", "reason": "官方词典：泥沼蟹" }
-          ]
-        }
-      },
-      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
-      "golden": "退潮时，几只泥沼蟹在岩石间爬行。",
-      "origin": "real_project_incident_rewritten",
-      "note": "复数 mudcrabs 命中锚点 Mudcrab。"
-    },
-    {
-      "case_id": "global-bans.solstheim-006-canonical-pass",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "Solstheim is an island.",
-        "translation": "索瑟海姆是一座岛屿。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Solstheim", "forbidden": ["索瑟姆", "索瑟姆岛"], "target": "索瑟海姆", "reason": "官方词典" }
-          ]
-        }
-      },
-      "expect": { "verdict": "PASS", "codes": [] },
-      "golden": "索瑟海姆是一座岛屿。",
-      "origin": "real_project_incident_rewritten"
-    },
-    {
-      "case_id": "global-bans.blades-007-no-english-anchor-pass",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "The island is far away.",
-        "translation": "索瑟姆很远。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Solstheim", "forbidden": ["索瑟姆"], "target": "索瑟海姆", "reason": "官方词典" }
-          ]
-        }
-      },
-      "expect": { "verdict": "PASS", "codes": [] },
-      "golden": "索瑟姆很远。",
-      "origin": "real_project_incident_rewritten",
-      "note": "与 blades 诗歌负例同构：禁扫必须有英文侧锚点，不能对 dest 裸扫。"
-    },
-    {
-      "case_id": "global-bans.embedded-008-no-substring",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "PreSolstheim-era maps show a different coast.",
-        "translation": "索瑟姆时代的旧地图海岸线不同。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Solstheim", "forbidden": ["索瑟姆"], "target": "索瑟海姆", "reason": "官方词典" }
-          ]
-        }
-      },
-      "expect": { "verdict": "PASS", "codes": [] },
-      "golden": "索瑟海姆时代的旧地图海岸线不同。",
-      "origin": "real_project_incident_rewritten",
-      "note": "边缘构句用例：真实 Source 几乎不会出现，验证整词边界不误伤嵌入形式。"
-    },
-    {
-      "case_id": "global-bans.untranslated-009-skip",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "Technical string SB1Keep.",
-        "translation": "Technical string SB1Keep.",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Solstheim", "forbidden": ["索瑟姆"], "target": "索瑟海姆", "reason": "官方词典" }
-          ]
-        }
-      },
-      "expect": { "verdict": "PASS", "codes": [] },
-      "golden": "Technical string SB1Keep.",
-      "origin": "real_project_incident_rewritten",
-      "note": "dest == source 跳过（与 auto-bind 口径一致）。"
-    },
-    {
-      "case_id": "global-bans.morning-star-010-canonical-cover-pass",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "The soldiers' ledger began on the 3rd of Morning Star.",
-        "translation": "士兵的账本从晨星月3日开始记录。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Morning Star", "forbidden": ["晨星"], "target": "晨星月", "reason": "泰姆瑞尔历月名带月字；裸译晨星缺月" }
-          ]
-        }
-      },
-      "expect": { "verdict": "PASS", "codes": [] },
-      "golden": "士兵的账本从晨星月3日开始记录。",
-      "origin": "real_project_incident_rewritten",
-      "note": "核心回归用例（Druadach-book 2026-09-08）：canonical 晨星月 完整出现时，其组成子串 晨星 的 forbidden 命中必须抑制——此前裸 substring 扫描产生 20 条假 FAIL。"
-    },
-    {
-      "case_id": "global-bans.morning-star-011-bare-missing-month-fail",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "The caravan set out under the cold sky of Morning Star.",
-        "translation": "商队在晨星的寒空下出发。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Morning Star", "forbidden": ["晨星"], "target": "晨星月", "reason": "泰姆瑞尔历月名带月字；裸译晨星缺月" }
-          ]
-        }
-      },
-      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
-      "golden": "商队在晨星月的寒空下出发。",
-      "origin": "real_project_incident_rewritten",
-      "note": "豁免只针对被 target 覆盖的实例：裸译 晨星（缺 月）无 target 覆盖，仍必须 FAIL（dg04 实测缺月错译类）。"
-    },
-    {
-      "case_id": "global-bans.morning-star-012-mixed-canonical-and-bare-fail",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "We marched through Morning Star, and by the final week the whole column reached the camp.",
-        "translation": "我们于晨星月行军，最后一周全队抵达营地，那时已是晨星。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Morning Star", "forbidden": ["晨星"], "target": "晨星月", "reason": "泰姆瑞尔历月名带月字；裸译晨星缺月" }
-          ]
-        }
-      },
-      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
-      "golden": "我们于晨星月行军，最后一周全队抵达营地，那时已是晨星月末。",
-      "origin": "real_project_incident_rewritten",
-      "note": "精度栏位：同单元既有 canonical 晨星月 又有裸 晨星 错误时，裸实例未被任何 target 区间覆盖，必须仍报——验证按区间豁免而非整单元豁免。"
-    },
-    {
-      "case_id": "global-bans.frostfall-013-real-error-not-covered",
-      "test_layer": "gate",
-      "category": "term_forbidden",
-      "plugin": "synthetic",
-      "xml_index": null,
-      "input": {
-        "source": "The Frostfall storms broke early that year.",
-        "translation": "那年霜降月的暴风雪提前来临。",
-        "contract": {
-          "bindings": [],
-          "terms": {},
-          "global_bans": [
-            { "english": "Frostfall", "forbidden": ["霜降", "霜降月"], "target": "霜落月", "reason": "泰姆瑞尔历二月；霜降为二十四节气联想错译" }
-          ]
-        }
-      },
-      "expect": { "verdict": "FAIL", "codes": ["TERM004"] },
-      "golden": "那年霜落月的暴风雪提前来临。",
-      "origin": "real_project_incident_rewritten",
-      "note": "反过防御位：错误形态 霜降/霜降月 不是 canonical 霜落月 的子串，不得因豁免机制漏报（Druadach-book 8601 真错译类）。"
+ "schema_version": "1.0",
+ "purpose": "项目级全局禁用词库（global-forbidden-words.json）机制回归用例（gate 层）。失败模式来自真实项目事故，公开句子均为 synthetic rewrite。验证 TERM004 对无 binding 单元也能独立触发、source 英文锚点整词/复数/'s 触发，以及 canonical 形态、无锚点、未翻译行不误报。2026-09-08 增补：月名 canonical 覆盖豁免（forbidden 子串完整落在 target 出现区间内不报，裸译缺月仍报；Druadach-book 20 条假 FAIL 机制）。",
+ "collection_date": "2026-09-06",
+ "provenance": "synthetic_rewrite_of_confirmed_real_project_incidents",
+ "source_docs": [
+  "global-forbidden-words.json",
+  "GLOSSARY.md §7",
+  "private incident ledger (not distributed)"
+ ],
+ "cases": [
+  {
+   "case_id": "global-bans.solstheim-001-unbound-hit",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "At sunrise, our boat finally reached Solstheim.",
+    "translation": "日出时，我们的船终于抵达索瑟姆。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Solstheim",
+       "forbidden": [
+        "索瑟姆",
+        "索瑟姆岛"
+       ],
+       "target": "索瑟海姆",
+       "reason": "官方词典：龙裔 DLC 岛名"
+      }
+     ]
     }
-  ]
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "日出时，我们的船终于抵达索瑟海姆。",
+   "origin": "real_project_incident_rewritten",
+   "note": "核心价值用例：单元无任何 binding（空 bindings），错误形态仍被全局词库拦下。"
+  },
+  {
+   "case_id": "global-bans.hermaeus-mora-002-reason",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "A scholar warned that Hermaeus Mora still watches Apocrypha.",
+    "translation": "一位学者警告说，赫尔墨斯仍在注视异典。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Hermaeus Mora",
+       "forbidden": [
+        "赫尔迈乌斯",
+        "赫迈厄斯",
+        "赫尔墨斯",
+        "莫拉魔神"
+       ],
+       "target": "赫麦尤斯·莫拉",
+       "reason": "知识与命运魔神；实测 4 种错音译"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "一位学者警告说，赫麦尤斯·莫拉仍在注视异典。",
+   "origin": "real_project_incident_rewritten",
+   "note": "detail 需携带 reason，供 Agent 判断误报还是回归。"
+  },
+  {
+   "case_id": "global-bans.argonians-003-plural-anchor",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "Several Argonians from the marsh avoid the main road.",
+    "translation": "几个来自沼泽的亚龙人避开了大路。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Argonian",
+       "forbidden": [
+        "亚龙人",
+        "阿戈尼安",
+        "阿戈尼亚",
+        "阿贡人"
+       ],
+       "target": "阿尔贡",
+       "reason": "官方 RACE:FULL 种族名"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "几个来自沼泽的阿尔贡人避开了大路。",
+   "origin": "real_project_incident_rewritten",
+   "note": "英文锚点 Argonian 需命中复数 Argonians（整词匹配允许尾 s）。"
+  },
+  {
+   "case_id": "global-bans.delphine-004-possessive-anchor",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "I found Delphine's note beside the map.",
+    "translation": "我在地图旁找到了德尔菲娜的便条。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Delphine",
+       "forbidden": [
+        "德尔菲娜",
+        "黛尔芬",
+        "德尔芬",
+        "德菲妮"
+       ],
+       "target": "戴尔芬",
+       "reason": "官方词典：刀锋会核心成员"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "我在地图旁找到了戴尔芬的便条。",
+   "origin": "real_project_incident_rewritten",
+   "note": "锚点带 's 所有格仍命中。"
+  },
+  {
+   "case_id": "global-bans.mudcrab-005-plural",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "Mudcrabs crawled between the rocks at low tide.",
+    "translation": "退潮时，几只泥蟹在岩石间爬行。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Mudcrab",
+       "forbidden": [
+        "泥蟹"
+       ],
+       "target": "泥沼蟹",
+       "reason": "官方词典：泥沼蟹"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "退潮时，几只泥沼蟹在岩石间爬行。",
+   "origin": "real_project_incident_rewritten",
+   "note": "复数 mudcrabs 命中锚点 Mudcrab。"
+  },
+  {
+   "case_id": "global-bans.solstheim-006-canonical-pass",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "Solstheim is an island.",
+    "translation": "索瑟海姆是一座岛屿。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Solstheim",
+       "forbidden": [
+        "索瑟姆",
+        "索瑟姆岛"
+       ],
+       "target": "索瑟海姆",
+       "reason": "官方词典"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   },
+   "golden": "索瑟海姆是一座岛屿。",
+   "origin": "real_project_incident_rewritten"
+  },
+  {
+   "case_id": "global-bans.blades-007-no-english-anchor-pass",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "The island is far away.",
+    "translation": "索瑟姆很远。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Solstheim",
+       "forbidden": [
+        "索瑟姆"
+       ],
+       "target": "索瑟海姆",
+       "reason": "官方词典"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   },
+   "golden": "索瑟姆很远。",
+   "origin": "real_project_incident_rewritten",
+   "note": "与 blades 诗歌负例同构：禁扫必须有英文侧锚点，不能对 dest 裸扫。"
+  },
+  {
+   "case_id": "global-bans.embedded-008-no-substring",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "PreSolstheim-era maps show a different coast.",
+    "translation": "索瑟姆时代的旧地图海岸线不同。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Solstheim",
+       "forbidden": [
+        "索瑟姆"
+       ],
+       "target": "索瑟海姆",
+       "reason": "官方词典"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   },
+   "golden": "索瑟海姆时代的旧地图海岸线不同。",
+   "origin": "real_project_incident_rewritten",
+   "note": "边缘构句用例：真实 Source 几乎不会出现，验证整词边界不误伤嵌入形式。"
+  },
+  {
+   "case_id": "global-bans.untranslated-009-skip",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "Technical string SB1Keep.",
+    "translation": "Technical string SB1Keep.",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Solstheim",
+       "forbidden": [
+        "索瑟姆"
+       ],
+       "target": "索瑟海姆",
+       "reason": "官方词典"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   },
+   "golden": "Technical string SB1Keep.",
+   "origin": "real_project_incident_rewritten",
+   "note": "dest == source 跳过（与 auto-bind 口径一致）。"
+  },
+  {
+   "case_id": "global-bans.morning-star-010-canonical-cover-pass",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "The soldiers' ledger began on the 3rd of Morning Star.",
+    "translation": "士兵的账本从晨星月3日开始记录。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Morning Star",
+       "forbidden": [
+        "晨星"
+       ],
+       "target": "晨星月",
+       "reason": "泰姆瑞尔历月名带月字；裸译晨星缺月"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   },
+   "golden": "士兵的账本从晨星月3日开始记录。",
+   "origin": "real_project_incident_rewritten",
+   "note": "核心回归用例（Druadach-book 2026-09-08）：canonical 晨星月 完整出现时，其组成子串 晨星 的 forbidden 命中必须抑制——此前裸 substring 扫描产生 20 条假 FAIL。"
+  },
+  {
+   "case_id": "global-bans.morning-star-011-bare-missing-month-fail",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "The caravan set out under the cold sky of Morning Star.",
+    "translation": "商队在晨星的寒空下出发。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Morning Star",
+       "forbidden": [
+        "晨星"
+       ],
+       "target": "晨星月",
+       "reason": "泰姆瑞尔历月名带月字；裸译晨星缺月"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "商队在晨星月的寒空下出发。",
+   "origin": "real_project_incident_rewritten",
+   "note": "豁免只针对被 target 覆盖的实例：裸译 晨星（缺 月）无 target 覆盖，仍必须 FAIL（dg04 实测缺月错译类）。"
+  },
+  {
+   "case_id": "global-bans.morning-star-012-mixed-canonical-and-bare-fail",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "We marched through Morning Star, and by the final week the whole column reached the camp.",
+    "translation": "我们于晨星月行军，最后一周全队抵达营地，那时已是晨星。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Morning Star",
+       "forbidden": [
+        "晨星"
+       ],
+       "target": "晨星月",
+       "reason": "泰姆瑞尔历月名带月字；裸译晨星缺月"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "我们于晨星月行军，最后一周全队抵达营地，那时已是晨星月末。",
+   "origin": "real_project_incident_rewritten",
+   "note": "精度栏位：同单元既有 canonical 晨星月 又有裸 晨星 错误时，裸实例未被任何 target 区间覆盖，必须仍报——验证按区间豁免而非整单元豁免。"
+  },
+  {
+   "case_id": "global-bans.frostfall-013-real-error-not-covered",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "The Frostfall storms broke early that year.",
+    "translation": "那年霜降月的暴风雪提前来临。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Frostfall",
+       "forbidden": [
+        "霜降",
+        "霜降月"
+       ],
+       "target": "霜落月",
+       "reason": "泰姆瑞尔历二月；霜降为二十四节气联想错译"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "那年霜落月的暴风雪提前来临。",
+   "origin": "real_project_incident_rewritten",
+   "note": "反过防御位：错误形态 霜降/霜降月 不是 canonical 霜落月 的子串，不得因豁免机制漏报（Druadach-book 8601 真错译类）。"
+  },
+  {
+   "case_id": "global-bans.morning-star-014-ellipsized-date-pass",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "Day 18..: Morndas..., Morning Star... The handwriting trails off.",
+    "translation": "第十八..天：周一...，晨星...月..日。字迹渐渐拖曳。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Morning Star",
+       "forbidden": [
+        "晨星"
+       ],
+       "target": "晨星月",
+       "reason": "泰姆瑞尔历月名带月字；裸译晨星缺月"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   },
+   "golden": "第十八..天：周一...，晨星...月..日。字迹渐渐拖曳。",
+   "origin": "real_project_incident_rewritten",
+   "note": "R13（Druadach-book 8530，2026-09-08）：source残缺日期的忠实译文，晨星后经省略号仍接月字，不是裸译错误，必须豁免。"
+  },
+  {
+   "case_id": "global-bans.morning-star-015-ellipsis-no-month-fail",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "They marched under Morning Star... no month was named.",
+    "translation": "他们在晨星……的光下行军。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Morning Star",
+       "forbidden": [
+        "晨星"
+       ],
+       "target": "晨星月",
+       "reason": "泰姆瑞尔历月名带月字；裸译晨星缺月"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "他们在晨星月的光下行军。",
+   "origin": "synthetic_guard",
+   "note": "R13反例：省略号后没有月字时豁免不得泛化，仍必须FAIL。"
+  }
+ ]
 }

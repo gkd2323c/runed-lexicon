@@ -13,7 +13,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from term_match import ResolvedTerm, check_unit
-from quality_gate import keep_issue, placeholder_issue, charset_issue
+from quality_gate import keep_issue, placeholder_issue, charset_issue, truncation_issue
 
 # project root: <skill>/scripts/../.. = .agents/skills/<skill>/scripts -> up 4 to repo root
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -67,6 +67,7 @@ def gate_issues(source, translation, contract, case=None):
     if prot:
         issues += placeholder_issue({'source': source, 'translation': translation}, prot)
     issues += charset_issue(translation)
+    issues += truncation_issue({'source': source, 'translation': translation})
 
     ma = (case or {}).get('machine_assert') or {}
     macode = ma.get('code') or 'ASSERT'

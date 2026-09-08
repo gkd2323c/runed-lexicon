@@ -204,11 +204,13 @@ def collect_result_paths(explicit: list[str], patterns: list[str]) -> list[Path]
 
 
 def collect_translations(
-    paths: list[Path], source_hash: str, xml_strings: list[ET.Element]
-) -> tuple[dict[int, dict[str, Any]], dict[str, int]]:
+    paths: list[Path], source_hash: str, xml_strings: list[ET.Element],
+    skip_nonfinal: bool = False,
+) -> tuple[dict[int, dict[str, Any]], dict[str, int], list[dict[str, str]]]:
     by_index: dict[int, dict[str, Any]] = {}
     seen_units: set[str] = set()
     counts: Counter[str] = Counter()
+    skipped: list[dict[str, str]] = []
 
     for path in paths:
         result = load_json(path)
@@ -250,7 +252,14 @@ def collect_translations(
 
             status = str(item.get("status", "")).upper()
             if status not in {"TRANSLATED", "KEEP"}:
-                raise WritebackError(f"{unit_id}: non-final status {status!r}")
+                if not skip_nonfinal:
+                    raise WritebackError(f"{unit_id}: non-final status {status!r}")
+                skipped.append({
+                    "translation_unit_id": unit_id,
+                    "status": status,
+                    "result_file": relative(path),
+                })
+                continue
             counts[status] += 1
 
             node = xml_strings[index]
@@ -284,7 +293,7 @@ def collect_translations(
 
             by_index[index] = item
 
-    return by_index, dict(counts)
+    return by_index, dict(counts), skipped
 
 
 def raw_dest_spans(xml_text: str, expected_count: int) -> list[tuple[int, int]]:
@@ -360,6 +369,13 @@ def main() -> int:
     parser.add_argument("--output", help="Generated XML path")
     parser.add_argument("--report", help="Optional JSON report path")
     parser.add_argument("--check-only", action="store_true", help="Validate without writing XML")
+    parser.add_argument(
+        "--skip-nonfinal", action="store_true",
+        help="Skip non-final (REVIEW/PENDING/…) units instead of rejecting the "
+        "whole run; skipped units are listed in the report and never written. "
+        "Use for batch writebacks where a few units await review; the skipped "
+        "units must be resolved and written by a later generation.",
+    )
     parser.add_argument("--force", action="store_true", help="Replace existing output/report")
     args = parser.parse_args()
 
@@ -372,11 +388,15 @@ def main() -> int:
         source_root, source_strings = parsed_strings(source_bytes, "Source XML")
 
         items, status_counts = {}, dict(Counter())
+        skipped_units: list[dict[str, str]] = []
         result_paths: list[Path] = []
         patch_paths = [resolve_path(value) for value in args.patch]
         if args.result or args.result_glob:
             result_paths = collect_result_paths(args.result, args.result_glob)
-            items, status_counts = collect_translations(result_paths, source_hash, source_strings)
+            items, status_counts, skipped_units = collect_translations(
+                result_paths, source_hash, source_strings,
+                skip_nonfinal=args.skip_nonfinal,
+            )
         for patch_path in patch_paths:
             patch_items = load_patch(patch_path, source_strings)
             for index, item in patch_items.items():
@@ -401,6 +421,8 @@ def main() -> int:
             "result_files": [relative(path) for path in result_paths],
             "patch_files": [relative(path) for path in patch_paths],
             "check_only": bool(args.check_only),
+            "skipped_units": skipped_units,
+            "skipped_count": len(skipped_units),
         }
 
         if args.check_only:
@@ -410,6 +432,7 @@ def main() -> int:
             print(
                 f"Pre-write validation passed: {len(items)} result(s), "
                 f"{translated_count} TRANSLATED, {keep_count} KEEP, "
+                f"{len(skipped_units)} skipped non-final, "
                 f"{len(source_strings)} XML String(s)."
             )
             return 0
@@ -489,7 +512,8 @@ def main() -> int:
 
         print(
             f"Wrote {relative(output_path)}: {changed_count} Dest change(s), "
-            f"{keep_count} KEEP, post-write validation passed."
+            f"{keep_count} KEEP, {len(skipped_units)} skipped non-final, "
+            f"post-write validation passed."
         )
         print(f"Source SHA-256: {source_hash}")
         print(f"Output SHA-256: {output_hash}")

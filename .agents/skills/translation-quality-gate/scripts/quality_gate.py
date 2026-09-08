@@ -143,23 +143,26 @@ def truncation_issue(unit: dict) -> list:
     dst = (unit.get('translation') or unit.get('original_dest') or '').strip()
     if not src or not dst or src == dst:
         return []
-    if len(src) < TRUNC_MIN_SRC_LEN:
+    # R15: 富文本先 strip 标签再判定。此前 `if '<' in src or '<' in dst: return []`
+    # 一刀切跳过全部带标签文本，导致 BOOK（HTML 信件/书籍重灾区）的 11 条截断
+    # 无一条被检出（Druadach-book 2026-09-08）。标签内的省略号 strip 后自然
+    # 消失，不会误报；纯标签行 strip 后为空，由上方的 not dst 排除。
+    src_text = re.sub(r'<[^>]*>', '', src)
+    dst_text = re.sub(r'<[^>]*>', '', dst)
+    if len(src_text) < TRUNC_MIN_SRC_LEN:
         return []
     # source 自带中断（以 ... / … 结尾或含末尾省略）说明原文就是吞话，跳过
-    if re.search(r'\.\.\.|…\s*$', src):
+    if re.search(r'\.\.\.|…\s*$', src_text):
         return []
-    # 格式/占位符行不检
-    if '<' in src or '<' in dst:
-        return []
-    dst_tail = dst.rstrip()
+    dst_tail = dst_text.rstrip()
     if not (dst_tail.endswith('……') or dst_tail.endswith('…')):
         return []
-    if len(dst) >= len(src) * TRUNC_MAX_DST_RATIO:
+    if len(dst_text) >= len(src_text) * TRUNC_MAX_DST_RATIO:
         return []
     return [{'code': 'TRUNC001', 'severity': 'WARNING',
              'detail': (f'译文以省略号中断且明显短于完整句源文 '
-                        f'(src={len(src)}字, dst={len(dst)}字)，疑似后半截断；'
-                        f'若是有意的欲言又止/毒舌省略请忽略'),
+                        f'(src={len(src_text)}字, dst={len(dst_text)}字，去标签后)，'
+                        f'疑似后半截断；若是有意的欲言又止/毒舌省略请忽略'),
              'expected': ''}]
 
 

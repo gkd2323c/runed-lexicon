@@ -194,6 +194,30 @@ def resolve_global_bans(contract: Dict) -> List[Dict]:
     return out
 
 
+def _target_tail_covered(dest: str, pos: int, f: str, target: str) -> bool:
+    """R13: forbidden 是 target 子串时，命中后紧跟 target 剩余部分即豁免。
+
+    允许剩余部分前隔省略号/空白——忠实还原 source 残缺形态（如 "Morning
+    Star..." → "晨星...月..日"）的译文不是裸译错误。间隔只认 "..."、"…"、
+    半角/全角空格，不认其他字符，所以 "晨星的光" 这类真裸用不受影响。
+    forbidden 不在 target 内时返回 False，调用方走原覆盖逻辑。
+    """
+    if not target or f not in target:
+        return False
+    for tp in _iter_matches(target, f):
+        tail = target[tp + len(f):]
+        if not tail:
+            return True  # forbidden 占 target 尾部：本就是规范形态的一部分
+        j = pos + len(f)
+        while dest.startswith('...', j) or dest.startswith('…', j):
+            j += 3 if dest.startswith('...', j) else 1
+        while j < len(dest) and dest[j] in (' ', '　'):
+            j += 1
+        if dest.startswith(tail, j):
+            return True
+    return False
+
+
 def find_global_ban_hits(source: str, dest: str, ban: Dict) -> List[str]:
     """Return forbidden variants of this ban that actually appear in dest,
     but only when the ban's English anchor appears in source.
@@ -211,6 +235,13 @@ def find_global_ban_hits(source: str, dest: str, ban: Dict) -> List[str]:
     canonical form. Root cause of 20 false TERM004 FAILs in Druadach-book
     (2026-09-08): month bans list the bare word as forbidden and the 带月 form
     as target, so target and forbidden matched the same text.
+
+    R13: forbidden 是 target 子串且命中后紧跟 target 剩余部分（允许间隔
+    "..."/"…"/空白，见 _target_tail_covered）时同样豁免——source 残缺形态
+    （如 "Morning Star..." 残缺日期）的忠实译文 "晨星...月" 不是裸译错误。
+    Root cause of 1 false TERM004 FAIL in Druadach-book xml-index:8530
+    (2026-09-08): "第十八..天：周一...，晨星...月..日" 的 "晨星" 被报，
+    而其后 "...月" 正是 target 剩余部分。
     """
     if not list(_iter_word_matches(source, ban['english'])):
         return []
@@ -226,6 +257,8 @@ def find_global_ban_hits(source: str, dest: str, ban: Dict) -> List[str]:
             covered = any(s <= p and p + len(f) <= e for s, e in target_spans)
             if covered:
                 continue  # part of the canonical form, not a bad variant
+            if target and _target_tail_covered(dest, p, f, target):
+                continue  # R13: 省略号/空白隔断的 target 剩余部分同样豁免
             hits.append(f)
             break  # one report per forbidden form (unchanged semantics)
     return hits

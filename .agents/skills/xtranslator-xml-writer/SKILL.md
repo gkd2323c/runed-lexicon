@@ -155,6 +155,16 @@ Prefer the exact current ranges documented in the MOD's `PROGRESS.md`. The write
 
 The XML writeback stage should not silently resolve translation uncertainty.
 
+Partial-batch writeback (`--skip-nonfinal`): when a batch legitimately contains a
+few units still awaiting review (e.g. long BOOK texts held for a second pass),
+`--skip-nonfinal` skips exactly those units instead of rejecting the whole run.
+Skipped units are listed in the report (`skipped_units` with file/unit/status +
+`skipped_count`) and never written; they must be resolved and written by a later
+generation. Without the flag the default stays strict-reject. R14 (2026-09-08):
+Druadach BOOK 15 files carried 8 REVIEW units; manual subset extraction produced
+430 TRANSLATED + 5 KEEP, and `--skip-nonfinal --check-only` on the original
+files reproduces exactly the same counts.
+
 ## Protected tokens
 
 The writer independently checks runtime-sensitive tokens such as:

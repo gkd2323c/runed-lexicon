@@ -131,14 +131,16 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
 2. **不扫描未翻译行**：dest == source（KEEP / 技术行）跳过。
 3. **与 TERM002 去重**：同一坏形态若同时被某已绑定 term 的 forbidden 命中，
    保留局部 TERM002（证据更丰富），不重复报 TERM004。
-4. **canonical 覆盖豁免（R12, v0.1.5）**：forbidden 中某形态是 target 的
+4. **canonical 覆盖豁免（R12, v0.1.5；R13, v0.1.7 补残缺形态）**：forbidden 中某形态是 target 的
    子串（月名条的标准形态：裸词 forbidden + 带月 target，如"晨星"⊂"晨星月"）
    时，其在 dest 中的出现若完整落在任一 target 出现区间内，视为 canonical
    形态的组成部分，不报；未被 target 覆盖的实例仍报——同单元混有裸译缺月
    （"晨星"无"月"）与正确"晨星月"时，裸错误照样拦得住。按区间豁免而非
    整单元豁免，避免误放真错误。修复 Druadach-book 24 条 TERM004 中 20 条
    月名 substring 假 FAIL（2026-09-08），回归用例见 corpus global-bans.json
-   010-013。
+   010-013。R13：forbidden 命中后紧跟 target 剩余部分（允许间隔 "..."/"…"/
+   空白）同样豁免——source 残缺形态（"Morning Star..." 残缺日期）的忠实译文
+   "晨星...月" 不是裸译错误（Druadach-book 8530，回归用例 014-015）。
 
 每处 TERM004 命中都带该条目的 `reason`，方便 Agent 判断是误报还是真回归。
 收录/维护边界见 GLOSSARY.md §7 与 `global-forbidden-words.json` 顶部 doc。
@@ -153,6 +155,12 @@ TRUNC001 检出“译文把后半句吞了”的候选：源文是完整长句�
 - dest 非空、dest != source（排 KEEP/未译）；
 - dest 以 …… 或 … 结尾；
 - len(dest) < len(source) × 0.62。
+
+富文本先 strip 标签再判定（R15, v0.1.7）：此前见 `<` 就整条跳过，导致 BOOK
+这类 HTML 信件/书籍的 11 条截断无一条被检出（Druadach-book 2026-09-08）。
+标签内省略号 strip 后自然消失不误报；纯标签行 strip 后为空仍被排除。
+长度与结尾判定一律用去标签后文本。回归用例见 source-fidelity-core.json
+trunc-html-006/007（另：selftest 此前从未调用 truncation_issue，已补上）。
 
 **定位为 WARNING 而非 FAIL**：中英长度差天然存在，且“毒舌省略”是合法风格（尼思这类角色），
 机械判定会误伤。每个 TRUNC001 需 Agent 对照完整 source 判断是真残缺（补全）还是风格省略（忽略）。
