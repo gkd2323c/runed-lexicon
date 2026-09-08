@@ -427,6 +427,17 @@ def count_occurrences(text: str, needle: str, case_sensitive: bool) -> int:
     return text.casefold().count(needle.casefold())
 
 
+def count_source_term(text: str, term: str, case_sensitive: bool) -> int:
+    """源句侧术语计数：英文词边界匹配，避免子串误判。
+
+    例：术语 'The Reach' 不应命中 "the Reachmen"，'Gur' 不应命中 "gurgling"。
+    ASCII 词边界（两侧非字母数字）对英文术语足够；中文目标侧不适用此函数。
+    """
+    flags = 0 if case_sensitive else re.IGNORECASE
+    pat = r"(?<![A-Za-z0-9])" + re.escape(term) + r"(?![A-Za-z0-9])"
+    return len(re.findall(pat, text, flags))
+
+
 def validate_translations(
     request: dict[str, Any],
     parsed: list[tuple[str, str, str]],
@@ -487,7 +498,7 @@ def validate_translations(
             term_source = term["source"]
             term_target = term["target"]
             case_sensitive = bool(term.get("case_sensitive", False))
-            source_count = count_occurrences(source, term_source, case_sensitive)
+            source_count = count_source_term(source, term_source, case_sensitive)
             if source_count == 0:
                 continue
             target_count = count_occurrences(translation, term_target, True)
