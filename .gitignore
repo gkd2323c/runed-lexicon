@@ -56,6 +56,9 @@ tools/term-rules/*.txt
 *.dll
 *.pdb
 
+# Local CLI configuration (settings, taste) must not ship with the repo.
+.commandcode/
+
 tools/Mutagen/
-_tmp/scripts/mutagen-export/bin/
-_tmp/scripts/mutagen-export/obj/
+.agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport/bin/
+.agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport/obj/

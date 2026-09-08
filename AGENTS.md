@@ -12,7 +12,7 @@
 
 当前已验证的主工作流：
 
-`ESP / ESM -> xTranslator XML + xEdit 结构上下文 -> Agent 上下文构建 -> 翻译与审校结果 -> 确定性 XML 写回 -> xTranslator 导回插件`
+`ESP / ESM -> xTranslator XML + 对话结构上下文（mutagen-dialogue-exporter，替代 xEdit）-> Agent 上下文构建 -> 翻译与审校结果 -> 确定性 XML 写回 -> xTranslator 导回插件`
 
 Agent 的职责是恢复并利用任务、角色、对话、物品、地点、书籍和世界观上下文，在保证 XML 可安全导回的前提下，产出自然、一致、符合 TES 风格的中文。逐句机械直译不属于完成状态。
 
