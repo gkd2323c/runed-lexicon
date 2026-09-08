@@ -19,8 +19,10 @@ Rules:
   KEEP / REVIEW is reported and skipped (use --overwrite to replace it).
 - A map key not present in the result is an error (default) — it means the map
   and the result disagree on batch scope.
-- Optional fields in a map entry (confidence / notes / terminology_decisions)
-  fall back to empty / [] when omitted; translation and status are required.
+- Optional fields in a map entry (confidence / notes / terminology_decisions /
+  waived_tokens) fall back to empty / [] when omitted; translation and status
+  are required. waived_tokens (R16: Agent-endorsed protected-token waivers)
+  is passed through to the result item for validator/gate consumption.
 - status must be one of TRANSLATED / KEEP / REVIEW; PENDING is not accepted from
   the map. KEEP items must have translation == source (validator enforces this
   later, but the filler warns now to catch it early).
@@ -152,6 +154,12 @@ def main() -> int:
         item["notes"] = entry.get("notes", "")
         td = entry.get("terminology_decisions")
         item["terminology_decisions"] = td if isinstance(td, list) else []
+        wt = entry.get("waived_tokens")
+        if wt is not None:
+            if not isinstance(wt, list) or any(not isinstance(w, str) for w in wt):
+                problems.append(f"map key {key!r}: waived_tokens must be an array of strings")
+                continue
+            item["waived_tokens"] = wt
         if status == "KEEP" and translation != item.get("source"):
             problems.append(
                 f"map key {key!r}: KEEP translation must equal source "

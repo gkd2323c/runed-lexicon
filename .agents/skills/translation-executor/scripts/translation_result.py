@@ -333,6 +333,31 @@ def validate_result(
         else:
             source_tokens = Counter(protected_tokens(str(xml.get("source", ""))))
             translated_tokens = Counter(protected_tokens(translation))
+            # R16: Agent 背书的 token 豁免。方括号动作/检定提示（如 [Show Ring]
+            # →[展示戒指]）按天际官方中文惯例中文化，机械 multiset 必然不等。
+            # result 条目可声明 "waived_tokens": ["[Show Ring]"]，校验时从两边
+            # 各减去；声明的 token 必须真实存在于 source 侧（防乱声明），
+            # 且每条豁免记一条 warning 供审计。无声明时行为与此前完全一致。
+            waived = item.get("waived_tokens") or []
+            if waived:
+                if not isinstance(waived, list) or any(not isinstance(w, str) for w in waived):
+                    errors.append(f"{unit_id}: waived_tokens must be an array of strings")
+                else:
+                    for w in waived:
+                        # 存在性按原文子串判定（不依赖提取正则：如 [1000 Gold]
+                        # 首字符数字、Mauloch's 撇号不在 BRACKET_TOKEN_RE 字符集内，
+                        # source 侧 Counter 无此 token，但 worker 侧提取认得，
+                        # 两边规则不一致时以原文子串为准）
+                        if w not in str(xml.get("source", "")):
+                            errors.append(f"{unit_id}: waived token not in source: {w!r}")
+                        else:
+                            source_tokens[w] -= 1
+                            translated_tokens[w] -= 1
+                            if source_tokens[w] <= 0:
+                                del source_tokens[w]
+                            if translated_tokens[w] <= 0:
+                                del translated_tokens[w]
+                            warnings.append(f"{unit_id}: waived protected token {w!r} (Agent 背书)")
             if source_tokens != translated_tokens:
                 errors.append(
                     f"{unit_id}: protected token mismatch; source={dict(source_tokens)}, translation={dict(translated_tokens)}"

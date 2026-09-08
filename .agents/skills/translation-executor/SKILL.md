@@ -114,6 +114,8 @@ The initializer extracts conservative runtime-sensitive tokens from each source,
 
 The validator compares their exact multisets before accepting a completed translation.
 
+Agent 背书豁免（R16, v0.2.0）：方括号动作/检定提示（如 `[Show Ring]`→`[展示戒指]`）按天际官方中文惯例中文化时，result 条目可声明 `"waived_tokens": ["[Show Ring]"]`；validator 校验声明真实存在于 source（按原文子串，不依赖提取正则字符集）后从两边 multiset 各减去，并记 warning 备查。gate 的 PLACEHOLDER001 联动此字段，不再重复拦。无声明时行为不变。
+
 If the extractor flags an ordinary piece of text as a protected token, preserve it and note the case for later tool refinement instead of silently deleting it.
 
 ## Fill a draft from a translation map

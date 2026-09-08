@@ -4,7 +4,10 @@ description: Export deterministic Skyrim dialogue context from an original ESP/E
 compatibility: Requires Windows, Python 3.10+, xEdit under tools/xEdit, and an installed Skyrim Special Edition Data directory containing the target plugin's masters. Uses xEdit in command-line Script mode and never modifies the source plugin.
 metadata:
   version: "0.5.0"
+  status: "已退役 2026-09-08，由 Mutagen 导出器接替（见下）"
 ---
+
+> **退役说明（2026-09-08）**：xEdit 命令行模式导出在 Druadach 上超时（>10 分钟无完成标记），且首次缓存构建极慢。已改用 Mutagen（C# 库，tools/Mutagen 克隆 + .agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport）以 overlay 模式解析插件：Druadach.esm 全量 DIAL→INFO 导出仅 **1.3 秒**（5235 DIAL / 8089 INFO，含 speaker 解析、prompt、responses、conditions），与 xTranslator 的 INFO EDID 连接率 99.2%。产物规范：`.work/<plugin>-mutagen-dialogue.json`。下文保留作为历史参考与兑备。
 
 # xEdit Context Exporter
 

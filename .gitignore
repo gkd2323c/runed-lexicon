@@ -55,3 +55,7 @@ tools/term-rules/*.txt
 *.exe
 *.dll
 *.pdb
+
+tools/Mutagen/
+_tmp/scripts/mutagen-export/bin/
+_tmp/scripts/mutagen-export/obj/

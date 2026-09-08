@@ -60,7 +60,7 @@ python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
 | TERM004 | 全局禁用词（项目级） | dest 含 global_bans 中某条 `forbidden` 形态，且 source 整词出现该条 `english` 锚点（对每个已翻译单元独立执行，无需 unit binding）；detail 携带 reason |
 | KEEP002 | 全局 KEEP 被翻译 | 一个 global_keep 英文值在 source 整词出现、dest 却 != 该值 |
 | KEEP001 | KEEP modified | a KEEP-list source value was translated |
-| PLACEHOLDER001 | protected token lost | a protected token present in source is absent/altered in dest |
+| PLACEHOLDER001 | protected token lost | a protected token present in source is absent/altered in dest（R16 联动 executor 的 `waived_tokens` 背书：Agent 已背书的方括号中文化不拦） |
 | CHAR001 | non-simplified chars | vendored zh-cn conversion table: flagged iff convert(dest,'zh-cn') != dest (reports concrete diff chars; filters out context-sensitivity false positives — see R11 fix, v0.1.4; table vendored in-repo since v0.1.6) |
 | TRUNC001 | truncated translation (WARNING) | 源文是完整长句（≥55 字符、不以省略号收尾），译文却以 ……/… 中断且短于源文 62%——疑似翻译时把后半句砍掉带过。**WARNING**：可能是真残缺，也可能是角色“欲言又止/毒舌省略”的合法风格，需 Agent 对照 source 人审消解，不阻断写回 |
 | XML001 | identity drift | xml_index block's Source/EDID/REC mismatch (pre-writeback, when `--xml` given) |

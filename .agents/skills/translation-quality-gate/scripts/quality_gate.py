@@ -219,12 +219,17 @@ def keep_issue(unit: dict, keep_list: list) -> list:
 
 
 def placeholder_issue(unit: dict, protected: list) -> list:
-    """PLACEHOLDER001: every protected token in source must appear unchanged in dest."""
+    """PLACEHOLDER001: every protected token in source must appear unchanged in dest.
+
+    R16 联动：result 条目声明 waived_tokens（Agent 背书的方括号中文化，如
+    [Show Ring]→[展示戒指]）时，跳过对应 token。executor validate 已校验声明
+    真实存在且记 warning 备查，gate 此处不再重复拦。"""
     src = unit.get('source') or ''
     dst = unit.get('translation') or unit.get('original_dest') or ''
+    waived = unit.get('waived_tokens') or []
     issues = []
     for tok in protected or []:
-        if tok in src and tok not in dst:
+        if tok in src and tok not in dst and tok not in waived:
             issues.append({'code': 'PLACEHOLDER001', 'severity': 'FAIL',
                            'detail': f'占位符缺失: {tok!r}', 'expected': tok})
     return issues

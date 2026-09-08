@@ -1,0 +1,226 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Mutagen.Bethesda.Kernel</name>
+    </assembly>
+    <members>
+        <member name="T:Mutagen.Bethesda.GameCategory">
+            <summary>
+            Game categories that generally have similar or the same formats
+            </summary>
+        </member>
+        <member name="T:Mutagen.Bethesda.GameRelease">
+            <summary>
+            Specific game releases
+            </summary>
+        </member>
+        <member name="P:Mutagen.Bethesda.Plugins.IModKeyed.ModKey">
+            <summary>
+            The associated ModKey
+            </summary>
+        </member>
+        <member name="T:Mutagen.Bethesda.Plugins.ModKey">
+            <summary>
+            ModKey represents a unique identifier for a mod.  
+            
+            The proper factory format is: [ModName].es[p/m], depending on whether it is a master file or not.
+            
+            A correct ModKey is very important if a mod's contents will ever be added to another mod (as an override).
+            Otherwise, records will become mis-linked.  The ModKey should typically be the name that the mod intends to be exported
+            to disk with.  If a mod is not going to be exported, then any unique name is sufficient.
+            
+            General practice is to use ModKey.TryFactory on a mod's file name when at all possible
+            </summary>
+        </member>
+        <member name="F:Mutagen.Bethesda.Plugins.ModKey.Null">
+            <summary>
+            A static readonly singleton representing a null ModKey
+            </summary>
+        </member>
+        <member name="P:Mutagen.Bethesda.Plugins.ModKey.Name">
+            <summary>
+            Mod name
+            </summary>
+        </member>
+        <member name="P:Mutagen.Bethesda.Plugins.ModKey.Type">
+            <summary>
+            Mod type
+            </summary>
+        </member>
+        <member name="P:Mutagen.Bethesda.Plugins.ModKey.FileName">
+            <summary>
+            Convenience accessor to get the appropriate file name
+            </summary>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.#ctor(System.String,Mutagen.Bethesda.Plugins.ModType)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="name">Name of mod</param>
+            <param name="type">Type of mod</param>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.Equals(Mutagen.Bethesda.Plugins.ModKey)">
+            <summary>
+            ModKey equality operator
+            Name is compared ignoring case
+            </summary>
+            <param name="other">ModKey to compare to</param>
+            <returns>True equal Name and Master value</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.Equals(System.Object)">
+            <summary>
+            Default equality operator
+            Name is compared ignoring case
+            </summary>
+            <param name="obj">object to compare to</param>
+            <returns>True if ModKey with equal Name and Master value</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.GetHashCode">
+            <summary>
+            Hashcode retrieved from upper case Name and Master values.
+            </summary>
+            <returns>Hashcode retrieved from upper case Name and Master values.</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.ToString">
+            <summary>
+            Converts to a string: MyMod.esp
+            </summary>
+            <returns>String representation of ModKey</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.TryFromNameAndExtension(System.ReadOnlySpan{System.Char},Mutagen.Bethesda.Plugins.ModKey@,System.String@)">
+            <summary>
+            Attempts to construct a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="str">String to parse</param>
+            <param name="modKey">ModKey if successfully converted</param>
+            <param name="errorReason">Reason for a failed conversion</param>
+            <returns>True if conversion successful</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.TryFromNameAndExtension(System.String,Mutagen.Bethesda.Plugins.ModKey@,System.String@)">
+            <summary>
+            Attempts to construct a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="str">String to parse</param>
+            <param name="modKey">ModKey if successfully converted</param>
+            <param name="errorReason">Reason for a failed conversion</param>
+            <returns>True if conversion successful</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.TryFromNameAndExtension(System.ReadOnlySpan{System.Char},Mutagen.Bethesda.Plugins.ModKey@)">
+            <summary>
+            Attempts to construct a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="str">String to parse</param>
+            <param name="modKey">ModKey if successfully converted</param>
+            <returns>True if conversion successful</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.TryFromNameAndExtension(System.String,Mutagen.Bethesda.Plugins.ModKey@)">
+            <summary>
+            Attempts to construct a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="str">String to parse</param>
+            <param name="modKey">ModKey if successfully converted</param>
+            <returns>True if conversion successful</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.TryFromNameAndExtension(System.ReadOnlySpan{System.Char})">
+            <summary>
+            Attempts to construct a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="str">String to parse</param>
+            <returns>True if conversion successful</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.TryFromNameAndExtension(System.String)">
+            <summary>
+            Attempts to construct a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="str">String to parse</param>
+            <returns>True if conversion successful</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.TryFromFileName(System.Nullable{Noggog.FileName},Mutagen.Bethesda.Plugins.ModKey@,System.String@)">
+            <summary>
+            Attempts to construct a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="fileName">FileName to parse</param>
+            <param name="modKey">ModKey if successfully converted</param>
+            <param name="errorReason">Reason for a failed conversion</param>
+            <returns>True if conversion successful</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.TryFromFileName(System.Nullable{Noggog.FileName},Mutagen.Bethesda.Plugins.ModKey@)">
+            <summary>
+            Attempts to construct a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="fileName">FileName to parse</param>
+            <param name="modKey">ModKey if successfully converted</param>
+            <returns>True if conversion successful</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.TryFromFileName(System.Nullable{Noggog.FileName})">
+            <summary>
+            Attempts to construct a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="fileName">FileName to parse</param>
+            <returns>True if conversion successful</returns>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.FromNameAndExtension(System.ReadOnlySpan{System.Char})">
+            <summary>
+            Constructs a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="str">String to parse</param>
+            <returns>Converted ModKey</returns>
+            <exception cref="T:System.ArgumentException">If string malformed</exception>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModKey.FromFileName(Noggog.FileName)">
+            <summary>
+            Constructs a ModKey from a string:
+              ModName.esp
+            </summary>
+            <param name="fileName">FileName to parse</param>
+            <returns>Converted ModKey</returns>
+            <exception cref="T:System.ArgumentException">If string malformed</exception>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModPath.#ctor(Noggog.FilePath)">
+            <summary>
+            Constructs a ModPath from a string
+            </summary>
+            <param name="path">FilePath to convert from</param>
+            <exception cref="T:System.ArgumentException">Throws if path file name was not convertable to a ModKey</exception>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModPath.#ctor(System.String)">
+            <summary>
+            Constructs a ModPath from a string
+            </summary>
+            <param name="path">String to convert from</param>
+            <exception cref="T:System.ArgumentException">Throws if path file name was not convertable to a ModKey</exception>
+        </member>
+        <member name="M:Mutagen.Bethesda.Plugins.ModPath.FromPath(Noggog.FilePath)">
+            <summary>
+            Constructs a ModPath from a string
+            </summary>
+            <param name="path">String to convert from</param>
+            <exception cref="T:System.ArgumentException">Throws if path file name was not convertable to a ModKey</exception>
+        </member>
+        <member name="F:Mutagen.Bethesda.Plugins.ModType.Master">
+            <summary>
+            .esm
+            </summary>
+        </member>
+        <member name="F:Mutagen.Bethesda.Plugins.ModType.Light">
+            <summary>
+            .esl
+            </summary>
+        </member>
+        <member name="F:Mutagen.Bethesda.Plugins.ModType.Plugin">
+            <summary>
+            .esp
+            </summary>
+        </member>
+    </members>
+</doc>

@@ -117,6 +117,9 @@ def load_patch(
     expected_dest is a compare-and-swap guard: it must match the XML's current
     Dest exactly, otherwise the patch is rejected (stale baseline or wrong index).
     Optional keys "source", "edid", "rec" get the same CAS treatment when present.
+    Optional key "waived_tokens" (R16): Agent-endorsed token waivers, same
+    semantics as translation-executor (verified against source substring,
+    subtracted from both multisets).
     """
     try:
         value = json.loads(path.read_text(encoding="utf-8-sig"))
@@ -163,6 +166,19 @@ def load_patch(
 
         source_tokens = Counter(protected_tokens(cas_checks["source"]))
         translation_tokens = Counter(protected_tokens(translation))
+        waived = entry.get("waived_tokens") or []
+        if waived:
+            if not isinstance(waived, list) or any(not isinstance(w, str) for w in waived):
+                raise WritebackError(f"{label}: waived_tokens must be an array of strings")
+            for w in waived:
+                if w not in cas_checks["source"]:
+                    raise WritebackError(f"{label}: waived token not in source: {w!r}")
+                source_tokens[w] -= 1
+                translation_tokens[w] -= 1
+                if source_tokens[w] <= 0:
+                    del source_tokens[w]
+                if translation_tokens[w] <= 0:
+                    del translation_tokens[w]
         if source_tokens != translation_tokens:
             raise WritebackError(
                 f"{label}: protected token mismatch; "
