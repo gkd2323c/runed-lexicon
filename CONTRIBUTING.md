@@ -20,6 +20,22 @@
 
 修改后至少执行 skill-creator 的环境 preflight 和 quick validation；环境存在 `skills-ref` 时再运行对应 validate。不要为了一个小需求另写临时脚本复制现有 Skill 的能力。
 
+## 推送前本地复刻 CI
+
+CI（`.github/workflows/ci.yml`）跑失败才发现问题太贵：推送前先在本地跑
+
+```bash
+python tools/pre-push-check.py
+```
+
+它按相同顺序复刻 CI 的三步（unittest discover、standalone 回归脚本、全 skill quick validation），5 秒左右出结果，失败即 exit 1。想让每次 `git push` 自动执行，安装一次 pre-push hook（`.git/hooks` 不随仓库发布，每台机器 clone 后装一次）：
+
+```bash
+python tools/pre-push-check.py --install-hook
+```
+
+改 CI 时同步改这个脚本，改脚本时同步检查 CI，两边步骤必须一致。
+
 ## 翻译相关变更
 
 - 语义判断与工程验证分开说明。
