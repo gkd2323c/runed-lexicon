@@ -1,7 +1,7 @@
 ---
 name: local-model-translator
 description: Use a local Ollama translation model such as Hy-MT2 as a constrained base-translation worker inside the Skyrim MOD localization pipeline. Use this skill whenever an Agent has already understood the quest/dialogue/book context and wants the local model to translate prepared English strings into Chinese, especially for batch translation with fixed terminology, protected placeholders, deterministic IDs, or a 32K local context window. The high-level Agent remains responsible for semantics, spoiler boundaries, terminology decisions, and review; this skill only delegates the basic translation pass and validates the worker output before it can enter translation-executor results.
-compatibility: Requires Python 3.10+ and a reachable Ollama HTTP API. Uses only the Python standard library. The current tested local convention is hy-mt2-32k:latest with num_ctx=32768 and temperature=0. This skill never writes xTranslator XML.
+compatibility: Requires Python 3.10+ and a reachable Ollama HTTP API. Optional dependency opencc (pip install opencc) enables the simplified-Chinese gate; without it the gate degrades to a no-op. The current tested local convention is hy-mt2-32k:latest with num_ctx=32768 and temperature=0. This skill never writes xTranslator XML.
 metadata:
   version: "0.2.0"
 ---
@@ -287,9 +287,15 @@ These are workflow failures even when the local model output looks fluent.
 
 For concrete examples from the expanded Sirenroot test, including terminology drift, ancient-word overtranslation, context-carried identity loss, ambiguity over-resolution, relation changes, and broken-speech smoothing, read `references/real-mod-evaluation.md` when tuning this worker or deciding whether more automation is safe.
 
+## Ollama 运行时事实（环境常态，非故障）
+
+- **模型闲置会自动从显存卸载**：Ollama 长时间未被调用时会把模型从 VRAM 卸载以释放资源。这是预期行为，不是错误、不需要修复。再次调用时会自动重新加载模型，首请求延迟变高属正常，不是故障。
+- 闲置卸载的典型表现是请求变慢或首请求超时；`WinError 10061 / 无法连接` 则是服务进程不在线的信号。两者要区分：**先确认服务进程是否存活（如 `Get-Process ollama` 或 GET /api/tags），再决定是否重启服务**；仅仅因模型卸载就重启 `ollama serve` 属于多余动作。
+- 遇到超时/慢首请求时，直接重试或补一次热身请求即可，不要臆断服务挂了。
+
 ## Failure handling
 
-If Ollama cannot be reached, report the connection failure clearly. Do not fall back to an unrelated cloud model without user direction.
+If Ollama cannot be reached, report the connection failure clearly. Do not fall back to an unrelated cloud model without user direction. 区分环境常态与真故障：模型闲置卸载（自动重载，首请求变慢）不是连接失败，只有进程不响应 / API 拒绝连接才算（见上节）。
 
 If the configured model is missing, report the requested model name. Do not download or pull a model automatically.
 

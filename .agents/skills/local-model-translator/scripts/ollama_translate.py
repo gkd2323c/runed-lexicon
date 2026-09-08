@@ -14,6 +14,18 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+try:  # 繁简门禁依赖 opencc（比 zhconv 字表完整，含异体字）；未安装时降级为不检查（不阻断主流程）
+    from opencc import OpenCC as _OpenCC
+
+    _S2T_CC = _OpenCC("t2s")
+
+    def s2s_check(text: str) -> str:
+        return _S2T_CC.convert(text)
+
+except ImportError:
+    def s2s_check(text: str) -> str:  # type: ignore[misc]
+        return text
+
 
 SCHEMA_VERSION = 1
 DEFAULT_MODEL = "hy-mt2-32k:latest"
@@ -292,6 +304,7 @@ def render_prompt(request: dict[str, Any]) -> str:
             "8. Preserve every NARRATIVE LITERAL assigned to the request or item exactly when it occurs in that source item.",
             "9. Include every REQUIRED TARGET PHRASE assigned to an item. The high-level Agent has already decided that Chinese needs to make that context-carried meaning explicit.",
             "10. Return translation lines only. No explanation, Markdown, commentary, headings, or code fences.",
+            "11. Output Simplified Chinese only. Never use Traditional Chinese characters or variants (e.g. 这 not 這, 个 not 個, 么 not 麼, 里 not 裡/裏, 后 not 後, 帐/账 not 帳).",
             "\nITEM REQUIREMENTS:",
         ]
     )
@@ -500,6 +513,15 @@ def validate_translations(
         for phrase in item.get("required_phrases", []):
             if phrase not in translation:
                 errors.append(f"[{item_id}] required target phrase missing: {phrase!r}")
+
+        # 繁简门禁：译文必须是简体中文（worker 偶发繁体字形，源头拦截避免 gate CHAR001 事后返工）
+        if translation:
+            simplified = s2s_check(translation)
+            if simplified != translation:
+                trad_chars = sorted({orig for orig, simp in zip(translation, simplified) if orig != simp})
+                errors.append(
+                    f"[{item_id}] traditional/unsimplified chars: {trad_chars[:8]}"
+                )
 
     if done_reason and done_reason != "stop":
         warnings.append(f"Ollama done_reason={done_reason!r}, expected 'stop'")
