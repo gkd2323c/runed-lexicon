@@ -77,7 +77,7 @@ Agent 在任何环节输出的文件，语义、角色、路径三者必须确�
 
 - **阶段 0：环境与跨 MOD 契约准备**
 
-  读取根目录 `GLOBAL.md` 与 `GLOSSARY.md`。调用 `term-contract-compiler` 编译全局禁用词与跨 MOD 既定决策，形成当前工程的基础规则底座。
+  读取根目录 `GLOBAL.md` 与 `GLOSSARY.md`。调用 `term-contract-compiler` 编译全局禁用词与跨 MOD 既定决策，作为当前工程的基础规则。
 
 - **阶段 1：MOD 局部对齐与门禁核验**
 
