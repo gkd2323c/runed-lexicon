@@ -47,7 +47,10 @@ py -3 .../fantasy_audit.py --xml ... --limit 200 --json
 
 ## 模型要求与已知边界
 
-- 必须支持 `think: false` 参数且走 `/api/generate`（chat 接口不吃 think 参数，输出会空）。
+- 走 `/api/chat` + system/user 模板（世界观锚点在 system，句子在 user）。
+- **必须 `think: false` 且放顶层参数**——放 `options` 里会被忽略导致输出全空
+  （实测教训 2026-09-08：chat+options.think 全空；chat+顶层 think 正常；
+  generate+think 也正常但无 system/user 结构，已弃）。
 - minicpm5:1b 判别力不足（55% 接近随机），不要用。
 - 边界误报（接受，人眼秒放）：报告文书类（「写个报告」）、现实古国引用（「罗马」）。
 - 边界漏报（低频，词表可兜）：「希腊神话」类（神话在奇幻有对应概念会迷惑模型）。
@@ -58,12 +61,12 @@ py -3 .../fantasy_audit.py --xml ... --limit 200 --json
 
 ## 与其它工具的分工
 
-| 工具 | 层 | 抓什么 |
-| --- | --- | --- |
-| translation-quality-gate TERM004 | 词形 | unconditional 禁词（世界观荒谬词 719 条） |
-| hardfix-triage | 规则 | 术语禁形/丢否定/空译/英文残留 + ANACHRONISM 候选 |
-| **本工具** | 语义 | 词表外的现代/现实语义出戏句子 |
-| 词表同形误报（夜总会/西藏） | — | 语义层正确放行（两套互补，实测验证） |
+| 工具                             | 层   | 抓什么                                           |
+| -------------------------------- | ---- | ------------------------------------------------ |
+| translation-quality-gate TERM004 | 词形 | unconditional 禁词（世界观荒谬词 719 条）        |
+| hardfix-triage                   | 规则 | 术语禁形/丢否定/空译/英文残留 + ANACHRONISM 候选 |
+| **本工具**                       | 语义 | 词表外的现代/现实语义出戏句子                    |
+| 词表同形误报（夜总会/西藏）      | —    | 语义层正确放行（两套互补，实测验证）             |
 
 ## 安全边界
 

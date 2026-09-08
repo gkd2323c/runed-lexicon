@@ -63,14 +63,21 @@ def save_cache(path, cache):
 
 
 def ask(text: str, model: str, host: str, timeout: int = 300) -> str:
-    payload = {'model': model, 'prompt': PREFIX + '\n句子：' + text,
-               'stream': False, 'think': False,
+    """system/user 模板调用 /api/chat；think:false 必须放顶层（放 options 会输出空）。"""
+    payload = {'model': model,
+               'messages': [
+                   {'role': 'system', 'content': PREFIX},
+                   {'role': 'user', 'content': text},
+               ],
+               'stream': False,
+               'think': False,
                'options': {'temperature': 0, 'num_predict': 10}}
-    req = urllib.request.Request(host + '/api/generate',
+    req = urllib.request.Request(host + '/api/chat',
                                  data=json.dumps(payload).encode('utf-8'),
                                  headers={'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=timeout) as r:
-        return (json.loads(r.read().decode()).get('response') or '').strip()
+        msg = json.loads(r.read().decode()).get('message', {})
+        return (msg.get('content') or '').strip()
 
 
 def audit(texts: list[str], model: str, host: str, cache: dict) -> list[dict]:
