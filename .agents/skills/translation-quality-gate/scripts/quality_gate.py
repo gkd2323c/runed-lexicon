@@ -183,11 +183,15 @@ def global_ban_issue(source: str, dest: str, bans: list) -> list:
         eng = ban['english']
         for f in find_global_ban_hits(source, dest, ban):
             reason = ban.get('reason') or '项目级禁用词'
+            category = ban.get('category') or ''
+            # pollution-agent（翻译/Agent 污染词）是事故信号：模型把系统提示/元数据翻进译文
+            prefix = '[事故级] ' if category == 'pollution-agent' else ''
             out.append({'code': 'TERM004', 'severity': 'FAIL',
                         'term_id': 'global.' + _slug(eng),
-                        'detail': f'全局禁用词 {f!r}（{eng}）出现: {reason}',
+                        'detail': f'{prefix}全局禁用词 {f!r}（{eng}）出现: {reason}',
                         'expected': ban.get('target') or f'不含 {f!r}',
-                        'variant': f})
+                        'variant': f,
+                        'category': category})
     return out
 
 
