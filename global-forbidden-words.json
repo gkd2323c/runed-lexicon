@@ -369,10 +369,12 @@
     {
       "english": "Orsinium",
       "forbidden": [
+        "奥西尼姆",
+        "奥辛纽姆",
         "沃斯卡里姆"
       ],
-      "target": "奥辛纽姆",
-      "reason": "官方词典：兽人城邦；沃斯卡里姆系与沃斯加混淆（meresis DICTIONARY 严禁清单）",
+      "target": "奥辛尼姆",
+      "reason": "兽人城邦名：terms.json 裁决奥辛尼姆（官方词典无词条取通用音译）；禁奥西尼姆（社区旧形）、奥辛纽姆、沃斯卡里姆（与沃斯加混淆）",
       "category": "lore-name"
     },
     {
