@@ -1,7 +1,7 @@
 ---
 name: mutagen-dialogue-exporter
-description: Export deterministic DIAL→INFO dialogue structure from an original Skyrim ESP/ESM/ESL with Mutagen (.NET overlay parsing) in seconds, including topic/quest/branch links, per-INFO speaker (NPC name resolved via load-order link cache), prompts, response texts and condition function/runOn evidence. Replaces xedit-context-exporter (xEdit CLI is >10min or hangs; Mutagen parses Druadach.esm in ~1.3s). Use when INFO lines need their real DIAL topic / quest line attribution, when building task-line dialogue batches, or whenever plugin-grounded dialogue structure is needed without the xEdit GUI.
-compatibility: Requires Windows, .NET SDK 9+ (net9.0 build), the Mutagen repo cloned at tools/Mutagen (gitignored), and the target plugin's masters present in the installed Skyrim SE Data directory. Read-only: overlay parsing never modifies the plugin.
+description: "Export deterministic DIAL→INFO dialogue structure from an original Skyrim ESP/ESM/ESL with Mutagen (.NET overlay parsing) in seconds, including topic/quest/branch links, per-INFO speaker (NPC name resolved via load-order link cache), prompts, response texts and condition function/runOn evidence. Replaces xedit-context-exporter (xEdit CLI takes over 10min or hangs; Mutagen parses Druadach.esm in ~1.3s). Use when INFO lines need their real DIAL topic / quest line attribution, when building task-line dialogue batches, or whenever plugin-grounded dialogue structure is needed without the xEdit GUI."
+compatibility: "Requires Windows, .NET SDK 9+ (net9.0 build), the Mutagen repo cloned at tools/Mutagen (gitignored), and the target plugin's masters present in the installed Skyrim SE Data directory. Read-only: overlay parsing never modifies the plugin."
 metadata:
   version: "0.1.0"
 ---
