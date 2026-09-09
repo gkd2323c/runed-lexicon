@@ -426,9 +426,10 @@ def audit_rows(rows, evidence, enabled_keys, optional_keys,
         return False
 
     for row in rows:
-        # rows explicitly marked KEEP in result JSON are intentional; skip them
-        if (row.get('status') or '') == 'KEEP':
-            continue
+        # KEEP 行不是免检牌：KEEP 断言「最终 Dest == Source」。若 Source 含官方专名
+        # 而 Dest 就是原文，这同样是「官方名缺失」候选（可能是合法的内部技术名，
+        # 也可能是误判 KEEP）。结果带 keep_row 标记，交 Agent 裁决，不静默跳过。
+        keep_row = (row.get('status') or '') == 'KEEP'
         src = row.get('source') or ''
         dst = row.get('dest') or ''
         if not src:
@@ -482,6 +483,7 @@ def audit_rows(rows, evidence, enabled_keys, optional_keys,
                     'source': src,
                     'dest': dst,
                     'status': row.get('status') or '',
+                    'keep_row': keep_row,
                     'matched_term': key,
                     'official_translation': zh,
                     'confidence': conf,
@@ -643,11 +645,13 @@ def main():
     flags, checked = audit_rows(rows, evidence, enabled_keys, optional_keys,
                                 only_entity=args.entity, include_single=args.include_single,
                                 semantic_by_member=fam_by_member)
-    print(f'entity checks: {checked}; CHECK candidates: {len(flags)}', flush=True)
+    print(f'entity checks: {checked}; CHECK candidates: {len(flags)} '
+          f'({sum(1 for f in flags if f.get('keep_row'))} from KEEP rows)', flush=True)
     shown = flags if not args.limit else flags[:args.limit]
     for f in shown:
         print('=' * 70)
-        print(f"[{f['xml_index']}][{f.get('rec') or ''}][{f.get('edid') or ''}][{f.get('confidence')}] "
+        tag = ' KEEP-ROW' if f.get('keep_row') else ''
+        print(f"[{f['xml_index']}][{f.get('rec') or ''}][{f.get('edid') or ''}][{f.get('confidence')}{tag}] "
               f"{f['matched_term']} -> 官方: {'/'.join(f['official_translation'])}")
         print(f"  SRC: {f['source'][:160]!r}")
         print(f"  DST: {f['dest'][:160]!r}")

@@ -17,6 +17,7 @@ metadata:
 - `term-contract-compiler`：把 `DICTIONARY.md` / `GLOSSARY.md` 编译成机器契约（`terms` 段）。
 - `translation-quality-gate`：消费契约 + unit bindings 做写回前机械门禁。
 - `xtranslator-xml-writer`：确定性写回 XML。
+- `noun-consistency-scan`（名词一致性扫描，收口补充）：扫翻译成品 XML，报同 Source 多 Dest 分裂组（物品/地点/任务名等名词型记录），批次收尾或名词收敛前可跑 A 池验证同源同译，分片供子代理判读。
 
 ## 开工前置步骤（按顺序）
 
@@ -28,7 +29,8 @@ metadata:
 6. **生成 unit bindings**：对无歧义的官方 REQUIRED 词做逐 unit 绑定；对 `Blades` / `Companions` / `Dwemer` / `Falmer` / `Jarl` / `Thane` / `Dragonborn` 等 alias / 剧透边界词，只对 Agent 人工确认过的 unit 显式绑定；合法回指省略显式标 `required: false`。
 7. **写回前跑 translation-quality-gate**：每个 translation-result JSON 必须 PASS（TERM001 / TERM002 / TERM003 / TERM004 / KEEP001 / KEEP002 / PLACEHOLDER001 / CHAR001 / XML001 零 FAIL），通过后才允许确定性 XML 写回。TERM004 来自契约内的 `global_bans`：对每个已翻译单元独立扫描项目级坏形态（source 英文锚点 + dest 坏形态），无论该行是否带 binding。门禁只验证声明过的绑定 + 全局词库，不代替语义判断。
 8. **写回后再跑一次 dictionary-noun-audit**：对新生成的 translated XML 复扫，确认上一轮候选已消失、没有新引入的漏项。工具能发现契约 / 绑定覆盖不到的未声明遗漏，与 gate 互补。
-9. **PASS 声明口径**：报告中写"契约绑定检查 PASS""dictionary-noun-audit 复扫 CHECK 候选已消解"或"本轮已确认实体收敛"，不写"全 MOD 官方术语 0 违规"，除非检查集合确实由 `dictionary/` + MOD Source 自动形成并覆盖全部绑定项。
+9. **收敛前跑启发式种子扩散扫描（开集发现）**：规则工具（audit / gate / noun-consistency-scan）是闭集检查，只覆盖已登记词与已定义模式；未登记词族、对白称呼变体、词根家族发散不在其视野，规则零命中不等于收敛。声明名词收敛前，必须以启发式种子扩散（分块读译文找专名种子 → 同英文锚全文检索 → 中文形态归组 → 主会话裁决真漂移 / 合法分层）覆盖一遍，方法与派单协议见 `noun-consistency-scan` SKILL「Rule scans are closed sets」节与 `hana-subagent-ops` SKILL 种子发现器角色。对白行（INFO/DIAL）是漂移高发区，必须在启发式覆盖范围内。
+10. **PASS 声明口径**：报告中写"契约绑定检查 PASS""dictionary-noun-audit 复扫 CHECK 候选已消解"或"本轮已确认实体收敛"，不写"全 MOD 官方术语 0 违规"，除非检查集合确实由 `dictionary/` + MOD Source 自动形成并覆盖全部绑定项。"实体收敛 / 名词收敛"类声明必须同时基于规则扫描 PASS + 启发式种子扩散扫描裁决完毕，缺一不得声明。
 
 ## 已知工具行为注意
 

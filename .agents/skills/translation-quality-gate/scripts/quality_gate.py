@@ -30,12 +30,12 @@ from pathlib import Path
 try:
     from term_match import (resolve_bindings, check_unit, match_required_present,
                             find_forbidden_hits, resolve_global_bans, find_global_ban_hits,
-                            find_global_keep_hits, CONTRACT_GLOBAL_BANS_KEY,
+                            find_global_keep_hits, cross_target_covered, CONTRACT_GLOBAL_BANS_KEY,
                             CONTRACT_GLOBAL_KEEP_KEY)
 except Exception:  # allow running from another cwd
     from .term_match import (resolve_bindings, check_unit, match_required_present,
                              find_forbidden_hits, resolve_global_bans, find_global_ban_hits,
-                             find_global_keep_hits, CONTRACT_GLOBAL_BANS_KEY,
+                             find_global_keep_hits, cross_target_covered, CONTRACT_GLOBAL_BANS_KEY,
                              CONTRACT_GLOBAL_KEEP_KEY)
 
 # CHAR001 uses the vendored zh-cn conversion table (scripts/zh_cn_conv.json);
@@ -181,7 +181,24 @@ def global_ban_issue(source: str, dest: str, bans: list) -> list:
     out = []
     for ban in bans:
         eng = ban['english']
+        # 廉价预筛：该 ban 的坏形态一个都不在 dest 里时，本条不可能命中，
+        # 直接跳过 find_global_ban_hits 的英文锚点正则与跨条豁免开销。
+        # 实测这层过滤把 849 bans × 20634 units 的调用量降了一个量级。
+        # 用显式循环而非 any(genexpr)：生成器帧开销在 3500 万次量级上很可观。
+        forbidden = ban['forbidden']
+        hit = False
+        for f in forbidden:
+            if f in dest:
+                hit = True
+                break
+        if not hit:
+            continue
         for f in find_global_ban_hits(source, dest, ban):
+            # 跨条 target/forbidden 交叉豁免：某形态是另一条 ban 的合法 target（且源文含
+            # 该条锚点）时，本条命中是误报（例：Bosmer 条的 target 波斯莫 同时是
+            # Wood Elf 条的 forbidden——源文 Bosmer 时译波斯莫合法）。
+            if cross_target_covered(source, dest, f, bans, eng):
+                continue
             reason = ban.get('reason') or '项目级禁用词'
             category = ban.get('category') or ''
             # pollution-agent（翻译/Agent 污染词）是事故信号：模型把系统提示/元数据翻进译文

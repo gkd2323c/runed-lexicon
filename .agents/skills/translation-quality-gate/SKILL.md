@@ -6,7 +6,16 @@ metadata:
   version: "0.1.6"
 ---
 
-> 性能基线（见 `skyrim-tool-dev-rules` §2；MVF1 规模 8555 单元 / 9402 节点，含 XML 预检 + auto-bind）：0.89s。回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复。
+> 性能基线（见 `skyrim-tool-dev-rules` §2）：
+> - MVF1 规模（8555 单元 / 9402 节点，含 XML 预检 + auto-bind）：**0.89s**
+> - Druadach 规模（20634 单元 / 849 条全局禁词，auto-bind）：**4.1s**（2026-09-09 优化后；优化前 26.7s）
+>
+> 回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复。
+>
+> 已内建的三层预筛（改动匹配逻辑时不得回退）：
+> 1. 正则缓存：`_compiled_literal` / `_compiled_word` / `_strip_html_tags_cached`（原实现对每个 unit × 每个 term 重新 `re.compile`，实测 2200 万次）
+> 2. 字面预筛：`find_source_hits` / `_iter_word_matches` 在进正则前先用 `in` 检查锚点
+> 3. ban 层预筛：`global_ban_issue` 先查 forbidden 是否出现在 dest，再调 `find_global_ban_hits`
 
 # Translation Quality Gate
 

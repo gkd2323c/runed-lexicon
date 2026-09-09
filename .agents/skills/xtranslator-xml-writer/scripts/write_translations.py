@@ -111,6 +111,17 @@ def params_snapshot(root: ET.Element) -> list[tuple[str, str]]:
     return [(child.tag, child.text or "") for child in list(params)]
 
 
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """object_pairs_hook：拒绝重复键。JSON 默认保留最后一个同名键，会让同一条目的
+    多次修改静默丢失（同 index 写两条 = 只剩最后一条）；这里直接报错。"""
+    seen: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in seen:
+            raise WritebackError(f"Duplicate key in patch JSON: {key!r}")
+        seen[key] = value
+    return seen
+
+
 def load_patch(
     path: Path, source_strings: list[ET.Element]
 ) -> dict[int, dict[str, Any]]:
@@ -124,7 +135,9 @@ def load_patch(
     subtracted from both multisets).
     """
     try:
-        value = json.loads(path.read_text(encoding="utf-8-sig"))
+        value = json.loads(
+            path.read_text(encoding="utf-8-sig"), object_pairs_hook=_reject_duplicate_keys
+        )
     except FileNotFoundError as exc:
         raise WritebackError(f"Patch file does not exist: {path}") from exc
     except json.JSONDecodeError as exc:
@@ -357,7 +370,7 @@ def verify_output(
         before_dest = before.findtext("Dest") or ""
         after_dest = after.findtext("Dest") or ""
         item = items.get(index)
-        if item is None or str(item.get("status", "")).upper() == "KEEP":
+        if item is None:
             expected_dest = before_dest
         else:
             expected_dest = str(item.get("translation", ""))
@@ -448,12 +461,22 @@ def main() -> int:
         }
 
         if args.check_only:
+            # 预知诊断：KEEP 条目里有多少条会真正回写（当前 Dest != Source）。
+            predicted_keep_fix = sum(
+                1
+                for index, item in items.items()
+                if str(item.get("status", "")).upper() == "KEEP"
+                and (source_strings[index].findtext("Dest") or "")
+                != str(item.get("translation", ""))
+            )
             report["prewrite_validation"] = "passed"
+            report["predicted_keep_fix_count"] = predicted_keep_fix
             if args.report:
                 write_report(resolve_path(args.report), report, args.force)
             print(
                 f"Pre-write validation passed: {len(items)} result(s), "
-                f"{translated_count} TRANSLATED, {keep_count} KEEP, "
+                f"{translated_count} TRANSLATED, {keep_count} KEEP "
+                f"({predicted_keep_fix} will be restored to source), "
                 f"{len(skipped_units)} skipped non-final, "
                 f"{len(source_strings)} XML String(s)."
             )
@@ -514,13 +537,16 @@ def main() -> int:
         spans = raw_dest_spans(source_text, len(source_strings))
         replacements: list[tuple[int, int, str]] = []
         changed_count = 0
+        keep_fix_count = 0
         for index, item in items.items():
-            if str(item.get("status", "")).upper() == "KEEP":
-                continue
+            # KEEP 的语义是「最终 Dest == Source」，不是「什么都不做」：
+            # Dest 里若残留旧错误译文，必须回写为 Source（keep_fix_count 单独计数）。
             start, end = spans[index]
             replacement = xml_text(str(item["translation"]), newline)
             if source_text[start:end] != replacement:
                 changed_count += 1
+                if str(item.get("status", "")).upper() == "KEEP":
+                    keep_fix_count += 1
             replacements.append((start, end, replacement))
 
         output_text = source_text
@@ -580,6 +606,7 @@ def main() -> int:
                 "output_xml": relative(output_path),
                 "output_sha256": output_hash,
                 "changed_dest_count": changed_count,
+                "keep_fix_count": keep_fix_count,
                 "postwrite_validation": "passed",
             }
         )
@@ -587,7 +614,8 @@ def main() -> int:
             write_report(resolve_path(args.report), report, args.force)
 
         print(
-            f"Wrote {relative(output_path)}: {changed_count} Dest change(s), "
+            f"Wrote {relative(output_path)}: {changed_count} Dest change(s) "
+            f"({keep_fix_count} KEEP restored to source), "
             f"{keep_count} KEEP, {len(skipped_units)} skipped non-final, "
             f"post-write validation passed."
         )

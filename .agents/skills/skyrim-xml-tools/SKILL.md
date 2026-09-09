@@ -79,6 +79,21 @@ python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py termrules mod
 
 `--limit 0` 表示不限制输出数量。
 
+### lookup 匹配模式：exact 与 contains
+
+`lookup` **默认 exact 匹配整个 `<Source>`**：仅当某词典条目的 Source 与输入字符串完全相同时才命中。
+
+专名（势力/种族/物品/地名等）在官方词典中常嵌于整句对话或整本书籍的 Source，而非独立词条。查询这类词必须加 `--contains`（建议同时 `--ignore-case`）：
+
+```text
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py lookup "Dominion" --contains --ignore-case --limit 10
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py lookup "Aldmeri" --contains --ignore-case --limit 10
+```
+
+- 反例：`lookup "Dominion"`（exact）返回 0 命中，但 Dawnguard/Update/CC 词典中该词均嵌于整句源文本（如 Update 萨蒂亚线“萨蒂亚向先祖神洲出卖自己的人民”）。exact 空结果不能作为“词典无此词”的证据。
+- 禁止在未做 `--contains --ignore-case` 复查前声明“词典无词条/无官方证据”；必要时直接 grep `dictionary/` 原始 XML 交叉验证。
+- 词典命中为参考证据，不要求 MOD 中所有同形英文一律采用该译法。
+
 ### `termrules`（启发式术语规则扫描）
 
 输入一个已译 xTranslator XML（或目录）加一个 xTranslator 术语转换规则文件

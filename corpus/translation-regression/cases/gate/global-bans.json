@@ -517,6 +517,187 @@
    "golden": "他们在晨星月的光下行军。",
    "origin": "synthetic_guard",
    "note": "R13反例：省略号后没有月字时豁免不得泛化，仍必须FAIL。"
+  },
+  {
+   "case_id": "global-bans.elf-cross-target-bosmer-016-pass",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "How does a Bosmer end up cooking for a bunch of Orcs?",
+    "translation": "一个波斯莫怎么会跑来给一群兽人做饭？",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Bosmer",
+       "forbidden": [
+        "博斯莫",
+        "博斯默",
+        "木精灵"
+       ],
+       "target": "波斯莫",
+       "unconditional": true,
+       "reason": "Bosmer=波斯莫"
+      },
+      {
+       "english": "Wood Elf",
+       "forbidden": [
+        "波斯莫",
+        "博斯莫"
+       ],
+       "target": "木精灵",
+       "unconditional": true,
+       "reason": "Wood Elf=木精灵"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   },
+   "golden": "一个波斯莫怎么会跑来给一群兽人做饭？",
+   "origin": "synthetic_guard",
+   "note": "跨条 target/forbidden 交叉豁免：波斯莫是 Bosmer 条 target，源文 Bosmer 时不得被 Wood Elf 条 forbidden 误杀。"
+  },
+  {
+   "case_id": "global-bans.elf-irregular-plural-highelves-017-pass",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "You fought High Elves dressed in black?",
+    "translation": "你跟穿黑衣的高精灵打过？",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Altmer",
+       "forbidden": [
+        "高精灵",
+        "高等精灵"
+       ],
+       "target": "傲特莫",
+       "unconditional": true,
+       "reason": "Altmer=傲特莫"
+      },
+      {
+       "english": "High Elf",
+       "forbidden": [
+        "傲特莫",
+        "高等精灵"
+       ],
+       "target": "高精灵",
+       "unconditional": true,
+       "reason": "High Elf=高精灵"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   },
+   "golden": "你跟穿黑衣的高精灵打过？",
+   "origin": "synthetic_guard",
+   "note": "不规则复数锚点：High Elves 触发 High Elf 锚点，高精灵为 High Elf target，不被 Altmer 条 forbidden 误杀。"
+  },
+  {
+   "case_id": "global-bans.elf-altmer-source-wrong-form-018-fail",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "The Altmer consider you a broken child.",
+    "translation": "高精灵把你当作破碎的孩子。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Altmer",
+       "forbidden": [
+        "高精灵",
+        "高等精灵"
+       ],
+       "target": "傲特莫",
+       "unconditional": true,
+       "reason": "Altmer=傲特莫"
+      },
+      {
+       "english": "High Elf",
+       "forbidden": [
+        "傲特莫",
+        "高等精灵"
+       ],
+       "target": "高精灵",
+       "unconditional": true,
+       "reason": "High Elf=高精灵"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "傲特莫把你当作破碎的孩子。",
+   "origin": "synthetic_guard",
+   "note": "真违规仍拦：源文 Altmer 译高精灵，无跨条豁免。"
+  },
+  {
+   "case_id": "global-bans.elf-no-anchor-unconditional-019-fail",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "They wear black robes in the city.",
+    "translation": "他们穿着高精灵黑袍在城里。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "Altmer",
+       "forbidden": [
+        "高精灵",
+        "高等精灵"
+       ],
+       "target": "傲特莫",
+       "unconditional": true,
+       "reason": "Altmer=傲特莫"
+      },
+      {
+       "english": "High Elf",
+       "forbidden": [
+        "傲特莫",
+        "高等精灵"
+       ],
+       "target": "高精灵",
+       "unconditional": true,
+       "reason": "High Elf=高精灵"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "他们穿着黑袍在城里。",
+   "origin": "synthetic_guard",
+   "note": "源文无任何精灵锚点时 unconditional 仍拦高精灵（无源文依据的精灵译名均禁）；交叉豁免不得泛化。"
   }
  ]
 }

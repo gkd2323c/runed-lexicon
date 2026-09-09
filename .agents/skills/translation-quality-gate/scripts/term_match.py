@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Dict, List, Optional
 
 
@@ -35,8 +36,39 @@ def _strip_html_tags(text):
     Auto-bind matches inside HTML tag attributes (e.g. <font face="Adielle">)
     are false positives — the term is not visible text. Stripping tags first
     ensures only visible-text occurrences trigger auto-binding.
+
+    结果按文本内容缓存：gate 会对同一个 source 在 849 条 ban 上反复调用，
+    实测这层重复清洗是热点之一。
     """
-    return re.sub(r'<[^>]*>', '', text)
+    return _strip_html_tags_cached(text)
+
+
+_STRIP_HTML_RE = re.compile(r'<[^>]*>')
+
+
+@lru_cache(maxsize=4096)
+def _strip_html_tags_cached(text: str) -> str:
+    return _STRIP_HTML_RE.sub('', text)
+
+
+@lru_cache(maxsize=8192)
+def _compiled_literal(needle: str):
+    """Cache a case-insensitive literal pattern.
+
+    原实现对每个 unit × 每个 term 都重新 re.compile（实测 500 万次以上），
+    是 gate 最热的开销。"""
+    return re.compile(re.escape(needle), re.IGNORECASE)
+
+
+@lru_cache(maxsize=8192)
+def _compiled_word(needle: str):
+    """Cache the whole-word pattern built by _iter_word_matches."""
+    forms = [needle]
+    if needle.endswith('f') and len(needle) > 1:
+        forms.append(needle[:-1] + 'ves')
+    return re.compile(
+        r'(?<![A-Za-z0-9_])(?:' + '|'.join(re.escape(f) for f in forms) + r')s?(?![A-Za-z0-9_])',
+        re.IGNORECASE)
 
 
 def find_source_hits(source: str, term: Dict):
@@ -54,9 +86,12 @@ def find_source_hits(source: str, term: Dict):
     eng = term.get('source') or ''
     if not eng:
         return []
+    # 快速预筛：大小写敏感的子串检查不命中时直接返回，避免进正则
+    if eng not in source and eng.lower() not in source.lower():
+        return []
     # Strip HTML tags to avoid matching inside markup attributes
     source_clean = _strip_html_tags(source)
-    pat = re.compile(re.escape(eng), re.IGNORECASE)
+    pat = _compiled_literal(eng)
     hits = []
     for m in pat.finditer(source_clean):
         start, end = m.start(), m.end()
@@ -160,9 +195,15 @@ def _iter_word_matches(text: str, needle: str):
 
     Optional trailing 's' is allowed so plural forms of an anchor (Argonians,
     Spriggans, mudcrabs) still trigger; an apostrophe-s ('s) also keeps the hit
-    because the apostrophe is not a word char."""
+    because the apostrophe is not a word char. Anchors ending in a single 'f'
+    additionally match the irregular f→ves plural (Elf→Elves, so "High Elves"
+    triggers the High Elf anchor)."""
     text_clean = _strip_html_tags(text)
-    pat = re.compile(r'(?<![A-Za-z0-9_])(?:' + re.escape(needle) + r')s?(?![A-Za-z0-9_])', re.IGNORECASE)
+    # 快速预筛：锚点首词不出现时直接返回（避免为每条 ban 跑完整正则）
+    head = needle.split()[0] if needle.split() else needle
+    if head not in text_clean and head.lower() not in text_clean.lower():
+        return
+    pat = _compiled_word(needle)
     for m in pat.finditer(text_clean):
         yield m.start()
 
@@ -259,6 +300,9 @@ def find_global_ban_hits(source: str, dest: str, ban: Dict) -> List[str]:
     for f in ban['forbidden']:
         if not f:
             continue
+        # 快速预筛：坏形态不在 dest 里时直接跳过（省去 _iter_matches 的函数调用开销）
+        if f not in dest:
+            continue
         for p in _iter_matches(dest, f):
             covered = any(s <= p and p + len(f) <= e for s, e in target_spans)
             if covered:
@@ -276,6 +320,54 @@ def find_global_keep_hits(source: str, dest: str, gkeep: str) -> bool:
     if not list(_iter_word_matches(source, gkeep)):
         return False
     return dest.strip() != gkeep
+
+
+def _anchor_present(source: str, anchor: str) -> bool:
+    """跨条豁免用的锚点存在性检查：整词匹配优先，其次允许专名形容词派生
+    （Altmer → Altmeri / Altmeris）。官方行会用形容词形态（"noble Altmeri
+    blood"），而锚点只登记名词形；不放宽就会把合法覆盖判成未覆盖。
+
+    仅用于豁免侧判断，不影响 TERM004 主检查的严格整词语义。
+    """
+    if list(_iter_word_matches(source, anchor)):
+        return True
+    if not anchor or not anchor[0].isupper():
+        return False
+    pat = re.compile(r'(?<![A-Za-z0-9_])' + re.escape(anchor) + r'(?=[a-z])', re.IGNORECASE)
+    return bool(pat.search(_strip_html_tags(source)))
+
+
+def cross_target_covered(source: str, dest: str, variant: str, bans: list, self_eng: str) -> bool:
+    """Return True when a global-ban forbidden hit is a false positive caused by
+    a cross-ban target/forbidden overlap.
+
+    Scenario: "波斯莫" is the canonical target of the Bosmer ban and at the
+    same time a forbidden variant of the Wood Elf ban. When source contains the
+    Bosmer anchor, dest "波斯莫" is the legitimate Bosmer target — firing the
+    Wood Elf ban would be a false positive. This helper checks whether the hit
+    is fully covered by an occurrence of *another* ban's target whose English
+    anchor appears in source.
+
+    Applies to unconditional bans too: unconditional skips the source-anchor
+    check for the *current* ban, but cross-ban target coverage still needs the
+    covering ban's own anchor to be present in source, otherwise the coverage
+    is coincidental and the hit stays.
+    """
+    if not variant:
+        return False
+    variant_spans = [(p, p + len(variant)) for p in _iter_matches(dest, variant)]
+    for other in bans:
+        oeng = other.get('english') or ''
+        otarget = (other.get('target') or '').strip()
+        if not otarget or oeng == self_eng:
+            continue
+        if oeng and not _anchor_present(source, oeng):
+            continue  # covering ban's anchor absent from source: no legitimate basis
+        target_spans = [(p, p + len(otarget)) for p in _iter_matches(dest, otarget)]
+        for vs, ve in variant_spans:
+            if any(ts <= vs and ve <= te for ts, te in target_spans):
+                return True
+    return False
 
 
 # ---------------------------------------------------------------- contract helpers
@@ -317,6 +409,38 @@ def resolve_bindings(contract: Dict) -> List[ResolvedTerm]:
     return out
 
 
+def _cross_term_target_covered(source: str, dest: str, variant: str,
+                               extra_terms: Optional[Dict[str, Dict]],
+                               self_tid: str) -> bool:
+    """TERM002 跨条豁免：某个 forbidden 形态同时是另一条 term 的合法 target，
+    且该条的英文锚点在源文出现时，本条命中是误报。
+
+    场景：同一行同时含 Dwemer 和 Dwarven（如《巴塔尔-泽尔之谜》同时讨论两词），
+    dwemer 条的 forbidden '矮人' 同时是 dwarven 条的 target '矮人'；译文里
+    '矮人' 对应的是 Dwarven，行级检查却把它算到 Dwemer 头上。与 TERM004 的
+    cross_target_covered 同源，但按 term 定义而非 ban 定义工作。
+
+    保守条件：只豁免 otarget 与 variant 完全相等的情况，且覆盖方锚点必须在
+    source 里真实出现；否则命中保留。
+    """
+    if not variant or not extra_terms:
+        return False
+    variant_spans = [(p, p + len(variant)) for p in _iter_matches(dest, variant)]
+    if not variant_spans:
+        return False
+    for otid, oterm in extra_terms.items():
+        if otid == self_tid or not isinstance(oterm, dict):
+            continue
+        otarget = (oterm.get('target') or '').strip()
+        if otarget != variant:
+            continue
+        osrc = (oterm.get('source') or '').strip()
+        if osrc and not list(_iter_word_matches(source, osrc)):
+            continue  # 覆盖方锚点不在源文：没有合法依据，命中保留
+        return True
+    return False
+
+
 def check_unit(source: str, dest: str, resolved: List[ResolvedTerm],
                extra_terms: Optional[Dict[str, Dict]] = None) -> List[Dict]:
     """Run term checks for one unit against its resolved bindings.
@@ -336,6 +460,9 @@ def check_unit(source: str, dest: str, resolved: List[ResolvedTerm],
                 })
         # forbidden always checked for bound terms
         for f in find_forbidden_hits(dest, term):
+            # 跨条 target 豁免：形态是另一条的合法 target 且其锚点在源文出现
+            if _cross_term_target_covered(source, dest, f, extra_terms, tid):
+                continue
             issues.append({
                 'code': 'TERM002', 'term_id': tid, 'severity': 'FAIL',
                 'detail': f"forbidden 变体出现: {f!r}",

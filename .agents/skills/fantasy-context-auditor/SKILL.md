@@ -75,7 +75,7 @@ py -3 .../fantasy_audit.py --xml ... --limit 200 --json
 | 工具                             | 层   | 抓什么                                           |
 | -------------------------------- | ---- | ------------------------------------------------ |
 | translation-quality-gate TERM004 | 词形 | unconditional 禁词（世界观荒谬词）               |
-| hardfix-triage                   | 规则 | 术语禁形/丢否定/空译/英文残留 + ANACHRONISM 候选 |
+| translation-fidelity-scan | 规则 | 术语禁形/丢否定/空译/英文残留 + ANACHRONISM 候选 |
 | **本工具**                       | 语义 | 词表外的现代/现实语义出戏句子                    |
 | 词表同形误报（夜总会/西藏）      | —    | 语义层正确放行（两套互补）                       |
 
@@ -84,7 +84,7 @@ py -3 .../fantasy_audit.py --xml ... --limit 200 --json
 - 只读。不修改 XML、译文、词库、契约。
 - 候选不自动 FAIL、不自动改稿；Agent 复核后决定回改或放行。
 - 发现的真出戏（词表外新词）应回填 `global-forbidden-words.json`
-  （unconditional）或 `hardfix-triage.py` 的 BANS/ANACHRONISM 表，形成闭环。
+  （unconditional）或 `translation-fidelity-scan` 的候选表，形成闭环。
 
 ## 验证
 

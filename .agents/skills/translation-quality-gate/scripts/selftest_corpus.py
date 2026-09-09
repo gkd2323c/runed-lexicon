@@ -52,9 +52,13 @@ def gate_issues(source, translation, contract, case=None):
 
     # project-wide ban list (TERM004): enforced on every translated line
     if translation != source:
-        from term_match import resolve_global_bans, find_global_ban_hits
-        for ban in resolve_global_bans(contract):
+        from term_match import resolve_global_bans, find_global_ban_hits, cross_target_covered
+        gbans = resolve_global_bans(contract)
+        for ban in gbans:
             for f in find_global_ban_hits(source, translation, ban):
+                # 跨条 target/forbidden 交叉豁免（与 quality_gate.global_ban_issue 一致）
+                if cross_target_covered(source, translation, f, gbans, ban.get('english') or ''):
+                    continue
                 reason = ban.get('reason') or '项目级禁用词'
                 issues.append({'code': 'TERM004', 'severity': 'FAIL',
                                'detail': f'全局禁用词 {f!r}（{ban["english"]}）出现: {reason}'})

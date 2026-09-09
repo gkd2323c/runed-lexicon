@@ -106,7 +106,10 @@ The bundled writer instead:
 - reparses the generated XML and verifies all `EDID`, `REC`, and `Source` values are unchanged;
 - verifies every untouched `<Dest>` remained unchanged and every target `<Dest>` equals the intended result.
 
-`KEEP` entries are checked but not rewritten.
+`KEEP` entries are checked, and their `<Dest>` is enforced to equal `<Source>`: a
+stale or wrong `<Dest>` left over from an earlier writeback is rewritten back to
+Source (reported as `keep_fix_count`), while an already-correct `<Dest>` stays a
+no-op.
 
 ## Usage
 
@@ -136,7 +139,7 @@ Use quoted glob patterns so the script, rather than a shell, resolves the intend
 
 Use `--force` only when intentionally replacing an already generated output/report file. The script refuses to overwrite the source XML path itself.
 
-Use `--check-only` to run all pre-write validation and result aggregation without producing XML.
+Use `--check-only` to run all pre-write validation and result aggregation without producing XML. The report includes `predicted_keep_fix_count`: how many KEEP units would actually be rewritten back to Source, so a stale-baseline repair is visible before writing.
 
 **写回前必跑一次 `--check-only`**：它会在不产出 XML 的情况下报告跨批 duplicate xml_index / translation_unit_id、scope 不一致、KEEP 不匹配等问题。新批次若基于“旧写回快照”收集（散件收尾常见），几乎必然与已写回批次重叠；先 check-only 看清冲突清单，再决定去重或调整，而不是直接跑正式写回被 error 弹回。
 
@@ -149,7 +152,9 @@ Prefer the exact current ranges documented in the MOD's `PROGRESS.md`. The write
 ## Status handling
 
 - `TRANSLATED`: write its `translation` to `<Dest>`.
-- `KEEP`: verify `translation == source`; leave the existing `<Dest>` untouched.
+- `KEEP`: verify `translation == source`; enforce `<Dest> == <Source>`. A stale
+  or wrong `<Dest>` (e.g. a previously written mistranslation) is rewritten back
+  to Source and counted as `keep_fix_count`; an already-correct `<Dest>` is a no-op.
 - `PENDING`: reject.
 - `REVIEW`: reject.
 
@@ -183,7 +188,8 @@ The generated XML is a new file by default. With `--report`, the script writes J
 - source and output paths/hashes;
 - total XML String count;
 - total result count;
-- `TRANSLATED` and `KEEP` counts;
+- `TRANSLATED` and `KEEP` counts, plus `keep_fix_count` (KEEP units whose stale
+  `<Dest>` was restored to Source);
 - number of `<Dest>` elements actually changed;
 - input result file list;
 - confirmation that post-write structural checks passed.

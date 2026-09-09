@@ -118,6 +118,16 @@ Agent 背书豁免（R16, v0.2.0）：方括号动作/检定提示（如 `[Show 
 
 If the extractor flags an ordinary piece of text as a protected token, preserve it and note the case for later tool refinement instead of silently deleting it.
 
+### 缺失背书扫描（`scripts/suggest_waived_tokens.py`）
+
+源文含动作提示括号而译文已中文化、却无 `waived_tokens` 背书的条目，用本脚本扫描（`_tmp/scripts/auto-waivers.py` 的通用化转正，不再依赖 DIAL plan 与 map 版式，直接读 executor result）：
+
+```text
+py -3 .agents/skills/translation-executor/scripts/suggest_waived_tokens.py --result <translation.json> [--apply] [--report <json>]
+```
+
+默认仅提示不修改；`--apply` 把建议合并进条目（去重，只加真实存在于 source 的子串，validator 记 warning 备查）。方括号/圆括号整段视为可中文化动作提示；尖括号仅动作标签白名单可豁免，含 `=`/`%` 的运行时占位符绝不豁免；译文已原样保留的不建议。`fix-quotes.py`（引号批量改 map）不转正：检出职能已被 quality-gate CHAR001 覆盖（「」报 FAIL 并给出正确方向），批量改写违反 gate 只读原则。
+
 ## Fill a draft from a translation map
 
 > **2026-09-04 废弃警告**：`sanitize_translation_map.py` 曾把含特定引号格式条目的 JSON 结构（`, "status": "TRANSLATED"...`）泄漏进 translation 值，在 SB1 项目污染 1489 条。**不再使用该工具**。map 的 ASCII 引号问题改为：写 map 时直接用中文引号“”，写完 `json.load` 验证；确需清洗时用 `fill_translations.py` 的校验错误提示定位，手改源文件。

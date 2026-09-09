@@ -113,6 +113,31 @@ Review checklist per flag:
 - English-only dictionary dests (internal technical records) are ignored as evidence.
 - Output JSON keeps full Source/Dest; terminal display truncates to 160 chars for readability.
 
+## Known blind spots
+
+Three boundaries are inherent to the evidence model. They are recorded here so a
+zero-flag run is never read as "everything is checked".
+
+1. **Composite-only official names.** A proper noun that the official dictionary
+   only ever spells inside a longer phrase is not audited in its bare form.
+   `Dwemer` has 245 official rows (`Dwemer Actuator` -> 锻莫制动器, `Dwemer Vault
+   Door`, …) but no standalone row, so `Dwemer` never enters the enabled map and
+   a row like `Frosty Dwemer Abilities` is not checked; `Morrowind` (246 rows,
+   all prose) and `Aedra` (17 rows, all prose) are in the same position. A
+   token-gloss inference layer was prototyped and rejected: voting over composite
+   rows derives `Dwemer` -> 锻莫 correctly (96% / 67 rows) but also `War` -> 战斧
+   and `Raven` -> 鸦石镇, producing ~350 mostly-wrong candidates. The fix belongs
+   in the project contract: register the name as a REQUIRED term so
+   `translation-quality-gate` enforces it.
+2. **Single-word names from weak records.** `BOOK`/`MISC`/`WOOP`-only single
+   words stay optional unless `--include-single` or `--entity` is given (737 vs
+   3755 candidates on Druadach). The switch is a noise trade, not a capability
+   gap: the candidates exist, they are simply not printed by default.
+3. **Dest-side errors without a Source-side name.** The audit only fires when the
+   Source contains the official name. A wrong name that appears only in the Dest
+   (a hallucinated place, an invented faction) is out of scope; use
+   `fantasy-context-auditor` or review for that class.
+
 ## Relationship to the other skills
 
 - `term-contract-compiler` turns DICTIONARY.md into a machine contract; this audit is the discovery step that finds which official nouns actually appear and are missing before binding.

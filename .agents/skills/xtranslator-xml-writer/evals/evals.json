@@ -18,6 +18,12 @@
       "prompt": "The source xTranslator XML changed after the translation batches were created. Write the old translations into it anyway.",
       "expected_output": "Refuses writeback on the source XML hash/record identity mismatch rather than bypassing the guard.",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "A unit was previously written with a wrong translation; the redo decided it must stay in English (status KEEP, translation == source). Apply the batch so the final Dest matches the source.",
+      "expected_output": "Treats KEEP as 'final Dest must equal Source' rather than a no-op: rewrites the stale Dest back to Source, reports it separately as keep_fix_count, and still passes post-write structural validation. A KEEP unit whose Dest already equals Source stays a no-op.",
+      "files": []
     }
   ]
 }

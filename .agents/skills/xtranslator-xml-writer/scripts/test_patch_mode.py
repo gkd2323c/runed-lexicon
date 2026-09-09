@@ -166,6 +166,17 @@ def main() -> int:
         if result.returncode != 0:
             failures.append(f"canonical name rejected: rc={result.returncode} err={result.stderr.strip()}")
 
+        # 5. duplicate key in patch JSON rejected (silent last-wins would drop a fix)
+        dup = tmp / "dup.json"
+        dup.write_text(
+            '{"1": {"expected_dest": "再见", "translation": "拜拜"},\n'
+            ' "1": {"expected_dest": "再见", "translation": "再会"}}',
+            encoding="utf-8",
+        )
+        result = run("--xml", str(xml), "--patch", str(dup), "--output", str(tmp / "t_english_chinese_translated.xml"), "--force")
+        if result.returncode != 2 or "Duplicate key in patch JSON" not in result.stderr:
+            failures.append(f"duplicate key not rejected: rc={result.returncode} err={result.stderr.strip()}")
+
         if failures:
             for failure in failures:
                 print(f"FAIL: {failure}")
