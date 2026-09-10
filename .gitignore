@@ -63,5 +63,6 @@ tools/Mutagen/
 .agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport/bin/
 .agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport/obj/
 
-# 环境绑定操作文档（Hana 平台子代理协作），不随仓库发布
+# 环境绑定操作文档（Hana 平台子代理协作），不随仓库发布。
+# 通用版见 .agents/skills/subagent-ops/。
 .agents/skills/hana-subagent-ops/
