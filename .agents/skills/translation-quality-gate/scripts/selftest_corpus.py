@@ -13,7 +13,8 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from term_match import ResolvedTerm, check_unit
-from quality_gate import keep_issue, placeholder_issue, charset_issue, truncation_issue
+from quality_gate import (keep_issue, placeholder_issue, charset_issue, truncation_issue,
+                          standalone_forbidden_issues)
 
 # project root: <skill>/scripts/../.. = .agents/skills/<skill>/scripts -> up 4 to repo root
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -49,6 +50,12 @@ def gate_issues(source, translation, contract, case=None):
                              b.get('required_target'), b.get('source_span', ''))
                 for b in applicable]
     issues += check_unit(source, translation, resolved, terms)
+
+    # R19: forbidden variants of unbound terms are still enforced when the
+    # term's English anchor appears in source (reuses the real gate function).
+    if translation != source:
+        issues += standalone_forbidden_issues(
+            source, translation, terms, {r.term_id for r in resolved})
 
     # project-wide ban list (TERM004): enforced on every translated line
     if translation != source:
