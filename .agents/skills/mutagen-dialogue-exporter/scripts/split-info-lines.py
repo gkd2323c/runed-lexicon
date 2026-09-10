@@ -13,8 +13,9 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 
 plugin = sys.argv[1] if len(sys.argv) > 1 else 'Druadach'
+moddir = sys.argv[2] if len(sys.argv) > 2 else 'mods/%s.esm' % plugin
 doc = json.load(open('.work/%s-mutagen-dialogue.json' % plugin, encoding='utf-8'))
-t = ET.parse('mods/%s.esm/%s_english_chinese.xml' % (plugin, plugin))
+t = ET.parse('%s/%s_english_chinese.xml' % (moddir, plugin))
 strs = t.getroot().findall('.//String')
 
 # local FormKey(hex6) -> {subrecord -> [xml_index]}
@@ -53,7 +54,7 @@ for tl in doc['topics']:
         rnam = rows.get('RNAM', [None])[0]
         tinfos.append({
             'info_edid': info['edid'],
-            'speaker': info['speakerName'] or info['speaker'],
+            'speaker': info['speakerName'] or info.get('speakerFromCondition') or info['speaker'],
             'prompt': info['prompt'],
             'prompt_idx': rnam,
             'responses': info['responses'],

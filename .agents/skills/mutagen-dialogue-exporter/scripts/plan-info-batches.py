@@ -12,8 +12,9 @@ import sys
 import xml.etree.ElementTree as ET
 
 plugin = sys.argv[1] if len(sys.argv) > 1 else 'Druadach'
+moddir = sys.argv[2] if len(sys.argv) > 2 else 'mods/%s.esm' % plugin
 split = json.load(open('.work/%s-info-split.json' % plugin, encoding='utf-8'))
-t = ET.parse('mods/%s.esm/%s_english_chinese.xml' % (plugin, plugin))
+t = ET.parse('%s/%s_english_chinese.xml' % (moddir, plugin))
 strs = t.getroot().findall('.//String')
 CAP = 45
 

@@ -335,9 +335,9 @@ def parse_markdown_tables(markdown: str) -> list[dict[str, str]]:
                 break
             values = parse_pipe_row(row_line)
             if len(values) == len(headers):
-                row = {headers[i]: values[i] for i in range(len(headers))}
+                row = {normalize_table_header(headers[i]): values[i] for i in range(len(headers))}
                 english = first_present(row, ["英文", "原文", "English", "Source"])
-                chinese = first_present(row, ["中文", "译法", "Chinese", "Dest"])
+                chinese = first_present(row, ["中文", "译名", "译法", "Chinese", "Dest"])
                 if english and english not in {"待补充", "待定"}:
                     terms.append(
                         {
@@ -351,6 +351,15 @@ def parse_markdown_tables(markdown: str) -> list[dict[str, str]]:
                     )
             position += 1
     return dedupe_dicts(terms)
+
+
+def normalize_table_header(header: str) -> str:
+    """'原文 (English)' -> '原文'；'译名 (Chinese)' -> '译名'。
+
+    项目 MOD DICTIONARY 模板历史上混用过「原文|译名」与「原文 (English)|译名 (Chinese)」
+    两种表头；剥掉尾部括号注释后再做列名匹配，两种形态都能识别。
+    """
+    return re.sub(r"\s*[（(].*?[）)]\s*$", "", header).strip()
 
 
 def parse_pipe_row(line: str) -> list[str]:

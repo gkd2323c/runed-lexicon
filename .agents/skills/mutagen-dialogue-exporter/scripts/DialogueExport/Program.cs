@@ -60,6 +60,42 @@ string? QuestEdid(IFormLinkGetter<IQuestGetter>? link)
     return getter is IQuestGetter q ? q.EditorID : null;
 }
 
+// Flatten an IFormLinkOrIndex parameter into either a FormKey string (link case)
+// or an alias/package index (alias case).
+(string?, int?) FlattenLink<T>(IFormLinkOrIndexGetter<T>? o) where T : class, IMajorRecordGetter
+{
+    if (o == null) return (null, null);
+    if (o.UsesLink())
+    {
+        var fk = o.Link.FormKey;
+        return fk.IsNull ? (null, null) : (fk.ToString(), null);
+    }
+    if (o.UsesAlias() && o.Index.HasValue) return (null, (int)o.Index.Value);
+    return (null, null);
+}
+
+// Speaker resolution from a single unambiguous GetIsID(Subject) condition —
+// the standard dialogue-speaker pattern when no ANAM speaker is present.
+string? SpeakerFromConditions(IReadOnlyList<IConditionGetter> conditions)
+{
+    IConditionGetter? hit = null;
+    foreach (var c in conditions)
+    {
+        if (c.Data is IGetIsIDConditionDataGetter)
+        {
+            if (hit != null) return null; // multiple GetIsID — cannot pin down
+            hit = c;
+        }
+    }
+    if (hit == null) return null;
+    var gid = (IGetIsIDConditionDataGetter)hit.Data;
+    if (!gid.Object.UsesLink()) return null;
+    var fk = gid.Object.Link.FormKey;
+    if (fk.IsNull) return null;
+    var getter = fk.ToLink<IReferenceableObjectGetter>().TryResolve(cache);
+    return getter is INpcGetter npc ? S(npc.Name) : null;
+}
+
 var topicsOut = new List<object>();
 int infoTotal = 0;
 foreach (var dial in overlay.DialogTopics)
@@ -75,13 +111,30 @@ foreach (var dial in overlay.DialogTopics)
             prompt = S(info.Prompt),
             speaker = LinkFk(info.Speaker),
             speakerName = NpcName(info.Speaker),
+            speakerFromCondition = SpeakerFromConditions(info.Conditions),
             prev = LinkFk(info.PreviousDialog),
             responses = info.Responses.Select(r => S(r.Text)).ToList(),
-            conditions = info.Conditions.Select(c => new
+            conditions = info.Conditions.Select(c =>
             {
-                kind = c.Data.GetType().Name,
-                runOn = c.Data.RunOnType.ToString(),
-                reference = FK(c.Data.Reference.FormKey),
+                var kind = c.Data.GetType().Name;
+                string? paramLink = null;
+                int? paramAlias = null;
+                switch (c.Data)
+                {
+                    case IGetIsIDConditionDataGetter g: (paramLink, paramAlias) = FlattenLink(g.Object); break;
+                    case IGetInFactionConditionDataGetter g: (paramLink, paramAlias) = FlattenLink(g.Faction); break;
+                    case IGetIsRaceConditionDataGetter g: (paramLink, paramAlias) = FlattenLink(g.Race); break;
+                    case IGetIsClassConditionDataGetter g: (paramLink, paramAlias) = FlattenLink(g.Class); break;
+                    case IGetIsVoiceTypeConditionDataGetter g: (paramLink, paramAlias) = FlattenLink(g.VoiceTypeOrList); break;
+                }
+                return new
+                {
+                    kind,
+                    runOn = c.Data.RunOnType.ToString(),
+                    reference = FK(c.Data.Reference.FormKey),
+                    paramLink,
+                    paramAlias,
+                };
             }).ToList(),
         });
     }

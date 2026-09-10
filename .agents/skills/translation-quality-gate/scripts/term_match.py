@@ -147,10 +147,39 @@ def match_required_present(dest: str, term: Dict) -> bool:
 
 
 def find_forbidden_hits(dest: str, term: Dict) -> List[str]:
-    """Return list of forbidden variants present in dest (TERM002)."""
+    """Return list of forbidden variants present in dest (TERM002).
+
+    R18 (v0.1.9): forbidden 是 target 子串时，落在 target 完整区间内的实例豁免
+    （与 TERM004 的 R12 同源）——防止短形禁令误伤正确长形（例：forbidden「琼」
+    必须不能把 target「琼恩」中的「琼」报出来；未被 target 覆盖的独立「琼」
+    仍照报）。此修复弥补 TERM002 路径此前只有简单子串检查、缺少子串豁免的缺口。
+    """
     out = []
-    for f in term.get('forbidden') or []:
-        if f and f in dest:
+    target = (term.get('target') or '').strip()
+    forbidden = term.get('forbidden') or []
+    # 无 target 或 forbidden 与 target 无子串关系时走快速路径（原文逻辑）
+    sub_related = [f for f in forbidden if f and target and f != target and f in target]
+    if not sub_related:
+        for f in forbidden:
+            if f and f in dest:
+                out.append(f)
+        return out
+    # 子串关系路径：先算 target 区间
+    target_spans = [(p, p + len(target)) for p in _iter_matches(dest, target)] if target else []
+    for f in forbidden:
+        if not f or f not in dest:
+            continue
+        if f not in target:
+            out.append(f)
+            continue
+        # f 是 target 子串：仅当存在未被任 target 区间覆盖的实例时报
+        uncovered = False
+        for p in _iter_matches(dest, f):
+            covered = any(s <= p and p + len(f) <= e for s, e in target_spans)
+            if not covered:
+                uncovered = True
+                break
+        if uncovered:
             out.append(f)
     return out
 
@@ -327,14 +356,37 @@ def _anchor_present(source: str, anchor: str) -> bool:
     （Altmer → Altmeri / Altmeris）。官方行会用形容词形态（"noble Altmeri
     blood"），而锚点只登记名词形；不放宽就会把合法覆盖判成未覆盖。
 
+    v0.1.8（R17）：连接符变体识别——插件作者会把专名写成 "High-elf"、
+    "alt-mer" 这类连字符拼法；此前不识别导致跨条豁免失效、把正确译文误判为
+    触发（INFO-035 incident: Altmer/High Elf 两处互搏被误拦）。多词锚点允许
+    词间用 [\\s-]+ 连接（High Elf → High-elf）；单词锚点枚举单点插连字符变体
+    （Altmer → alt-mer）。仅豁免侧生效，不影响 TERM004 主检查。
+
     仅用于豁免侧判断，不影响 TERM004 主检查的严格整词语义。
     """
     if list(_iter_word_matches(source, anchor)):
         return True
     if not anchor or not anchor[0].isupper():
         return False
+    stripped = _strip_html_tags(source)
+    # 形容词派生（原有分支）：Altmer → Altmeri
     pat = re.compile(r'(?<![A-Za-z0-9_])' + re.escape(anchor) + r'(?=[a-z])', re.IGNORECASE)
-    return bool(pat.search(_strip_html_tags(source)))
+    if pat.search(stripped):
+        return True
+    # 连字符变体（v0.1.8）：词间或词内由 '-' 连接
+    words = anchor.split()
+    if len(words) == 1 and '-' not in anchor:
+        alts = [re.escape(anchor)]
+        for i in range(1, len(anchor)):
+            alts.append(re.escape(anchor[:i]) + '-' + re.escape(anchor[i:]))
+        core = '(?:' + '|'.join(alts) + ')'
+    else:
+        core = r'[\s\-]+'.join(re.escape(w) for w in words)
+    pat2 = re.compile(
+        r'(?<![A-Za-z0-9_])' + core + r'(?=[a-z]|[^A-Za-z0-9_]|$)',
+        re.IGNORECASE,
+    )
+    return bool(pat2.search(stripped))
 
 
 def cross_target_covered(source: str, dest: str, variant: str, bans: list, self_eng: str) -> bool:

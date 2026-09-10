@@ -31,12 +31,12 @@ try:
     from term_match import (resolve_bindings, check_unit, match_required_present,
                             find_forbidden_hits, resolve_global_bans, find_global_ban_hits,
                             find_global_keep_hits, cross_target_covered, CONTRACT_GLOBAL_BANS_KEY,
-                            CONTRACT_GLOBAL_KEEP_KEY)
+                            CONTRACT_GLOBAL_KEEP_KEY, _anchor_present, _cross_term_target_covered)
 except Exception:  # allow running from another cwd
     from .term_match import (resolve_bindings, check_unit, match_required_present,
                              find_forbidden_hits, resolve_global_bans, find_global_ban_hits,
                              find_global_keep_hits, cross_target_covered, CONTRACT_GLOBAL_BANS_KEY,
-                             CONTRACT_GLOBAL_KEEP_KEY)
+                             CONTRACT_GLOBAL_KEEP_KEY, _anchor_present, _cross_term_target_covered)
 
 # CHAR001 uses the vendored zh-cn conversion table (scripts/zh_cn_conv.json);
 # no third-party dependency.
@@ -360,6 +360,11 @@ def run_gate(results: list, contract: dict, keep_list: list, xml_text=None,
         # project-wide bans & KEEP list are checked on every translated line,
         # independently of unit bindings.
         if dst != src:
+            # R19: forbidden variants of *unbound* terms are still enforced
+            # whenever the term's English anchor appears in source
+            # (FORBIDDEN_ONLY / risk-flagged terms never auto-bind).
+            issues += standalone_forbidden_issues(
+                src, dst, term_index, {rt.term_id for rt in resolved})
             g_issues = global_ban_issue(src, dst, global_bans)
             g_issues += global_keep_issue(src, dst, global_keep)
             # a concrete wrong form can be both a local term's forbidden variant
@@ -395,6 +400,43 @@ def run_gate(results: list, contract: dict, keep_list: list, xml_text=None,
         'fails': fails,
         'warnings': warns,
     }
+
+
+def standalone_forbidden_issues(src: str, dst: str, term_index: dict,
+                                bound_ids: set) -> list:
+    """R19 (v0.2.0): forbidden variants of unbound terms are enforced on
+    translated lines whenever the term's English anchor appears in source.
+
+    FORBIDDEN_ONLY terms never auto-bind (auto_bind_candidates excludes
+    them), and risk-flagged REQUIRED terms are likewise excluded — so before
+    this pass their forbidden lists silently never ran at all (found live:
+    hour/时辰, Soul Mine/魂石矿, Bats/巴茨). Bound terms are skipped here
+    because check_unit already reports them with richer term evidence.
+    Anchor gating (term English form present in source, same anchor matcher
+    as the TERM004 exemption path — plural/punctuation tolerant) keeps
+    lookalike substrings on unrelated lines from firing; cross-term target
+    coverage exemption mirrors check_unit's TERM002 path.
+    """
+    out = []
+    if not term_index:
+        return out
+    for tid, term in term_index.items():
+        if tid in bound_ids or not isinstance(term, dict):
+            continue
+        if not (term.get('forbidden') or []):
+            continue
+        if not _anchor_present(src, term.get('source') or ''):
+            continue
+        for f in find_forbidden_hits(dst, term):
+            if _cross_term_target_covered(src, dst, f, term_index, tid):
+                continue
+            out.append({
+                'code': 'TERM002', 'term_id': tid, 'severity': 'FAIL',
+                'detail': f"forbidden 变体出现: {f!r}",
+                'expected': 'not in ' + repr(term.get('forbidden', [])),
+                'variant': f,
+            })
+    return out
 
 
 def _resolve(term_index, bindings):

@@ -126,8 +126,6 @@ This prevents auto-bind from flagging units where the English term only appears 
 substring of a longer word or inside markup attributes. These fixes are covered by
 the incident-derived synthetic corpus selftest.
 
-## TRUNC001 截断检测（WARNING，需人审）
-
 ### 全局禁用词（TERM004）设计说明
 
 `global_bans` 是**独立于 unit_bindings 的全局扫描**：它保护官方名词完整性，
@@ -150,9 +148,26 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
    010-013。R13：forbidden 命中后紧跟 target 剩余部分（允许间隔 "..."/"…"/
    空白）同样豁免——source 残缺形态（"Morning Star..." 残缺日期）的忠实译文
    "晨星...月" 不是裸译错误（Druadach-book 8530，回归用例 014-015）。
+5. **跨条豁免的锚点容错（R17, v0.1.8）**：跨条 target/forbidden 交叉豁免
+   （cross_target_covered）依赖「覆盖方」英文锚点出现在 source；锚点检查原先
+   不识别连字符变体写法（作者手写 "High-elf" / "alt-mer"），导致 Altmer/High
+   Elf 互搏条的正确译文被误拦（INFO-035 三处误报：源文 High-elf's 译「高精灵」、
+   alt-mer 译「傲特莫」均正确）。现在多词锚点允许词间 [\s-]+ 连接、单词锚点
+   允许单点插连字符，并保留形容词派生（Altmeri）；仅豁免侧生效，主检查仍为
+   严格整词。回归验证：selftest_corpus 64 项 + 正反案例双向测试。
 
 每处 TERM004 命中都带该条目的 `reason`，方便 Agent 判断是误报还是真回归。
 收录/维护边界见 GLOSSARY.md §7 与 `global-forbidden-words.json` 顶部 doc。
+
+### TERM002 子串豁免（R18, v0.1.9）
+
+TERM002 路径（`find_forbidden_hits`）原先对 forbidden 只做简单子串检查：当 forbidden
+是 target 子串（短形禁令 + 长形 target，如「琼」⊂「琼恩」）时，被长形包含的实例
+同样被拦（Artaeum INFO-062，2026-09-10）。修复与 TERM004 的 R12 豁免对齐：forbidden
+实例完整落在任一 target 出现区间内时不报；未被覆盖的独立实例仍报——按区间豁免
+而非整单元豁免。回归用例见 term-contract-core.json jong-substr-exempt-001/002。
+
+## TRUNC001 截断检测（WARNING，需人审）
 
 TRUNC001 检出“译文把后半句吞了”的候选：源文是完整长句、译文却以省略号中断且明显偏短。
 背景（SB1 事故 2026-09-04）：一批译文为省事把难译的后半句砍掉用……带过，34 条真残缺

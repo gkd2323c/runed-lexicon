@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "purpose": "由真实项目术语事故语义等价改写得到的 gate 层核心回归。覆盖组织名/普通名词多义、官方专名、合法省略、禁后缀变体、主语术语被删、文化限定词丢失与回指。",
+  "purpose": "由真实项目术语事故语义等价改写得到的 gate 层核心回归。覆盖组织名/普通名词多义、官方专名、合法省略、禁后缀变体、主语术语被删、文化限定词丢失与回指。2026-09-10 增补：forbidden 为 target 子串时 TERM002 路径的按区间豁免（R18；未被覆盖的独立实例仍报；Artaeum INFO-062 假 FAIL 机制）。",
   "collection_date": "2026-09-03",
   "provenance": "synthetic_rewrite_of_confirmed_real_project_incidents",
   "source_docs": ["private incident ledger (not distributed)", "official dictionary evidence"],
@@ -367,6 +367,56 @@
       "expect": { "verdict": "PASS", "codes": [] },
       "golden": "刀锋会曾经保护龙裔。",
       "origin": "real_project_incident_rewritten"
+    },
+    {
+      "case_id": "term-contract.jong-substr-exempt-001",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Jong has for many years trained some of the best enchanters I have ever seen.",
+        "translation": "琼恩多年来教出了我平生仅见的最出色的附魔师。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.jong", "source_span": "Jong", "required": true }],
+          "terms": {
+            "synthetic.jong": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "琼恩",
+              "forbidden": ["琼"],
+              "match": { "kind": "contains_phrase", "accepted": ["琼恩"] }, "origin": "PROJECT", "source": "Jong"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "PASS", "codes": [] },
+      "golden": "琼恩多年来教出了我平生仅见的最出色的附魔师。",
+      "origin": "real_project_incident_rewritten",
+      "note": "R18（Artaeum INFO-062，2026-09-10）：forbidden「琼」是 target「琼恩」子串时，被 target 区间完整覆盖的实例豁免（TERM002 路径与 TERM004 R12 对齐）。"
+    },
+    {
+      "case_id": "term-contract.jong-substr-exempt-002",
+      "test_layer": "gate",
+      "category": "term_forbidden",
+      "plugin": "synthetic",
+      "xml_index": null,
+      "input": {
+        "source": "Jong has for many years trained some of the best enchanters I have ever seen.",
+        "translation": "琼恩多年来教出了最出色的附魔师。接下来交给你了，琼。",
+        "contract": {
+          "bindings": [{ "term_id": "synthetic.jong", "source_span": "Jong", "required": true }],
+          "terms": {
+            "synthetic.jong": {
+              "decision_status": "CONFIRMED", "enforcement": "REQUIRED", "target": "琼恩",
+              "forbidden": ["琼"],
+              "match": { "kind": "contains_phrase", "accepted": ["琼恩"] }, "origin": "PROJECT", "source": "Jong"
+            }
+          }
+        }
+      },
+      "expect": { "verdict": "FAIL", "codes": ["TERM002"] },
+      "golden": "琼恩多年来教出了最出色的附魔师。接下来交给你了，琼恩。",
+      "origin": "real_project_incident_rewritten",
+      "note": "R18 反例：未被 target 覆盖的独立「琼」实例仍报 TERM002——豁免按区间而非整单元，不得泛化。"
     }
   ]
 }
