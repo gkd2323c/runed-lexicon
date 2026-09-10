@@ -3,7 +3,7 @@ name: translation-quality-gate
 description: Deterministic, read-only pre-writeback quality gate for Skyrim mod translation batches. Verifies that completed translation-result JSON satisfies a compiled Translation Contract (term bindings, KEEP list, protected placeholders, simplified-Chinese charset) before the xTranslator XML writer runs. Use whenever a completed translation batch must be validated before XML writeback, when terminology regressions like Argonian/Blades/sweetroll need mechanical enforcement, or when a contract/regression change must be checked against the incident-derived synthetic regression corpus. Gate only checks declared unit bindings and never re-derives entity identity, and it never modifies translations.
 compatibility: Python 3.10+; standard library only. CHAR001 simplified-Chinese detection uses a vendored zh-cn conversion table (scripts/zh_cn_conv.json) — no third-party dependency, deterministic across environments. The tracked Translation Contract interface is documented in references/contract-schema.md.
 metadata:
-  version: "0.1.6"
+  version: "0.2.0"
 ---
 
 > 性能基线（见 `skyrim-tool-dev-rules` §2）：
@@ -111,6 +111,26 @@ completed batch), add `--auto-bind`:
 - Units where `dest == source` (KEEP / untranslated technical strings) are skipped.
 - Exit code stays 0 when only WARNINGs are present; review candidates are printed
   and written to `--report` for human triage.
+
+### Forbidden variants of unbound terms (R19, v0.2.0)
+
+Auto-bind only covers **no-risk REQUIRED** terms; FORBIDDEN_ONLY and risk-flagged
+terms never bind, so before v0.2.0 their `forbidden` lists **silently never ran**
+in the auto-bind workflow (live cases: `hour`/「时辰」and `Soul Mine`/「魂石矿」
+shipped translated with the banned form despite an explicit ban entry).
+
+Fix: on every translated line, `standalone_forbidden_issues()` additionally
+checks all **unbound** terms with a non-empty `forbidden` list, gated by the
+term's English anchor appearing in source (`_anchor_present`, same matcher as
+the TERM004 exemption path — plural / hyphen tolerant). Bound terms are skipped
+(check_unit already reports them with richer evidence). Cross-term target
+coverage exemption (`_cross_term_target_covered`) mirrors the check_unit path.
+Anchor gating keeps lookalike substrings on unrelated lines from firing
+(「克瑞斯」⊂「佛克瑞斯」, 「大法师」泛用). Corpus cases:
+`term-contract.fwonly-forbidden-001` / `-anchor-absent-002` / `-clean-003`.
+
+The `selftest_corpus.py` gate path now calls the real `standalone_forbidden_issues`
+from `quality_gate` instead of replicating it, so gate and selftest cannot drift.
 
 ### Auto-bind substring guard (R6 fix, v0.1.3)
 
@@ -222,11 +242,14 @@ The corpus at `corpus/translation-regression/cases/gate/` encodes failure mechan
 python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
 ```
 
-All cases must pass before the gate may be considered safe.
+All cases must pass before the gate may be considered safe. The gate path in
+`selftest_corpus.py` calls the real gate functions (check_unit,
+standalone_forbidden_issues) so selftest and gate cannot drift; current total
+69 cases (v0.2.0).
 
 ## Safety boundaries
 
 - Do not re-derive entity identity from source text. If a term lacks a binding for a unit, that unit is not forced — even if the source mentions the term.
 - Do not auto-fix. If the gate finds a FAIL, return it to the translation JSON layer.
 - Do not run on raw XML as a substitute for the writer's own post-write validation; this gate is pre-writeback.
-- Terms with `risk_flags` (alias / knowledge_boundary / spoiler) must never receive automatic or global bindings; only explicit per-unit bindings.
+- Terms with `risk_flags` (alias / knowledge_boundary / spoiler) must never receive automatic or global bindings; only explicit per-unit bindings. Their `forbidden` lists are still enforced per R19 (anchor-gated, independent of bindings) — target checks stay binding-only.
