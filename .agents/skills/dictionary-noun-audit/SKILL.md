@@ -107,6 +107,7 @@ Review checklist per flag:
   - internal apostrophes and hyphens kept: M'aiq, J'zargo, Nix-Hound, Swims-In-Deep-Water
   - cultural particles allowed lowercase inside a name (Lash gra-Shugurz)
   - possessive stripped: Whiterun's / Whiterun’s match Whiterun
+  - trailing apostrophes dropped on every token, not just the last: the game wraps names in single quotes, so `'Soul trap'-spell` tokenizes as [`Soul`, `trap'-spell`] and `'Flame Atronach'` as [`Flame`, `Atronach'`]; stripping only the last token left `trap'`/`atronach'` unmatched (real incident: Familiar/使魔, Flame Atronach/火焰侍灵, Soul Trap/摄魂陷阱 all passed earlier audits)
   - plural tolerated: Argonians / Thalmors match Argonian / Thalmor
   - no NLP, no stemming
 - Empty Dest and untranslated Dest (Dest == Source) are CHECK candidates — only an empty Source is skipped. For translation-result JSON, a `translation` field that is present but empty is treated as an empty translation (candidate), never silently replaced by `original_dest`; rows explicitly marked `status: KEEP` are skipped.

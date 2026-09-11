@@ -369,6 +369,23 @@ def collect_translations(
 
             source_tokens = Counter(protected_tokens(expected["source"]))
             translation_tokens = Counter(protected_tokens(translation))
+            # R16 联动：result 条目声明 waived_tokens 时，与 patch 路径同语义地
+            # 从两侧 multiset 各减去（方括号中文化，如 [END OF SEASON 1]→[第一季结束]）。
+            # 此前仅 load_patch 支持 waiver，result 路径漏读——gate/executor 已支持
+            # 而 writer 拒绝，造成“前两道放行、写回被拦”的机制缺口。
+            waived = item.get("waived_tokens") or []
+            if waived:
+                if not isinstance(waived, list) or any(not isinstance(w, str) for w in waived):
+                    raise WritebackError(f"{unit_id}: waived_tokens must be an array of strings")
+                for w in waived:
+                    if w not in (expected["source"] or ""):
+                        raise WritebackError(f"{unit_id}: waived token not in source: {w!r}")
+                    source_tokens[w] -= 1
+                    if source_tokens[w] <= 0:
+                        del source_tokens[w]
+                    translation_tokens[w] -= 1
+                    if translation_tokens[w] <= 0:
+                        del translation_tokens[w]
             if source_tokens != translation_tokens:
                 raise WritebackError(
                     f"{unit_id}: protected token mismatch; "

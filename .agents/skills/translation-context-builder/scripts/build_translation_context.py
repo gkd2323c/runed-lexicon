@@ -91,17 +91,42 @@ def relative(path: Path) -> str:
         return str(path.resolve())
 
 
-def normalize_phrase(value: str) -> str:
+def _raw_normalize_phrase(value: str) -> str:
     tokens = WORD_RE.findall(value.replace("’", "'"))
     return " ".join(token.casefold() for token in tokens)
 
 
-def source_ngrams(source: str, max_words: int = 6) -> Iterable[str]:
+def _raw_source_ngrams(source: str, max_words: int = 6) -> Iterable[str]:
     tokens = [token.casefold() for token in WORD_RE.findall(source.replace("’", "'"))]
     count = len(tokens)
     for width in range(min(max_words, count), 0, -1):
         for start in range(0, count - width + 1):
             yield " ".join(tokens[start : start + width])
+
+
+# The game wraps spell/creature names in single quotes and marks possessives
+# with a trailing apostrophe ("cast 'Flame Atronach'", "conjure a 'Familiar'",
+# "Magnus' notes"). WORD_RE counts ' as a word character, so those tokens came
+# out as "'familiar'", "'flame", "atronach'", "magnus'" and could never equal
+# an index key: the official-name lookup silently returned nothing for every
+# quoted term, the digest printed "OFF: -" (absence looked real), and the
+# translator invented a form. Drop apostrophes that sit outside a word (next to
+# a non-alphanumeric or a string edge) before tokenizing. Interior ones survive,
+# so "it's" and "Mara's Blessing" keep their shape. Applied on both the index
+# side and the query side, so the two stay consistent by construction.
+_STRAY_APOSTROPHE_RE = re.compile(r"(?<![A-Za-z0-9])'|'(?![A-Za-z0-9])")
+
+
+def dequote_stray_apostrophes(value: str) -> str:
+    return _STRAY_APOSTROPHE_RE.sub(" ", value.replace("\u2019", "'"))
+
+
+def normalize_phrase(value: str) -> str:
+    return _raw_normalize_phrase(dequote_stray_apostrophes(value))
+
+
+def source_ngrams(source: str, max_words: int = 6) -> Iterable[str]:
+    return _raw_source_ngrams(dequote_stray_apostrophes(source), max_words)
 
 
 def resolve_path(value: str | None, base: Path = PROJECT_ROOT) -> Path | None:

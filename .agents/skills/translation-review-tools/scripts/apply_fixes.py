@@ -45,6 +45,12 @@ def resolve(value: str) -> Path:
     return path.resolve()
 
 
+# 可随修正一起改写的非译文字段（不改 translation 本身）。
+# waived_tokens：R16 占位符豁免（方括号中文化，如 [END OF SEASON 1]→[第一季结束]），
+# gate PLACEHOLDER001 与 executor validate 均读该字段，须与 translation 一同落盘。
+EXTRA_FIELDS = ("notes", "status", "confidence", "waived_tokens")
+
+
 def normalize_fixes(raw: dict) -> dict[int, dict]:
     """规范化 fixes。`new` 可选：缺省时只改 status/notes/confidence 等字段
     （消除“只想把 REVIEW 转 TRANSLATED 也得写临时脚本”的常规需求）。"""
@@ -57,8 +63,8 @@ def normalize_fixes(raw: dict) -> dict[int, dict]:
         if isinstance(value, str):
             fixes[idx] = {"new": value}
         elif isinstance(value, dict):
-            if not any(k in value for k in ("new", "status", "notes", "confidence")):
-                raise ValueError(f"fixes[{key}]: 对象形式至少需含 new/status/notes/confidence 之一")
+            if not any(k in value for k in EXTRA_FIELDS + ("new",)):
+                raise ValueError(f"fixes[{key}]: 对象形式至少需含 new/status/notes/confidence/waived_tokens 之一")
             fixes[idx] = dict(value)
         else:
             raise ValueError(f"fixes[{key}]: 值必须是字符串或对象")
@@ -156,7 +162,7 @@ def main() -> int:
             if action.startswith("error"):
                 errors.append(action)
                 continue
-            extras = [f for f in ("notes", "status", "confidence") if f in fix]
+            extras = [f for f in EXTRA_FIELDS if f in fix]
             if action == "skip":
                 if extras:
                     for field in extras:
@@ -170,7 +176,7 @@ def main() -> int:
                 entry["status"] = "TRANSLATED"
                 warnings.append(f"map.json[{idx}]: KEEP 条目改译，status 自动转 TRANSLATED")
             entry["translation"] = new
-            for field in ("notes", "status", "confidence"):
+            for field in EXTRA_FIELDS:
                 if field in fix:
                     entry[field] = fix[field]
             map_applied += 1
@@ -191,7 +197,7 @@ def main() -> int:
             if action.startswith("error"):
                 errors.append(action)
                 continue
-            extras = [f for f in ("notes", "status", "confidence") if f in fix]
+            extras = [f for f in EXTRA_FIELDS if f in fix]
             if action == "skip":
                 if extras:
                     for field in extras:
@@ -206,7 +212,7 @@ def main() -> int:
             unit["translation"] = new
             if unit.get("status", "").upper() == "PENDING":
                 unit["status"] = "TRANSLATED"
-            for field in ("notes", "status", "confidence"):
+            for field in EXTRA_FIELDS:
                 if field in fix:
                     unit[field] = fix[field]
             result_applied += 1

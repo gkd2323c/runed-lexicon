@@ -181,13 +181,23 @@ def load_contract(path):
     out = []
     terms = c.get('terms', {})
     for tid, t in terms.items():
+        target = (t.get('target') or '').strip()
         for f in t.get('forbidden') or []:
+            # 禁形若是**其自身合法 target 的子串**，纯子串匹配必然误报：
+            # 魂石⊂灵魂石、琼⊂琼恩、大战⊂浩大战争、雨手⊂雨手月。此类禁形在当前
+            # 匹配机制下不可执行（中文无词边界），全部跳过；否则每一条合法
+            # target 的译文都会被报成 FAIL（实测 126/189 条为自包含误报）。
+            if target and f and f in target:
+                continue
             out.append((re.compile(re.escape(f)), t.get('source'), False,
-                        '%s→%s' % (tid, t.get('target')), f))
+                        '%s→%s' % (tid, target), f))
     for b in c.get('global_bans') or []:
+        target = (b.get('target') or '').strip()
         for f in b.get('forbidden') or []:
+            if target and f and f in target:
+                continue
             out.append((re.compile(re.escape(f)), b.get('english'), bool(b.get('unconditional')),
-                        'GLOBAL %s→%s' % (b.get('english'), b.get('target')), f))
+                        'GLOBAL %s→%s' % (b.get('english'), target), f))
     cross = []
     for t in terms.values():
         tg = (t.get('target') or '').strip()

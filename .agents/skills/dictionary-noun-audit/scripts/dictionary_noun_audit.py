@@ -348,8 +348,22 @@ def extract_candidates(src, enabled_map, optional_map, include_single, only_re):
     tokens = re.findall(r"[A-Za-z][A-Za-z'’\-]*", src)
 
     def norm_token_seq(seq):
-        # strip trailing possessive on the last token; lower all
-        out = [t.lower() for t in seq]
+        # Lower all, drop a trailing apostrophe from every token, then strip a
+        # possessive on the last one. The game wraps spell/creature names in
+        # single quotes and the tokenizer starts at a letter, so an interior
+        # token keeps the closing quote: "'Soul trap'-spell" arrives as
+        # ["Soul", "trap'", "spell"] and "'Flame Atronach'" as
+        # ["Flame", "Atronach'"]. Without stripping, "trap'" never equals the
+        # index key "soul trap" and the audit silently misses the name, which
+        # is how Familiar/使魔 and Soul Trap/摄魂陷阱 slipped past earlier audits.
+        out = []
+        for token in seq:
+            # A closing quote glued to a following hyphen ends the name: the
+            # source "'Soul trap'-spell" tokenizes as "trap'-spell" because the
+            # token class allows both ' and -. Keep the name part and drop the
+            # attached suffix, so the bigram "soul trap" still forms.
+            token = re.split(r"'-", token, maxsplit=1)[0]
+            out.append(re.sub(r"['\u2019]+$", '', token.lower()))
         out[-1] = re.sub(r"(?:'s|’s)$", '', out[-1])
         return out
 

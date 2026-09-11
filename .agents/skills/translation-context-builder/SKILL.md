@@ -117,6 +117,8 @@ Automatic single-token matches are limited to high-value identity / world-term r
 
 Do not automatically attach generic one-word prose merely because an official record happens to use the same English word. Examples that should stay out of ordinary INFO term attachment include action verbs and generic nouns such as `Talk`, `Place`, `Fill`, `Between`, `Gate`, `Cave`, `Letter`, or `Scholar` when they are just sentence vocabulary.
 
+**Quoted names must still match（引号剥离）**: the game wraps spell and creature names in single quotes ("cast 'Flame Atronach'", "conjure a 'Familiar'") and marks possessives with a trailing apostrophe ("Magnus' notes"). The tokenizer counts `'` as a word character, so before this was handled the tokens came out as `'familiar'`, `'flame`, `atronach'`, `magnus'` and matched nothing: every quoted official name came back as `OFF: -`, which reads as "no official form exists", and translators then invented one. `dequote_stray_apostrophes()` now removes apostrophes that sit outside a word (adjacent to a non-alphanumeric or a string edge) on **both** the index side and the query side, so quoted and possessive forms resolve to the same key. Interior apostrophes survive: `it's`, `Mara's Blessing`, `M'aiq` are unchanged.
+
 This conservative pass is not expected to discover every lore term. Terms such as `Ayleid` or `High Rock` may need an explicit official-corpus lookup when they are not represented by a suitable canonical `FULL` record. Missing an automatic hit is preferable to presenting ordinary prose as an authoritative terminology decision.
 
 ## Safety boundaries

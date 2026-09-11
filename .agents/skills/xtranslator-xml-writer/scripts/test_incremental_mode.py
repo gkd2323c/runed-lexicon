@@ -72,18 +72,19 @@ def write_result(path: Path, source_xml: Path, items, recorded_sha=None) -> None
     sha = recorded_sha if recorded_sha is not None else sha256_of(source_xml)
     translations = []
     for item in items:
-        translations.append(
-            {
-                "translation_unit_id": item.get("unit", f"unit:{item['xml_index']}"),
-                "xml_index": item["xml_index"],
-                "edid": item["edid"],
-                "rec": item["rec"],
-                "source": item["source"],
-                "original_dest": item["original_dest"],
-                "translation": item["translation"],
-                "status": item.get("status", "TRANSLATED"),
-            }
-        )
+        entry = {
+            "translation_unit_id": item.get("unit", f"unit:{item['xml_index']}"),
+            "xml_index": item["xml_index"],
+            "edid": item.get("edid", ""),
+            "rec": item.get("rec", ""),
+            "source": item["source"],
+            "original_dest": item["original_dest"],
+            "translation": item["translation"],
+            "status": item.get("status", "TRANSLATED"),
+        }
+        if "waived_tokens" in item:
+            entry["waived_tokens"] = item["waived_tokens"]
+        translations.append(entry)
     doc = {
         "schema_version": 1,
         "purpose": "test",
@@ -335,6 +336,61 @@ def main() -> int:
         if res.returncode != 2 or "shrink" not in res.stderr.lower():
             failures.append(
                 f"case7 stale baseline not rejected: rc={res.returncode} err={res.stderr.strip()}"
+            )
+
+        # --- case 8: result waived_tokens (R16) —— 方括号中文化应放行
+        # 此前仅 load_patch 读 waived_tokens，result 路径漏读：gate/executor 放行
+        # 而 writer 报 protected token mismatch。本条守住 result 路径的 R16 语义。
+        tok_rows = [
+            {"edid": "[S1]", "rec": "QUST:CNAM", "source": "Ends here. [END OF SEASON 1]",
+             "dest": "Ends here. [END OF SEASON 1]"},
+        ]
+        tok_src = tmp / "tok_english_chinese.xml"
+        tok_src.write_text(build_xml(tok_rows), encoding="utf-8")
+        tok_result = tmp / "tok_result.json"
+        write_result(
+            tok_result, tok_src,
+            [{
+                "translation_unit_id": "xml-index:0", "xml_index": 0,
+                "edid": "[S1]", "rec": "QUST:CNAM",
+                "source": tok_rows[0]["source"],
+                "original_dest": tok_rows[0]["source"],
+                "translation": "到此结束。[第一季结束]",
+                "status": "TRANSLATED", "confidence": "HIGH", "notes": "",
+                "waived_tokens": ["[END OF SEASON 1]"],
+            }],
+        )
+        tok_out = tmp / "case8" / "tok_english_chinese_translated.xml"
+        res = run(
+            "--xml", str(tok_src), "--source-xml", str(tok_src),
+            "--result", str(tok_result), "--output", str(tok_out),
+        )
+        if res.returncode != 0:
+            failures.append(f"case8 waived_tokens result 应放行: rc={res.returncode} err={res.stderr.strip()}")
+        else:
+            got = ET.parse(tok_out).getroot().findall(".//String")[0].findtext("Dest")
+            if got != "到此结束。[第一季结束]":
+                failures.append(f"case8 译文未生效: {got!r}")
+        # 未声明 waiver 时必须仍然拦截（防 R16 误放宽）
+        tok_bad = tmp / "tok_bad.json"
+        write_result(
+            tok_bad, tok_src,
+            [{
+                "translation_unit_id": "xml-index:0", "xml_index": 0,
+                "edid": "[S1]", "rec": "QUST:CNAM",
+                "source": tok_rows[0]["source"],
+                "original_dest": tok_rows[0]["source"],
+                "translation": "到此结束。[第一季结束]",
+                "status": "TRANSLATED", "confidence": "HIGH", "notes": "",
+            }],
+        )
+        res = run(
+            "--xml", str(tok_src), "--source-xml", str(tok_src),
+            "--result", str(tok_bad), "--output", str(tmp / "case8b" / "tok_english_chinese_translated.xml"),
+        )
+        if res.returncode != 2 or "protected token mismatch" not in res.stderr:
+            failures.append(
+                f"case8b 未声明 waiver 应拦截: rc={res.returncode} err={res.stderr.strip()}"
             )
 
         if failures:

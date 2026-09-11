@@ -259,6 +259,10 @@ The writer independently checks runtime-sensitive tokens such as:
 
 Ordinary percentages such as `10% permanently` are not printf placeholders.
 
+**R16 waived_tokens（方括号中文化豁免，result 与 patch 双路径）**：方括号动作/季终标记（如 `[Show Ring]`→`[展示戒指]`、`[END OF SEASON 1]`→`[第一季结束]`）按天际官方中文惯例需中文化，机械 multiset 必然不等。结果条目声明 `"waived_tokens": ["[Show Ring]"]`（或 patch 条目同键）时，该校验从 Source/译文两侧各减一次该 token；声明的 token 必须在 Source 中真实存在（防乱声明），否则报错。
+
+> 历史缺口（已修）：`waived_tokens` 此前仅 `load_patch` 路径读取，`load_result` 路径漏读——同一批数据 gate 与 executor 已放行、writer 却报 `protected token mismatch`，形成“前两道放行、写回被拦”的机制缺口。现两条路径语义一致。
+
 ## Output and report
 
 The generated XML is a new file by default. With `--report`, the script writes JSON containing:

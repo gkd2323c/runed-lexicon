@@ -105,6 +105,35 @@ def main():
         if fs._terminal_category("他说“好！”") != "exclam":
             failures.append("_terminal_category 未剥离尾随引号")
 
+        # 6. 自包含禁形：禁形是其自身合法 target 的子串时，子串匹配必然误报，须跳过。
+        # 真实事故：魂石⊂灵魂石、琼⊂琼恩、大战⊂浩大战争、雨手⊂雨手月，
+        # 全库 189 条 FAIL 中 126 条为此类误报（信噪比 1:126）。
+        sub_contract = os.path.join(tmp, "substring.json")
+        with open(sub_contract, "w", encoding="utf-8") as fh:
+            json.dump({"terms": {}, "global_bans": [
+                {"english": "Soul Gem", "forbidden": ["魂石"], "target": "灵魂石"},
+                {"english": "J'zargo", "forbidden": ["琼"], "target": "琼恩"},
+                {"english": "Great War", "forbidden": ["大战"], "target": "浩大战争"},
+                {"english": "Second Seed", "forbidden": ["雨手"], "target": "雨手月"},
+                {"english": "Dwemer", "forbidden": ["矮人"], "target": "锻莫"},
+            ]}, fh, ensure_ascii=False)
+        sub_bans = fs.load_contract(sub_contract)
+        kept = {b[4] for b in sub_bans}
+        for bad in ("魂石", "琼", "大战", "雨手"):
+            if bad in kept:
+                failures.append(f"自包含禁形未被跳过: {bad}")
+        if "矮人" not in kept:
+            failures.append("非自包含禁形被误删: 矮人")
+        fs.BANS = sub_bans
+        sub_fails, _ = fs.check_units([
+            ("s1", "Soul Gem here", "这里有一颗灵魂石"),   # 合法 target -> 不得报
+            ("s2", "J'zargo nods", "琼恩点了点头"),         # 合法 target -> 不得报
+            ("s3", "Dwemer ruins", "矮人的遗迹"),          # 真禁形 -> 应报
+        ])
+        if sorted(x["id"] for x in sub_fails) != ["s3"]:
+            failures.append("自包含豁免后命中集错误: %r" % ([x["id"] for x in sub_fails],))
+        fs.BANS = bans
+
         # 5. 性能冒烟：250 禁形 × 2500 行
         perf_contract = os.path.join(tmp, "perf.json")
         _write_contract(perf_contract, 250)

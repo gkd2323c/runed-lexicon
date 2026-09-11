@@ -311,6 +311,22 @@ def main() -> int:
         (batch_dir / "map.json").write_text(json.dumps(m7, ensure_ascii=False, indent=2), encoding="utf-8")
         # CAS 保护：map 与 translation 不同步时拒绝写盘
 
+        # ---------- apply_fixes waived_tokens（R16 占位符豁免）----------
+        fixes_wt = tmp / "fix-waive.json"
+        fixes_wt.write_text(json.dumps({
+            "0": {"waived_tokens": ["[Show Ring]"]},
+        }, ensure_ascii=False), encoding="utf-8")
+        res = run(APPLY, "--stem", "T", "--batch", "B1", "--work-root", str(work), "--fixes", str(fixes_wt))
+        m8 = json.loads((batch_dir / "map.json").read_text(encoding="utf-8"))
+        if res.returncode != 0 or m8["0"].get("waived_tokens") != ["[Show Ring]"]:
+            failures.append(f"apply_fixes waived_tokens failed: {m8['0']}")
+        t8 = json.loads((batch_dir / "translation.json").read_text(encoding="utf-8"))
+        u0 = next(u for u in t8["translations"] if u["xml_index"] == 0)
+        if u0.get("waived_tokens") != ["[Show Ring]"]:
+            failures.append(f"apply_fixes waived_tokens 未同步 translation: {u0.get('waived_tokens')}")
+        if u0["translation"] != m8["0"]["translation"]:
+            failures.append("apply_fixes waived_tokens 不应改译文")
+
         if failures:
             for failure in failures:
                 print(f"FAIL: {failure}")
