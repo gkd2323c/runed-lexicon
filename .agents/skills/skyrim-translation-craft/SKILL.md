@@ -3,7 +3,7 @@ name: skyrim-translation-craft
 description: Skyrim MOD 翻译工艺规则：上下文优先通读、信息揭示顺序与禁止剧透、原版词典证据用法、翻译风格、按 REC 记录类型的差异化策略。Use when starting or reviewing any Skyrim MOD translation work, translating or judging INFO/DIAL/QUST/BOOK text, deciding terminology in context, checking spoiler/knowledge-boundary risk, or evaluating whether a dictionary hit applies.
 compatibility: Reference rules only; no scripts. Companion to the runed-lexicon pipeline skills.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # 翻译工艺规则
@@ -44,18 +44,31 @@ metadata:
 
 默认要求：准确优先于华丽；中文自然，不保留无意义英文语序；人物口吻与身份和场景匹配；古朴感适度，不滥用文言；UI、任务目标与交互提示简洁；书籍、信件与剧情文本可适当提高文学性；同一角色、地点、派系、物品、概念的译名保持一致。不为了"像奇幻作品"添加原文不存在的信息、语气或修辞。
 
+标点与字符：**中文引号一律用弯引号“”，不用日式「」**（gate CHAR001 机械拦截）；任务目标句（QUST:NNAM）句末标点随源文；分隔符按源文形态（` - ` 保留分隔，不替换为破折号）。
+
 ## 5. 按记录类型处理
 
 不同 `REC` 类型共用一套机械策略。初步原则：
 
 - `INFO:*`：优先保证人物口吻、上下文与指代正确。
 - `DIAL:*`：简洁，注意它可能是玩家选项、Topic 名或对话标签。
-- `QUST:*`：任务名可有风格；目标与日志优先清楚、自然、符合游戏 UI。
+- `QUST:*`：任务名可有风格；目标与日志优先清楚、自然、符合游戏 UI。**任务目标句（NNAM）的句末标点随源文**：源文带句末标点（句号/叹号/问号）时译文必须保留，由 `translation-fidelity-scan` 对 `QUST:NNAM` 的 `lost` 做机械校验（缺则 FAIL）；句末带「（可选）」类标记时标点置于标记之前（如「取得钥匙。（可选）」）。
 - `BOOK:*`：结合全文上下文翻译，不逐句割裂。
 - `MESG:*`：按实际用途区分标题、正文、按钮与系统提示。
 - `MGEF:*` / `SPEL:*`：优先复用原版魔法术语与描述习惯。
 - `WEAP:*` / `ARMO:*` / `MISC:*`：优先保证名称风格与术语一致性。
 - `ACTI:*` / `FURN:*`：交互文本通常短而明确。
 - `NPC_:*` / `CELL:*` / `WRLD:*`：名称必须检查是否已有官方或既定译法。
+
+## 6. 开发 / 测试用语（无条件规则）
+
+对所有可见字符串默认执行翻译。仅当字符串被确认属于代码、标识符、机器解析标签、占位符、格式控制内容或其他要求字面稳定的程序字段时保留原文。不得因为内容看起来像测试、调试、开发、废弃或内部文本而跳过翻译：
+
+- **判断逻辑**：翻译对测试用语严格占优——玩家不可见时无害，玩家可见时必需；KEEP 在不可见时无收益、在可见时直接损失（界面出现英文残留）。不存在需要 KEEP 的测试用语场景。
+- **触发范围**：`TESTING HALL`、`Test Space`、`TestTony`、`RENAME`、`BASE CAVE`、`BASE INTERIOR` 类占位 / 测试 / 调试文本一律照常翻译；译不出语义的纯占位串按字面直译或音译。
+- **禁止行为**：以「开发残留、玩家不可见」为由标 KEEP / WAITING；以「与既有 KEEP 口径一致」为由要求把已译的测试用语回退为 KEEP。
+- **反例对照**：以「与测试残留 KEEP 口径一致」为由将「测试空间」回退为 KEEP 是错误处置；正确口径是测试用语一律翻译。
+
+## 7. 按记录类型处理细化方向
 
 这些规则随实际 MOD 样本细化；细化结果更新本 skill 或项目级 `GLOBAL.md`。

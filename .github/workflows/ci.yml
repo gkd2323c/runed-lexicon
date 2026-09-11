@@ -55,7 +55,10 @@ jobs:
           set -e
           python .agents/skills/xtranslator-xml-writer/scripts/test_patch_mode.py
           python .agents/skills/xtranslator-xml-writer/scripts/test_incremental_mode.py
+          python .agents/skills/noninfo-batch-planner/scripts/test_plan_noninfo.py
+          python .agents/skills/translation-review-tools/scripts/test_review_tools.py
           python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
+          python .agents/skills/translation-fidelity-scan/scripts/test_fidelity_scan.py
           python corpus/translation-regression/scripts/validate_corpus.py
 
       - name: Skill quick validation (all skills)

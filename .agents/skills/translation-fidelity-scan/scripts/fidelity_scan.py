@@ -21,6 +21,7 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 import os
+from functools import lru_cache
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CANDS = json.load(open(os.path.join(HERE, 'anachronism_candidates.json'),
@@ -52,6 +53,75 @@ def _residue(src, dst):
                 and not re.fullmatch(r'[^A-Za-z]*[A-Za-z .!…]+', src or ' X '))
 
 
+# ---- 句末标点一致性（源文/译文终结标点类别对齐）----
+# 不作为 FAIL：句末去标点可能是项目有意约定（游戏 UI 目标句惯用无句号），
+# 也可能是漏译标点，两者只能由主会话按 REC 与已验收先例裁决。本检查只报
+# “源文终结标点与译文终结标点类别不一致”，不定罪，供全库分布统计与逐批复核。
+_TRAILING_WRAP = re.compile(r'[\s"\'\]\)）】」』”’]*$')
+
+
+def qust_punct_fails(punct):
+    """QUST:NNAM 目标句缺句末标点的行（裁决 A：统一保留句号）→ 计入机械 FAIL。
+    其他 REC 的标点差异只报不定罪。"""
+    return [p for p in punct
+            if p.get('rec') == 'QUST:NNAM' and p['dir'] == 'lost']
+
+
+def _terminal_category(text):
+    """返回句末终结标点类别：period / exclam / question / ellipsis / none。
+    先剥离尾随引号/括号/空白，再看前一字符；全角半角同归一类。"""
+    t = _TRAILING_WRAP.sub('', (text or '').rstrip())
+    if not t:
+        return 'none'
+    ch = t[-1]
+    if ch == '。':
+        return 'period'
+    if ch in '！!':
+        return 'exclam'
+    if ch in '？?':
+        return 'question'
+    if ch == '…':
+        return 'ellipsis'
+    if ch == '.':
+        return 'ellipsis' if t.endswith('...') else 'period'
+    return 'none'
+
+
+def check_punctuation(units):
+    """units: [(uid, src, dst[, rec])] -> list of terminal-punctuation mismatches.
+    只报源文有终结标点而译文无（或反之）的行；两侧都无 / 两侧类别相同不报。
+    KEEP 行（dst == src）不报（保留原文天然一致）。"""
+    out = []
+    for unit in units:
+        uid, src, dst = unit[0], unit[1], unit[2]
+        rec = unit[3] if len(unit) > 3 else ''
+        if not dst or dst == src:
+            continue
+        sc = _terminal_category(src)
+        dc = _terminal_category(dst)
+        if sc == dc:
+            continue
+        # 源文无标点、译文加了标点（或反向）都报；类别不同（句号 vs 问号）也报
+        out.append({
+            'id': uid,
+            'rec': rec or '',
+            'src_terminal': sc,
+            'dst_terminal': dc,
+            'dir': 'lost' if sc != 'none' and dc == 'none' else (
+                   'added' if sc == 'none' and dc != 'none' else 'changed'),
+            'src': (src or '')[:80],
+            'dst': (dst or '')[:60],
+        })
+    return out
+
+
+@lru_cache(maxsize=8192)
+def _anchor_re(eng):
+    """预编译锚点正则。此前每个 (unit × ban) 命中都现场编译，
+    实测成为主热点（1500 行样本 160 万次 re.compile）。"""
+    return re.compile(r'\b%s(?:s|\'s)?\b' % re.escape(eng), re.I)
+
+
 def _anchor_hit(src, eng):
     """英文侧整词锚点（与 gate TERM004 同语义）：大小写不敏感，复数/'s 仍命中。
     unconditional 在此仅表示"无需 unit binding"，仍需英文锚点——否则源文 Bosmer 的
@@ -62,17 +132,18 @@ def _anchor_hit(src, eng):
     eng = re.sub(r'\s*\(.*?\)\s*', '', eng).strip()
     if not eng:
         return False
-    return bool(re.search(r'\b%s(?:s|\'s)?\b' % re.escape(eng), src or '', re.I))
+    return bool(_anchor_re(eng).search(src or ''))
 
 
 def check_units(units):
-    """units: [(uid, src, dst)] -> (fails, cands)。"""
+    """units: [(uid, src, dst[, rec])] -> (fails, cands)。"""
     fails, cands = [], []
     bans = BANS
-    for uid, src, dst in units:
+    for unit in units:
+        uid, src, dst = unit[0], unit[1], unit[2]
         hits = []
         for pat, eng, uncond, why, fvar in bans:
-            if not re.search(pat, dst or ''):
+            if not pat.search(dst or ''):
                 continue
             if _anchor_hit(src, eng):
                 # 跨条 target 豁免（与 quality-gate TERM002/TERM004 同语义）：
@@ -100,18 +171,22 @@ def check_units(units):
 
 
 def load_contract(path):
-    """从编译契约提取禁形：(forbidden, english锚, unconditional, 说明, 禁形原文)。
-    同时收集跨条 target 表（供行级误报豁免）。"""
+    """从编译契约提取禁形：(编译后 forbidden 正则, english锚, unconditional, 说明, 禁形原文)。
+    同时收集跨条 target 表（供行级误报豁免）。
+
+    性能：pattern 在此预编译。旧实现存 re.escape 字符串，check_units 中每次
+    re.search(pat, dst) 都走 re._compile，866 禁形 × 14968 行 ≈ 1300 万次编译，
+    全库实测 293s（30s 缺陷线 10 倍）。"""
     c = json.load(open(path, encoding='utf-8'))
     out = []
     terms = c.get('terms', {})
     for tid, t in terms.items():
         for f in t.get('forbidden') or []:
-            out.append((re.escape(f), t.get('source'), False,
+            out.append((re.compile(re.escape(f)), t.get('source'), False,
                         '%s→%s' % (tid, t.get('target')), f))
     for b in c.get('global_bans') or []:
         for f in b.get('forbidden') or []:
-            out.append((re.escape(f), b.get('english'), bool(b.get('unconditional')),
+            out.append((re.compile(re.escape(f)), b.get('english'), bool(b.get('unconditional')),
                         'GLOBAL %s→%s' % (b.get('english'), b.get('target')), f))
     cross = []
     for t in terms.values():
@@ -122,6 +197,7 @@ def load_contract(path):
         tg = (b.get('target') or '').strip()
         if tg:
             cross.append((tg, b.get('english') or ''))
+    del CROSS_TARGETS[:]
     CROSS_TARGETS.extend(cross)
     return out
 
@@ -159,20 +235,37 @@ def main():
     if a.result:
         d = json.load(open(a.result, encoding='utf-8'))
         units = [(u.get('translation_unit_id'), u.get('source'),
-                  u.get('translation') or u.get('original_dest') or '')
+                  u.get('translation') or u.get('original_dest') or '',
+                  u.get('rec') or '')
                  for u in d.get('translations', [])]
     else:
         strs = ET.parse(a.xml).getroot().findall('.//String')
-        units = [('xml-index:%d' % i, s.findtext('Source') or '', s.findtext('Dest') or '')
+        units = [('xml-index:%d' % i, s.findtext('Source') or '', s.findtext('Dest') or '',
+                  s.findtext('REC') or '')
                  for i, s in enumerate(strs)]
     fails, cands = check_units(units)
-    print('units=%d fails=%d anachronism_candidates=%d' % (len(units), len(fails), len(cands)))
+    punct = check_punctuation(units)
+    # QUST:NNAM 目标句：源文主体带句末标点而译文丢失 → 机械 FAIL（裁决 A：
+    # 统一保留句号）。其他 REC 的标点差异仍只报不定罪（对话台词自然差异）。
+    punct_fail = qust_punct_fails(punct)
+    for p in punct_fail:
+        fails.append({'id': p['id'], 'why': ['QUST 目标句缺句末标点'],
+                      'src': p['src'], 'dst': p['dst']})
+    lost = sum(1 for p in punct if p['dir'] == 'lost')
+    added = sum(1 for p in punct if p['dir'] == 'added')
+    changed = sum(1 for p in punct if p['dir'] == 'changed')
+    print('units=%d fails=%d anachronism_candidates=%d punctuation_mismatch=%d (lost=%d added=%d changed=%d; qust_lost_fail=%d)'
+          % (len(units), len(fails), len(cands), len(punct), lost, added, changed, len(punct_fail)))
     for f in fails[:20]:
         print('  FAIL', f['id'], f['why'], '|', f['src'][:56], '=>', f['dst'][:44])
     for c_ in cands[:20]:
         print('  ~', c_['id'], c_['words'], '|', c_['src'][:56], '=>', c_['dst'][:44])
+    for p in punct[:20]:
+        print('  PUNCT', p['id'], p['dir'], 'src=%s dst=%s' % (p['src_terminal'], p['dst_terminal']),
+              '|', p['src'][:48], '=>', p['dst'][:40])
     if a.report:
-        json.dump({'fails': fails, 'anachronism_candidates': cands},
+        json.dump({'fails': fails, 'anachronism_candidates': cands,
+                   'punctuation_mismatches': punct},
                   open(a.report, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
         print('report -> %s' % a.report)
     return 1 if fails else 0
