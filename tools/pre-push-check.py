@@ -24,6 +24,8 @@ QUICK_VALIDATE = os.path.join(
 STANDALONE_SCRIPTS = [
     os.path.join(ROOT, ".agents", "skills", "xtranslator-xml-writer",
                  "scripts", "test_patch_mode.py"),
+    os.path.join(ROOT, ".agents", "skills", "xtranslator-xml-writer",
+                 "scripts", "test_incremental_mode.py"),
     os.path.join(ROOT, ".agents", "skills", "translation-quality-gate",
                  "scripts", "selftest_corpus.py"),
     os.path.join(ROOT, "corpus", "translation-regression",

@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Surgically apply structured translation results to xTranslator XML."""
+"""Surgically apply structured translation results to xTranslator XML.
+
+Two writeback modes:
+- incremental: baseline = canonical/archived translated XML plus --source-xml;
+  only the supplied batches' rows change, everything else (including earlier
+  generations' translations) is preserved byte-for-byte.
+- full rebuild: baseline = source XML; writing over an existing canonical requires
+  the explicit --allow-full-rebuild flag, and previously translated rows must not
+  shrink.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +18,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
@@ -109,6 +119,32 @@ def params_snapshot(root: ET.Element) -> list[tuple[str, str]]:
     if params is None:
         raise WritebackError("XML has no <Params> element")
     return [(child.tag, child.text or "") for child in list(params)]
+
+
+def verify_baseline_derives_from_source(
+    src_root: ET.Element,
+    src_strings: list[ET.Element],
+    base_root: ET.Element,
+    base_strings: list[ET.Element],
+) -> None:
+    """Incremental-writeback sanity: the baseline must be the same document shape as
+    the declared source (only <Dest> may differ). If Params/EDID/REC/Source drift, the
+    baseline is not a descendant of this source and any per-row CAS would be
+    misleading."""
+    if params_snapshot(src_root) != params_snapshot(base_root):
+        raise WritebackError(
+            "Baseline <Params> differ from the declared source XML; baseline is not "
+            "derived from the declared source")
+    if len(src_strings) != len(base_strings):
+        raise WritebackError(
+            f"Baseline has {len(base_strings)} String(s) but the declared source has "
+            f"{len(src_strings)}; baseline is not derived from the declared source XML")
+    for index, (src_node, base_node) in enumerate(zip(src_strings, base_strings)):
+        for tag in ("EDID", "REC", "Source"):
+            if (src_node.findtext(tag) or "") != (base_node.findtext(tag) or ""):
+                raise WritebackError(
+                    f"Baseline is not derived from the declared source XML: {tag} "
+                    f"differs at xml_index {index}")
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -239,7 +275,7 @@ def collect_result_paths(explicit: list[str], patterns: list[str]) -> list[Path]
 
 
 def collect_translations(
-    paths: list[Path], source_hash: str, xml_strings: list[ET.Element],
+    paths: list[Path], expected_hash: str, xml_strings: list[ET.Element],
     skip_nonfinal: bool = False,
 ) -> tuple[dict[int, dict[str, Any]], dict[str, int], list[dict[str, str]]]:
     by_index: dict[int, dict[str, Any]] = {}
@@ -254,10 +290,10 @@ def collect_translations(
             raise WritebackError(f"Result has no context object: {path}")
         xmeta = context.get("xtranslator_xml")
         recorded_hash = xmeta.get("sha256") if isinstance(xmeta, dict) else None
-        if recorded_hash != source_hash:
+        if recorded_hash != expected_hash:
             raise WritebackError(
                 f"Source XML hash mismatch for {relative(path)}: "
-                f"result expects {recorded_hash!r}, actual is {source_hash}"
+                f"result expects {recorded_hash!r}, actual is {expected_hash}"
             )
         items = result.get("translations")
         if not isinstance(items, list):
@@ -302,7 +338,6 @@ def collect_translations(
                 "edid": node.findtext("EDID") or "",
                 "rec": node.findtext("REC") or "",
                 "source": node.findtext("Source") or "",
-                "original_dest": node.findtext("Dest") or "",
             }
             for key, actual in expected.items():
                 supplied = str(item.get(key, ""))
@@ -310,6 +345,20 @@ def collect_translations(
                     raise WritebackError(
                         f"{unit_id}: {key} mismatch at xml_index {index}: "
                         f"result={supplied!r}, xml={actual!r}"
+                    )
+            # original_dest is a softer compare-and-swap guard: for an already-written
+            # row the live Dest is the earlier translation, which legitimately differs
+            # from the source-era snapshot in original_dest. Replaying such a batch is
+            # accepted only when the fresh translation equals the row's current Dest
+            # (idempotent no-op); anything else would silently clobber a manual
+            # correction or a newer generation, so it stays rejected.
+            baseline_dest = node.findtext("Dest") or ""
+            supplied_od = str(item.get("original_dest", ""))
+            if supplied_od != baseline_dest:
+                if str(item.get("translation", "")) != baseline_dest:
+                    raise WritebackError(
+                        f"{unit_id}: original_dest mismatch at xml_index {index}: "
+                        f"result={supplied_od!r}, xml={baseline_dest!r}"
                     )
 
             translation = str(item.get("translation", ""))
@@ -390,7 +439,33 @@ def write_report(path: Path, report: dict[str, Any], force: bool) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--xml", required=True, help="Source xTranslator XML")
+    parser.add_argument(
+        "--xml", required=True,
+        help="Writeback baseline xTranslator XML: the original source XML for the "
+             "first writeback or an explicit full rebuild, otherwise the canonical or "
+             "archived translated XML (incremental writeback)",
+    )
+    parser.add_argument(
+        "--source-xml",
+        help="Original source xTranslator XML that the result files were translated "
+             "against; used for incremental writeback. Every result's recorded source "
+             "hash and the baseline structure are validated against it.",
+    )
+    parser.add_argument(
+        "--in-place", action="store_true",
+        help="Update the baseline XML in place (baseline == output path); used for "
+             "incremental canonical updates",
+    )
+    parser.add_argument(
+        "--archive-to",
+        help="Directory root for a pre-write content-addressed snapshot of the "
+             "baseline: <dir>/<baseline-sha256>/<filename>",
+    )
+    parser.add_argument(
+        "--allow-full-rebuild", action="store_true",
+        help="Permit a source-XML-baseline full rebuild even when the output file "
+             "already exists; previously translated rows must not shrink",
+    )
     parser.add_argument("--result", action="append", default=[], help="Result JSON; repeatable")
     parser.add_argument(
         "--result-glob", action="append", default=[], help="Result JSON glob; repeatable"
@@ -417,10 +492,49 @@ def main() -> int:
     try:
         xml_path = resolve_path(args.xml)
         if not xml_path.is_file():
-            raise WritebackError(f"Source XML does not exist: {xml_path}")
-        source_bytes = xml_path.read_bytes()
-        source_hash = sha256_bytes(source_bytes)
-        source_root, source_strings = parsed_strings(source_bytes, "Source XML")
+            raise WritebackError(f"Baseline XML does not exist: {xml_path}")
+        baseline_bytes = xml_path.read_bytes()
+        baseline_hash = sha256_bytes(baseline_bytes)
+        baseline_root, baseline_strings = parsed_strings(baseline_bytes, "Baseline XML")
+
+        src_path = resolve_path(args.source_xml) if args.source_xml else None
+        src_hash = None
+        if src_path is not None:
+            if not src_path.is_file():
+                raise WritebackError(f"Source XML does not exist: {src_path}")
+            src_bytes = src_path.read_bytes()
+            src_hash = sha256_bytes(src_bytes)
+            src_root, src_strings = parsed_strings(src_bytes, "Source XML")
+            verify_baseline_derives_from_source(src_root, src_strings, baseline_root, baseline_strings)
+        expected_hash = src_hash if src_hash is not None else baseline_hash
+
+        output_path = resolve_path(args.output) if args.output else (xml_path if args.in_place else None)
+        if args.in_place and output_path != xml_path:
+            raise WritebackError(
+                "--in-place updates the baseline XML itself; --output must be omitted or "
+                f"point at the baseline ({relative(xml_path)})")
+        existing_output_hash = None
+        if output_path is not None and output_path.exists():
+            existing_output_hash = sha256_bytes(output_path.read_bytes())
+
+        # Full-rebuild interception: writing the source-XML baseline over an existing
+        # output would silently revert every previously translated row outside this
+        # run's batches — the exact loss mode incremental writeback exists to prevent.
+        rebuild_intent = src_hash is None or baseline_hash == src_hash
+        if (
+            (args.result or args.result_glob)
+            and not args.allow_full_rebuild
+            and existing_output_hash is not None
+            and rebuild_intent
+            and existing_output_hash != baseline_hash
+        ):
+            raise WritebackError(
+                "Writeback blocked: an output XML already exists at "
+                f"{relative(output_path)} and this run uses the source XML itself as the "
+                "writeback baseline, which would revert every previously translated row "
+                "outside this run's batches. Use incremental writeback (canonical/archive "
+                "XML as --xml plus --source-xml pointing at the original source), or pass "
+                "--allow-full-rebuild for an explicit full rebuild.")
 
         items, status_counts = {}, dict(Counter())
         skipped_units: list[dict[str, str]] = []
@@ -429,11 +543,11 @@ def main() -> int:
         if args.result or args.result_glob:
             result_paths = collect_result_paths(args.result, args.result_glob)
             items, status_counts, skipped_units = collect_translations(
-                result_paths, source_hash, source_strings,
+                result_paths, expected_hash, baseline_strings,
                 skip_nonfinal=args.skip_nonfinal,
             )
         for patch_path in patch_paths:
-            patch_items = load_patch(patch_path, source_strings)
+            patch_items = load_patch(patch_path, baseline_strings)
             for index, item in patch_items.items():
                 if index in items:
                     raise WritebackError(
@@ -444,18 +558,51 @@ def main() -> int:
         if not items and not patch_paths and not result_paths:
             raise WritebackError("No result files or patch files supplied")
 
+        # Shrink guard: rows already translated in the existing output must not
+        # silently revert to untranslated unless this run explicitly touches them.
+        # Catches dropped batches in full rebuilds and stale-baseline incremental runs.
+        if existing_output_hash is not None and output_path is not None:
+            existing_root, existing_strings = parsed_strings(
+                output_path.read_bytes(), "Existing output XML")
+            if len(existing_strings) != len(baseline_strings):
+                raise WritebackError(
+                    f"Existing output {relative(output_path)} has {len(existing_strings)} "
+                    f"String(s), baseline has {len(baseline_strings)}; refusing to compare")
+            shrink_indices = []
+            for index, node in enumerate(existing_strings):
+                if index in items:
+                    continue
+                old_dest = node.findtext("Dest") or ""
+                old_src = node.findtext("Source") or ""
+                if not old_dest or old_dest == old_src:
+                    continue
+                base_dest = baseline_strings[index].findtext("Dest") or ""
+                base_src = baseline_strings[index].findtext("Source") or ""
+                if not base_dest or base_dest == base_src:
+                    shrink_indices.append(index)
+            if shrink_indices:
+                preview = ", ".join(str(i) for i in shrink_indices[:5])
+                raise WritebackError(
+                    f"Shrink detected: {len(shrink_indices)} previously translated row(s) "
+                    f"in {relative(output_path)} would revert to untranslated "
+                    f"(first: {preview}); the result set is missing batches. Refusing to write.")
+
         translated_count = status_counts.get("TRANSLATED", 0)
         keep_count = status_counts.get("KEEP", 0)
         report: dict[str, Any] = {
-            "source_xml": relative(xml_path),
-            "source_sha256": source_hash,
-            "string_count": len(source_strings),
+            "baseline_xml": relative(xml_path),
+            "baseline_sha256": baseline_hash,
+            "source_xml": relative(src_path) if src_path is not None else relative(xml_path),
+            "source_sha256": expected_hash,
+            "string_count": len(baseline_strings),
             "result_count": len(items),
             "translated_count": translated_count,
             "keep_count": keep_count,
             "result_files": [relative(path) for path in result_paths],
             "patch_files": [relative(path) for path in patch_paths],
             "check_only": bool(args.check_only),
+            "in_place": bool(args.in_place),
+            "full_rebuild": bool(args.allow_full_rebuild),
             "skipped_units": skipped_units,
             "skipped_count": len(skipped_units),
         }
@@ -466,7 +613,7 @@ def main() -> int:
                 1
                 for index, item in items.items()
                 if str(item.get("status", "")).upper() == "KEEP"
-                and (source_strings[index].findtext("Dest") or "")
+                and (baseline_strings[index].findtext("Dest") or "")
                 != str(item.get("translation", ""))
             )
             report["prewrite_validation"] = "passed"
@@ -478,15 +625,15 @@ def main() -> int:
                 f"{translated_count} TRANSLATED, {keep_count} KEEP "
                 f"({predicted_keep_fix} will be restored to source), "
                 f"{len(skipped_units)} skipped non-final, "
-                f"{len(source_strings)} XML String(s)."
+                f"{len(baseline_strings)} XML String(s)."
             )
             return 0
 
-        if not args.output:
-            raise WritebackError("--output is required unless --check-only is used")
-        output_path = resolve_path(args.output)
-        if output_path == xml_path:
-            raise WritebackError("Refusing to overwrite the source XML path")
+        if output_path is None:
+            raise WritebackError("--output (or --in-place) is required unless --check-only is used")
+        if output_path == xml_path and not args.in_place:
+            raise WritebackError(
+                "Refusing to overwrite the baseline XML in place without --in-place")
         canonical_re = re.compile(r"^[A-Za-z0-9_.\-]+_english_chinese_translated\.xml$")
         if not canonical_re.fullmatch(output_path.name):
             raise WritebackError(
@@ -505,15 +652,17 @@ def main() -> int:
                 "exactly one canonical writeback artifact is allowed per MOD directory. "
                 f"Archive or remove these first: {names}"
             )
-        if output_path.exists() and not args.force:
+        if output_path.exists() and not args.force and not args.in_place:
             raise WritebackError(f"Output already exists; use --force to replace: {output_path}")
 
         if not items:
             # 幂等重跑（空 patch / 无变更）：不改文件，报告 0 变更成功
             noop_report = {
-                "source_xml": relative(xml_path),
-                "source_sha256": source_hash,
-                "string_count": len(source_strings),
+                "baseline_xml": relative(xml_path),
+                "baseline_sha256": baseline_hash,
+                "source_xml": relative(src_path) if src_path is not None else relative(xml_path),
+                "source_sha256": expected_hash,
+                "string_count": len(baseline_strings),
                 "result_count": 0,
                 "translated_count": 0,
                 "keep_count": 0,
@@ -527,14 +676,14 @@ def main() -> int:
                 write_report(resolve_path(args.report), noop_report, args.force)
             print(
                 f"No-op writeback: 0 Dest change(s) (idempotent rerun), "
-                f"{len(source_strings)} XML String(s)."
+                f"{len(baseline_strings)} XML String(s)."
             )
             return 0
 
 
-        source_text = source_bytes.decode("utf-8-sig")
-        newline = "\r\n" if "\r\n" in source_text else "\n"
-        spans = raw_dest_spans(source_text, len(source_strings))
+        baseline_text = baseline_bytes.decode("utf-8-sig")
+        newline = "\r\n" if "\r\n" in baseline_text else "\n"
+        spans = raw_dest_spans(baseline_text, len(baseline_strings))
         replacements: list[tuple[int, int, str]] = []
         changed_count = 0
         keep_fix_count = 0
@@ -543,30 +692,42 @@ def main() -> int:
             # Dest 里若残留旧错误译文，必须回写为 Source（keep_fix_count 单独计数）。
             start, end = spans[index]
             replacement = xml_text(str(item["translation"]), newline)
-            if source_text[start:end] != replacement:
+            if baseline_text[start:end] != replacement:
                 changed_count += 1
                 if str(item.get("status", "")).upper() == "KEEP":
                     keep_fix_count += 1
             replacements.append((start, end, replacement))
 
-        output_text = source_text
+        output_text = baseline_text
         if replacements:
             # single-pass splice: replacements are non-overlapping, sorted spans;
             # rebuilding the whole text per replacement was O(replacements × docsize)
             parts: list[str] = []
             last = 0
             for start, end, replacement in sorted(replacements):
-                parts.append(source_text[last:start])
+                parts.append(baseline_text[last:start])
                 parts.append(replacement)
                 last = end
-            parts.append(source_text[last:])
+            parts.append(baseline_text[last:])
             output_text = "".join(parts)
 
         output_bytes = output_text.encode("utf-8")
-        if source_bytes.startswith(UTF8_BOM):
+        if baseline_bytes.startswith(UTF8_BOM):
             output_bytes = UTF8_BOM + output_bytes
 
-        verify_output(source_root, source_strings, output_bytes, items)
+        verify_output(baseline_root, baseline_strings, output_bytes, items)
+
+        # Pre-write content-addressed snapshot of the baseline (in-place flows
+        # archive the previous canonical before it is replaced).
+        archived_to = None
+        if args.archive_to:
+            arch_root = resolve_path(args.archive_to)
+            arch_dir = arch_root / baseline_hash
+            arch_file = arch_dir / xml_path.name
+            if not arch_file.exists():
+                arch_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(xml_path, arch_file)
+            archived_to = relative(arch_file)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         # 原子写回：先写同目录临时文件再替换目标，避免写回中断留下悬空/半截文件。
@@ -607,6 +768,7 @@ def main() -> int:
                 "output_sha256": output_hash,
                 "changed_dest_count": changed_count,
                 "keep_fix_count": keep_fix_count,
+                "archived_to": archived_to,
                 "postwrite_validation": "passed",
             }
         )
@@ -619,7 +781,9 @@ def main() -> int:
             f"{keep_count} KEEP, {len(skipped_units)} skipped non-final, "
             f"post-write validation passed."
         )
-        print(f"Source SHA-256: {source_hash}")
+        print(f"Baseline SHA-256: {baseline_hash}")
+        if src_hash is not None and src_hash != baseline_hash:
+            print(f"Source SHA-256: {src_hash}")
         print(f"Output SHA-256: {output_hash}")
         return 0
     except WritebackError as exc:

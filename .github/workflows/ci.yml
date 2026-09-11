@@ -54,6 +54,7 @@ jobs:
         run: |
           set -e
           python .agents/skills/xtranslator-xml-writer/scripts/test_patch_mode.py
+          python .agents/skills/xtranslator-xml-writer/scripts/test_incremental_mode.py
           python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
           python corpus/translation-regression/scripts/validate_corpus.py
 

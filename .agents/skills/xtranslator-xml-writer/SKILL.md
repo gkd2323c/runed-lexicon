@@ -3,7 +3,7 @@ name: xtranslator-xml-writer
 description: Safely apply validated Skyrim mod translation-result JSON files or minimal atomic patches to xTranslator XML by changing only intended destination text and verifying source version, XML identity, protected tokens, duplicate units, and post-write structure. Use whenever completed translation batches need to become an xTranslator-importable XML file, or when a small revision (a handful of strings) must be applied to an existing translated XML without rebuilding full batch context. This skill writes a new XML by default and must not freely reserialize the source document.
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects translation-result JSON produced by translation-executor, or a flat atomic patch JSON.
 metadata:
-  version: "0.2.1"
+  version: "0.3.0"
 ---
 
 > 性能基线（见 `skyrim-tool-dev-rules` §2；MVF1 规模 8528 替换 / 9402 节点 / 7 结果文件）：0.43s。回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复；已知反面模式是循环内反复重建整份文档字符串。
@@ -13,6 +13,50 @@ metadata:
 Apply completed structured translation results to xTranslator XML with a deterministic, surgical writeback.
 
 This is the layer after `translation-executor`. It performs no semantic translation and must not invent or revise wording while writing XML.
+
+## Writeback modes (incremental is the default)
+
+Two modes exist, and the second is the supported default once a canonical exists:
+
+- **Incremental** (canonical/archive baseline): `--xml` is the current canonical or an
+  archived generation, `--source-xml` is the original source XML, and `--result` /
+  `--patch` carry only the new batches. Only the rows in those batches change; every
+  other row, including all earlier generations' translations, is preserved
+  byte-for-byte. This mode cannot lose history, because the baseline already contains
+  it.
+- **Full rebuild** (source baseline): `--xml` is the source XML and every already
+  translated batch is passed again. This bypasses the canonical's contents entirely,
+  so a missing batch silently reverts translations. A source-baseline run over an
+  existing output file is therefore blocked unless `--allow-full-rebuild` is explicit;
+  even then a shrink guard rejects any rebuild that would revert rows the existing
+  output already had translated outside this run's item set.
+
+Why the guards exist: a partial batch set written against a source baseline once
+replaced a canonical and reverted thousands of translations. The protection is
+mechanical now. Incremental baselines are the correct path; the loss mode is rejected
+before any bytes are written.
+
+The one-command incremental flow (snapshot + in-place update):
+
+```text
+py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
+  --xml mods/<mod>/<mod>_english_chinese_translated.xml \
+  --in-place --archive-to .work/<mod>/archive \
+  --source-xml mods/<mod>/<mod>_english_chinese.xml \
+  --result .work/<mod>/batches/INFO-XXX/translation.json \
+  --report .work/<mod>/reports/<mod>-writeback-report.json --force
+```
+
+`--in-place` updates the canonical through a read-then-atomic-replace (safe because
+the baseline is fully read before anything is written). `--archive-to` stores a
+content-addressed snapshot of the pre-write canonical at `<dir>/<sha256>/<filename>`
+before it is replaced. `--force` here only replaces the existing report file. Omit
+`--in-place` and `--archive-to` when the previous canonical was archived manually:
+then pass the archived copy as `--xml` and the canonical path as `--output`.
+
+`--check-only` runs the full pre-flight (including the full-rebuild interception and
+the shrink guard) without producing XML; pass `--output` with it so the guards can see
+the existing output.
 
 ## Atomic patch mode (small revisions)
 
@@ -39,11 +83,13 @@ py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
   --force
 ```
 
-Before a canonical revision, move the previous canonical artifact into a
+Before a canonical revision, snapshot the previous canonical artifact into a
 content-addressed archive directory such as
-`.work/<mod>/archive/<previous-sha256>/`, then use that archived file as the patch
-baseline. The writer intentionally rejects `--xml` and `--output` resolving to the
-same path. Never manufacture `_final_vN` filenames to preserve history.
+`.work/<mod>/archive/<previous-sha256>/` (the `--archive-to` flag does this for you),
+then use that archived file as the patch baseline, or update the canonical in place
+with `--in-place`. The writer intentionally rejects `--xml` and `--output` resolving
+to the same path unless `--in-place` is explicit. Never manufacture `_final_vN`
+filenames to preserve history.
 
 Safety model, identical guarantees to result mode:
 
@@ -70,13 +116,14 @@ that already contains other `*_translated*.xml` files.
 
 Workflow for every new writeback generation:
 
-1. Archive the previous canonical into a content-addressed directory under
-   `.work/<mod>/archive/<previous-sha256>/` (move, do not copy). This preserves the
-   canonical filename while allowing multiple historical generations without
-   `vN` / `roundN` labels.
+1. Snapshot the previous canonical into a content-addressed directory under
+   `.work/<mod>/archive/<previous-sha256>/`. With `--archive-to` the writer does this
+   for you right before replacing the canonical; otherwise copy it manually first and
+   use the archived copy as the `--xml` baseline.
 2. Write the new generation as `<plugin>_english_chinese_translated.xml`
-   (overwriting the previous canonical filename with `--force` is allowed and expected:
-   same name, new bytes, new hash recorded in PROGRESS.md).
+   (same canonical filename, new bytes, new hash recorded in PROGRESS.md). For
+   incremental updates prefer `--in-place`; `--force` over an existing output is also
+   allowed when writing through a second path.
 3. Update `PROGRESS.md`: new SHA-256, supersede note, archive location.
 
 Never refer users to "version vX is current" in docs without an explicit supersede note;
@@ -96,7 +143,8 @@ Do not serialize the whole XML tree back through a generic XML writer. Re-serial
 The bundled writer instead:
 
 - parses the source XML to verify its structure;
-- checks the SHA-256 recorded by every result file against the actual source XML;
+- checks the SHA-256 recorded by every result file against the declared source
+  (`--source-xml`) or the baseline;
 - verifies every target by `xml_index`, `EDID`, `REC`, exact parsed `Source`, and exact parsed `original_dest`;
 - rejects duplicate translation units or duplicate XML indices across result files;
 - accepts only completed `TRANSLATED` and `KEEP` results;
@@ -105,6 +153,24 @@ The bundled writer instead:
 - preserves the source BOM and line-ending convention;
 - reparses the generated XML and verifies all `EDID`, `REC`, and `Source` values are unchanged;
 - verifies every untouched `<Dest>` remained unchanged and every target `<Dest>` equals the intended result.
+
+Incremental mode relaxes exactly one comparison: `original_dest` is a soft guard. When
+a row's live Dest differs from the source-era snapshot (an earlier generation already
+wrote that row), a replay is accepted only if the fresh translation equals the row's
+current Dest (idempotent no-op); anything else is rejected, so a stale intermediate can
+never clobber a newer generation or a manual correction. All other identity fields
+stay strict.
+
+For writebacks over an existing canonical, three additional mechanical guards apply:
+
+- `--source-xml` declares the original source XML; every result's recorded source hash
+  is validated against it, and the baseline's EDID/REC/Source columns must be
+  identical to the declared source (only `<Dest>` may differ);
+- a source-XML baseline run over an existing output file is blocked unless
+  `--allow-full-rebuild` is explicit;
+- a shrink guard rejects any writeback that would revert rows the existing output
+  already had translated outside this run's item set (catches dropped batches in
+  rebuilds and stale archived baselines in incremental runs).
 
 `KEEP` entries are checked, and their `<Dest>` is enforced to equal `<Source>`: a
 stale or wrong `<Dest>` left over from an earlier writeback is rewritten back to
@@ -138,6 +204,18 @@ py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
 Use quoted glob patterns so the script, rather than a shell, resolves the intended files consistently.
 
 Use `--force` only when intentionally replacing an already generated output/report file. The script refuses to overwrite the source XML path itself.
+
+Incremental update of an existing canonical (the default once a canonical exists):
+
+```text
+py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
+  --xml mods/<mod>/<mod>_english_chinese_translated.xml \
+  --in-place --archive-to .work/<mod>/archive \
+  --source-xml mods/<mod>/<mod>_english_chinese.xml \
+  --result .work/<mod>/batches/INFO-XXX/translation.json \
+  --output mods/<mod>/<mod>_english_chinese_translated.xml \
+  --report .work/<mod>/reports/<mod>-writeback-report.json --force
+```
 
 Use `--check-only` to run all pre-write validation and result aggregation without producing XML. The report includes `predicted_keep_fix_count`: how many KEEP units would actually be rewritten back to Source, so a stale-baseline repair is visible before writing.
 
@@ -202,6 +280,8 @@ The report is evidence of deterministic writeback only. It does not mean the Chi
 - Never make semantic translation decisions in this skill.
 - Never overwrite the source XML path.
 - Never bypass a source hash or identity mismatch merely to make writeback proceed.
+- Never bypass the full-rebuild interception, the shrink guard, or `--source-xml`
+  validation to make a writeback proceed; if they fire, the command itself is wrong.
 - Do not require current `CONTEXT.md` / `DICTIONARY.md` hashes to equal historical result hashes. Those hashes are provenance; source XML identity and per-record identity are the writeback guards.
 - If post-write validation fails, treat the output as invalid and do not describe it as safe to import.
 
@@ -213,6 +293,8 @@ After modifying this skill, follow `.agents/skills/skill-creator/SKILL.md` and r
 node .agents/skills/skill-creator/scripts/check_env.mjs --capability quick-validate
 py -3 .agents/skills/skill-creator/scripts/quick_validate.py .agents/skills/xtranslator-xml-writer
 py -3 -m py_compile .agents/skills/xtranslator-xml-writer/scripts/write_translations.py
+py -3 .agents/skills/xtranslator-xml-writer/scripts/test_patch_mode.py
+py -3 .agents/skills/xtranslator-xml-writer/scripts/test_incremental_mode.py
 ```
 
 For a real writeback, first run `--check-only`, then generate a new XML and inspect the report.
