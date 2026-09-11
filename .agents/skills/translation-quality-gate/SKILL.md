@@ -78,12 +78,12 @@ python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
 
 ```text
 python .agents/skills/translation-quality-gate/scripts/quality_gate.py \
-  --result .work/round4/lucifer-round4-translation-000.json \
-  --result .work/round4/lucifer-round4-translation-001.json \
-  --contract .work/term-contracts/MVF1FollowerBeta.esp.compiled.json \
-  --keep-list .work/term-contracts/mvf1-keep.json \
+  --result .work/lucifer/round4/lucifer-round4-translation-000.json \
+  --result .work/lucifer/round4/lucifer-round4-translation-001.json \
+  --contract .work/MVF1FollowerBeta/contracts/MVF1FollowerBeta.esp.compiled.json \
+  --keep-list .work/MVF1FollowerBeta/contracts/mvf1-keep.json \
   --xml mods/MVF1FollowerBeta.esp/MVF1FollowerBeta_english_chinese.xml \
-  --report .work/qa-reports/mvf1-round4-gate.json
+  --report .work/MVF1FollowerBeta/reports/mvf1-round4-gate.json
 ```
 
 Exit code: 0 = PASS (no FAIL), 1 = FAIL, 2 = usage error. A `--report` JSON carries full per-unit issues for review routing.

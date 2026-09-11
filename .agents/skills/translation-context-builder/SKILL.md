@@ -1,9 +1,9 @@
 ---
 name: translation-context-builder
-description: Build structured, traceable translation context batches for Skyrim mod localization by merging xTranslator XML, xEdit dialogue context JSON, the mod's CONTEXT.md and DICTIONARY.md, and all official XML dictionaries under dictionary/. Use this before a translation Agent starts working when INFO dialogue needs quest/topic/speaker/context evidence attached. This skill prepares context only; it does not translate text or write changes back to XML.
+description: Build structured, traceable translation context batches for Skyrim mod localization by merging xTranslator XML, xEdit dialogue context JSON, the MOD's machine-readable terms.json, and all official XML dictionaries under dictionary/. Use this before a translation Agent starts working when INFO dialogue needs quest/topic/speaker/context evidence attached. Human-facing documents (CONTEXT.md, DICTIONARY.md) are read by translation agents directly and are never read, parsed, embedded, or hashed by this tool. This skill prepares context only; it does not translate text or write changes back to XML.
 compatibility: Requires Python 3.10+ and the runed-lexicon project layout with mods/, dictionary/, and xEdit context JSON. Uses only the Python standard library and does not require network access.
 metadata:
-  version: "0.2.2"
+  version: "0.3.1"
 ---
 
 # Translation Context Builder
@@ -24,7 +24,7 @@ The normal input is a MOD directory such as:
 mods/evgSIRENROOT.esm
 ```
 
-That directory must contain `CONTEXT.md`, `DICTIONARY.md`, and preferably one `*_dialogue_context.json` file. Early in a project there may be only one xTranslator XML, but after writeback a MOD directory can legitimately contain both the untouched source XML and one or more generated translated XML files.
+The directory's human-facing documents (`CONTEXT.md`, `DICTIONARY.md`) are read by the translation agents directly; this tool never reads, parses, embeds, or hashes them. Machine inputs are structured only: an xTranslator XML, an optional `*_dialogue_context.json`, and an optional `terms.json` (the machine-readable term source — when absent, MOD term hits are simply empty). Early in a project there may be only one xTranslator XML, but after writeback a MOD directory can legitimately contain both the untouched source XML and one or more generated translated XML files.
 
 When multiple XML files are present, do not guess which one is the translation source. Read the MOD's `PROGRESS.md` when present and pass the documented source explicitly with `--xml`. The same rule applies when multiple dialogue-context JSON files exist: use the current file documented by the project state or pass it explicitly.
 
@@ -37,7 +37,7 @@ The builder also reads every XML file recursively under the project root `dictio
 Run from the project root:
 
 ```text
-py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 20 --output .work/sirenroot-info-context.json
+py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 20 --output .work/sirenroot/context/sirenroot-info-context.json
 ```
 
 Use the Python command that passed `.agents/skills/skill-creator/scripts/check_env.mjs --capability quick-validate` if it is not `py -3`.
@@ -47,8 +47,7 @@ Useful options:
 ```text
 --xml <file.xml>                 Explicit xTranslator XML file
 --dialogue-context <file.json>   Explicit xEdit dialogue context JSON
---context <CONTEXT.md>           Explicit MOD context Markdown
---mod-dictionary <DICTIONARY.md> Explicit MOD dictionary Markdown
+--mod-terms <terms.json>         Explicit MOD terms.json (machine-readable term source)
 --dictionary-dir <dictionary/>   Official dictionary directory
 --rec INFO:NAM1                  Include only this XML REC; repeatable
 --limit 0                        Include all matching entries
@@ -61,7 +60,7 @@ Useful options:
 If the MOD directory contains both an original XML and a generated translated XML, prefer an explicit command such as:
 
 ```text
-py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/evgSIRENROOT.esm --xml mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese.xml --rec INFO:NAM1 --output .work/sirenroot-info-context.json --force
+py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/evgSIRENROOT.esm --xml mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese.xml --rec INFO:NAM1 --output .work/sirenroot/context/sirenroot-info-context.json --force
 ```
 
 Do not feed the generated translated XML back into a fresh translation pass unless that is intentionally the new source state for a later revision workflow.
@@ -71,11 +70,11 @@ Do not feed the generated translated XML back into a fresh translation pass unle
 The JSON output contains:
 
 - input file paths and counts;
-- full `CONTEXT.md` and `DICTIONARY.md` content for the translation Agent;
-- parsed MOD dictionary term rows when Markdown tables can be read. Column matching accepts the header forms 原文/英文/English/Source (source column) and 中文/译名/译法/Chinese/Dest (target column); a trailing parenthesized note such as `原文 (English)` / `译名 (Chinese)` is stripped before matching, so both historical header styles resolve to the same parsed row;
+- no human documents are embedded — translation agents read `CONTEXT.md` / `DICTIONARY.md` directly from the MOD directory;
+- MOD term hits sourced from the machine-readable `terms.json` (structured; no Markdown parsing). Hit fields: `english` / `chinese` / `status` / `note`;
 - batches of traceable XML entries;
 - conservative official dictionary term hits found in each source string;
-- MOD dictionary hits found in each source string;
+- MOD term hits found in each source string (from terms.json);
 - deterministic xEdit dialogue context for joined `INFO` records.
 
 Each entry preserves:
@@ -114,9 +113,9 @@ Treat `dictionary/` as two related resources, not one giant automatic replacemen
 
 For prose-like records such as `INFO`, `DIAL`, `BOOK`, and `MESG`, automatic substring hits are intentionally conservative. The practical question is: if this phrase were translated freely, could the player mistake it for something different from the same base-game entity or concept?
 
-Automatic single-token hints are limited to high-value identity / world-term record families such as NPCs, races, factions, locations/worldspaces, potions, and ingredients. Multi-word names from term-like `*:FULL` records may also be attached because accidental overlap is much less likely.
+Automatic single-token matches are limited to high-value identity / world-term record families such as NPCs, races, factions, locations/worldspaces, potions, and ingredients. Multi-word names from term-like `*:FULL` records may also be attached because accidental overlap is much less likely.
 
-Do not automatically attach generic one-word prose merely because an official record happens to use the same English word. Examples that should stay out of ordinary INFO hints include action verbs and generic nouns such as `Talk`, `Place`, `Fill`, `Between`, `Gate`, `Cave`, `Letter`, or `Scholar` when they are just sentence vocabulary.
+Do not automatically attach generic one-word prose merely because an official record happens to use the same English word. Examples that should stay out of ordinary INFO term attachment include action verbs and generic nouns such as `Talk`, `Place`, `Fill`, `Between`, `Gate`, `Cave`, `Letter`, or `Scholar` when they are just sentence vocabulary.
 
 This conservative pass is not expected to discover every lore term. Terms such as `Ayleid` or `High Rock` may need an explicit official-corpus lookup when they are not represented by a suitable canonical `FULL` record. Missing an automatic hit is preferable to presenting ordinary prose as an authoritative terminology decision.
 
@@ -125,7 +124,8 @@ This conservative pass is not expected to discover every lore term. Terms such a
 - Do not translate anything.
 - Do not modify, reserialize, or write back the xTranslator XML.
 - Do not update `<Dest>` values.
-- Do not mutate `CONTEXT.md` or `DICTIONARY.md`.
+- Do not read, parse, embed, hash, or mutate `CONTEXT.md` / `DICTIONARY.md` or any other human-facing document. Machine inputs are structured files only (`terms.json`, dialogue-context JSON).
+- A documentation edit must never be able to break a build or invalidate a context file.
 - Do not treat official dictionary hits as mandatory replacements.
 - Do not reinterpret the absence of an automatic official hit as evidence that a phrase has no established TES translation; use explicit dictionary/corpus lookup for suspected lore terms.
 - Do not let MOD dictionary hits silently override source text; include them as context evidence for the later translation Agent.
@@ -134,6 +134,14 @@ This conservative pass is not expected to discover every lore term. Terms such a
 This skill prepares context. Translation, review, and XML writeback are separate later steps.
 
 ## Validation
+
+### Performance baseline (v0.2.3)
+
+Per-batch build (Artaeum scale: 4.7MB xTranslator XML + 29.7MB / 81-file dictionary tree) measured **~1.4s** (was ~15.6s before v0.2.3). The fix: `Path.resolve()` hit the filesystem (`nt._getfinalpathname` on Windows, ~0.16ms/call) once per dictionary String row (37k+ calls ≈ 12s); `relative()` is now `lru_cache`-d and the dictionary index builder hoists one resolution per file. Output verified byte-identical before/after on two independent batches. Regression watch: if a per-batch build exceeds ~5s, re-profile with `cProfile` before touching anything else.
+
+### v0.3.0 / v0.3.1 change summary
+
+Human-facing documents no longer enter the machine path: v0.3.0 removed `DICTIONARY.md` (parsing, embedding, hashing); v0.3.1 removed `CONTEXT.md` (reading, embedding, hashing). Inputs are structured-only: xTranslator XML, dialogue-context JSON, and `terms.json`. Consequences: (1) editing either document can never break a build; (2) context provenance tracks `terms.json` and no longer carries `mod_context` (the executor passes a historical `mod_context` through when present, so old contexts keep validating); (3) `terminology.mod_terms_hits` replaces `terminology.mod_dictionary_hits` (the executor accepts both keys when reading historical contexts).
 
 After changing this skill, follow `.agents/skills/skill-creator/SKILL.md`:
 
@@ -146,12 +154,12 @@ Then run:
 
 ```text
 py -3 -m py_compile .agents/skills/translation-context-builder/scripts/build_translation_context.py
-py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 3 --output .work/translation-context-builder-smoke.json --force
+py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 3 --output _tmp/data/translation-context-builder-smoke.json --force
 ```
 
 For the Sirenroot sample, verify mechanically that:
 
 - the output has three entries when `--limit 3` is used;
 - `INFO:NAM1` entries with `[xxxxxxxx]` EDIDs include an xEdit dialogue join when the FormID exists in the dialogue JSON;
-- `CONTEXT.md`, `DICTIONARY.md`, and official dictionary metadata are present;
+- official dictionary metadata is present, `inputs` contains no `mod_context` key, and `inputs.mod_terms` reflects `terms.json` (or a graceful empty fallback `{path: null, sha256: "", term_count: 0}` when the MOD has none);
 - the source xTranslator XML remains unchanged.

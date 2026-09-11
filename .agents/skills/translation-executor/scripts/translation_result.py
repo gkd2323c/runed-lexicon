@@ -107,7 +107,10 @@ def review_reasons(entry: dict[str, Any]) -> list[str]:
     if not isinstance(terminology, dict):
         return reasons
 
-    mod_hits = terminology.get("mod_dictionary_hits")
+    mod_hits = terminology.get("mod_terms_hits")
+    if not isinstance(mod_hits, list):
+        # 旧版 context（v0.3.0 之前的 builder）使用该键
+        mod_hits = terminology.get("mod_dictionary_hits")
     if isinstance(mod_hits, list):
         for hit in mod_hits:
             if not isinstance(hit, dict):
@@ -138,14 +141,15 @@ def context_provenance(context_path: Path, context: dict[str, Any], batch_index:
         raise TranslationResultError("Translation context is missing inputs object")
 
     xml = inputs.get("xtranslator_xml")
-    mod_context = inputs.get("mod_context")
-    mod_dictionary = inputs.get("mod_dictionary")
-    if not all(isinstance(item, dict) for item in (xml, mod_context, mod_dictionary)):
+    # 机器侧术语源：terms.json（结构化）。旧版 context 曾携带 "mod_dictionary"
+    # 键（指向人类文档 DICTIONARY.md）；仅为向后读取历史 context 保留回退。
+    mod_terms = inputs.get("mod_terms") or inputs.get("mod_dictionary")
+    if not all(isinstance(item, dict) for item in (xml, mod_terms)):
         raise TranslationResultError(
-            "Translation context must contain xtranslator_xml, mod_context, and mod_dictionary metadata"
+            "Translation context must contain xtranslator_xml and mod_terms metadata"
         )
 
-    return {
+    provenance = {
         "path": relative(context_path),
         "sha256": sha256_file(context_path),
         "batch_index": batch_index,
@@ -153,15 +157,28 @@ def context_provenance(context_path: Path, context: dict[str, Any], batch_index:
             "path": xml.get("path", ""),
             "sha256": xml.get("sha256", ""),
         },
-        "mod_context": {
-            "path": mod_context.get("path", ""),
-            "sha256": mod_context.get("sha256", ""),
-        },
-        "mod_dictionary": {
-            "path": mod_dictionary.get("path", ""),
-            "sha256": mod_dictionary.get("sha256", ""),
+        "mod_terms": {
+            "path": mod_terms.get("path", ""),
+            "sha256": mod_terms.get("sha256", ""),
         },
     }
+    # CONTEXT.md（人类文档）不进入机器链路：新版 context 不再携带该键。
+    # 旧代次 context 含有此键时按原样透传，保持历史批次继续可校验。
+    mod_context = inputs.get("mod_context")
+    if isinstance(mod_context, dict):
+        provenance["mod_context"] = {
+            "path": mod_context.get("path", ""),
+            "sha256": mod_context.get("sha256", ""),
+        }
+    return provenance
+
+
+def _mod_terms_meta(provenance: dict[str, Any]) -> dict[str, Any]:
+    """跨 schema 世代归一化术语源 provenance 块（mod_terms / 旧 mod_dictionary）。"""
+    value = provenance.get("mod_terms")
+    if not isinstance(value, dict):
+        value = provenance.get("mod_dictionary")
+    return value if isinstance(value, dict) else {}
 
 
 def build_result_template(context_path: Path, context: dict[str, Any], batch_index: int) -> dict[str, Any]:
@@ -260,9 +277,11 @@ def validate_result(
         errors.append(str(exc))
         return errors, warnings
 
-    for key in ("sha256", "batch_index", "xtranslator_xml", "mod_context", "mod_dictionary"):
+    for key in ("sha256", "batch_index", "xtranslator_xml", "mod_context"):
         if provenance.get(key) != expected_provenance.get(key):
             errors.append(f"context provenance mismatch for {key}")
+    if _mod_terms_meta(provenance) != expected_provenance.get("mod_terms"):
+        errors.append("context provenance mismatch for mod_terms")
 
     translations = result.get("translations")
     if not isinstance(translations, list):

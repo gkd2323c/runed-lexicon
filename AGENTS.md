@@ -38,27 +38,29 @@ Agent 的职责是恢复并利用任务、角色、对话、物品、地点、�
 
 * 根目录只承载项目级入口文档与固定目录。一次性脚本与临时中间产物落在根目录 `_tmp/` 对应子目录（`scripts/`、`data/`、`downloads/`、`tests/`、`misc/`），不进项目资产目录，任务收尾即清理；`_tmp/` 不属于项目资产，不受 §2.0.1 命名契约约束，也禁止被流水线引用为产物。
 * `.agents/skills/`：可复用的 Agent Skill 工具集、校验规则与执行脚本。
-* `.work/<任务或MOD>/`：context JSON、翻译结果、批次状态与验证报告等过程资产。`.work/` 禁止作为临时测试代码的堆放地。
+* `.work/<Plugin>/`：单个 MOD 的过程资产唯一落点（一个 MOD 一个文件夹；`.work/` 根零散落文件）。固定子布局：`batches/`（批次资产）、`archive/`（历代 canonical 与版本快照）、`reports/`（验收/审计/门禁/写回报告与进度台账）、`context/`（对话结构导出、任务线拆分、批次计划、专名清点）、`contracts/`（编译契约与 KEEP 清单）；其余按角色归置（`maps/`、`translations/`、`gates/`、`notes/` 等）。跨 MOD 共享的工具数据归 `_shared/`，待清理物归 `_quarantine/`。`.work/` 禁止作为临时测试代码的堆放地。
 * `dictionary/`：Skyrim 官方英中 XML 语料库，作为官方译名的第一法理证据来源。
 * `GLOBAL.md`：原版全局语境与世界观事实，由 `dictionary/` 归纳，禁止掺入特定 MOD 局部设定。
 * `GLOSSARY.md`：跨 MOD 译法裁决记录，不收录单个 MOD 的独占术语。
 * `global-forbidden-words.json`：全局禁用词库，经由 `term-contract-compiler` 编译注入各 MOD 契约。
 * `mods/<plugin>/`：单个 MOD 工作目录，包含 `CONTEXT.md`、`DICTIONARY.md`、`PROGRESS.md`。
+* **人类文档不进机器链路**：`CONTEXT.md`、`DICTIONARY.md` 等为人类与 AI 直接阅读的文档；任何代码/脚本不得读取、解析、嵌入或对其哈希做校验。机器侧数据一律使用独立结构化文件（术语 `mods/<plugin>/terms.json`、对话结构 `dialogue-context` JSON 等），人类文档的任何编辑不得影响构建、校验与写回链路。
 
 ### 2.0.1 确定性输出契约
 
 Agent 在任何环节输出的文件，语义、角色、路径三者必须确定：同一个角色永远只有同一个文件，重跑覆盖，禁止运行时即兴命名。
 
 * **固定命名**：文件名由「角色 + 目标对象」构成，禁止日期戳、序号、`final`/`vN`/`roundN`/`backup`/`recheck`/`after-X` 等任何版本或状态标签。版本演进只允许存在于 `PROGRESS.md` 哈希链与写回报告中。
-* **固定落点**：写回产物 = `mods/<plugin>/<plugin>_english_chinese_translated.xml`（唯一 canonical，同名覆盖式演进）；gate / noun-audit / writeback 报告 = `.work/<plugin>-gate-report.json` / `.work/<plugin>-noun-audit.json` / `.work/<plugin>-writeback-report.json`（同路径覆盖）；翻译 map 与结果 JSON 同理（角色名固定，如 `.work/<plugin>-fix-map.json`），同代次内多文件必须以角色语义区分（如 `-map-blockA`），不得以序号或时间戳区分。
-* **历史演进**：上一代 canonical 进 `.work/<plugin>-archive/`；`PROGRESS.md` 记录哈希链。归档区文件保留原貌，不参与活跃工作流。
+* **固定落点**：写回产物 = `mods/<plugin>/<plugin>_english_chinese_translated.xml`（唯一 canonical，同名覆盖式演进）；gate / noun-audit / writeback 报告 = `.work/<plugin>/reports/<plugin>-gate-report.json` / `.work/<plugin>/reports/<plugin>-noun-audit.json` / `.work/<plugin>/reports/<plugin>-writeback-report.json`（同路径覆盖）；翻译 map 与结果 JSON 同理（角色名固定，如 `.work/<plugin>/maps/<plugin>-fix-map.json`），同代次内多文件必须以角色语义区分（如 `-map-blockA`），不得以序号或时间戳区分。
+* **历史演进**：上一代 canonical 进 `.work/<plugin>/archive/`；`PROGRESS.md` 记录哈希链。归档区文件保留原貌，不参与活跃工作流。
 * **机械强制**：主流水线工具（writer / gate / noun-audit）对输出路径执行命名校验，不符合契约直接拒绝。agent 不得绕过（禁止用 shell 复制、重命名、重定向伪造产出路径）。
 * **治理元规则**：本契约约束一切工作流环节与工具产出；新增工具或流程若引入新的输出角色，先在对应 `SKILL.md` 登记固定路径，再投入使用。
 
 ### 2.1 执行卫生与异常处理
 
 * **临时脚本边界**：流水线查询与处理优先调用现成 Skill 工具；确实需要一次性脚本的，落盘 `_tmp/scripts/`（见 §2.0），不散落项目目录、不引用为产物；需要成为可复用能力的，按 §A 沉淀为 skill，不留一次性脚本。
-* **工作区文件纪律（mods/ 零杂物）**：出现在 `mods/` 工作区的新文件，只要没有必要用途就是违规。仅允许四文档/terms、源 XML、canonical 写回产物、原插件等契约内文件存在；文件系统实验、临时测试、调试残留一律 `_tmp/`（且异常路径用 try/finally 保证清理），绝不落地 `mods/`（真实案例：`.a.xml`/`.b.xml` rename 测试残留）。
+* **`_tmp` 净递减硬指标**：每次清理后 `_tmp/` 下文件总数（递归计数）必须低于清理前；禁止「清旧增新」式持平或增长，新增临时文件须由同轮删除量抵消；清理计数随轮次汇报。
+* **工作区文件纪律（mods/ 零杂物）**：出现在 `mods/` 工作区的新文件，只要没有必要用途就是违规。默认仅允许四文档/terms、源 XML、canonical 写回产物、原插件等契约内文件存在；文件系统实验、临时测试、调试残留一律 `_tmp/`（且异常路径用 try/finally 保证清理），绝不落地 `mods/`。
 * **Shell 与命令确定性**：执行操作前确认当前终端宿主，显式声明工作目录。禁止跨平台混用语法（如将转义后的 `$null` 误作空设备）。不使用 shell 重定向覆盖正式译文。
 * **异常处理**：命令报错先诊断修复（语法、路径、编码类问题自愈后继续，不打断流程）；只有门禁硬拦截、文档缺失或需要用户决策时才中断，按以下格式简洁报告现场与待决选项，不输出冗长的自责或模糊推测：
 
@@ -130,7 +132,7 @@ XML 结构完整性高于任何翻译层面的调整。修改仅限于目标字�
 
 - 原始 MOD XML 文件严禁就地覆盖，工具默认输出带标记的 translated XML。
 
-- 用户要求完整推进 MOD 时以批次为单位流水线作业，不需要逐条停顿确认。批次间自主循环推进（推进 → 停等送达 → 验收 → 续推）：验收的唯一触发是子代理 background-result 送达，派单后不得提前读产出或预验收；送达处理完毕且无在途子代理、存在可推进工作时立即续推，不等待用户开令；仅在可推进工作枯竭、门禁/裁决硬阻断或用户叫停时停下汇报。禁止「无在途任务，静候指令」式收尾（判据详见 `hana-subagent-ops` SKILL §6）。
+- 用户要求完整推进 MOD 时以批次为单位流水线作业，不需要逐条停顿确认。批次间自主循环推进（推进 → 停等送达 → 验收 → 续推）：验收的唯一触发是子代理 background-result 送达，派单后不得提前读产出或预验收；送达处理完毕且无在途子代理、存在可推进工作时立即续推，不等待用户开令；仅在可推进工作枯竭、门禁/裁决硬阻断或用户叫停时停下汇报。禁止「无在途任务，静候指令」式收尾。
 
 - 不初始化或擅自修改 Git 提交历史，除非用户发出明确指令。
 
@@ -154,7 +156,7 @@ XML 结构完整性高于任何翻译层面的调整。修改仅限于目标字�
 
 新 MOD 启动流程：四文档门禁（§2.2 阶段 0~1） -> 编译术语契约（`skyrim-term-contract-workflow`） -> 批次翻译工艺（`skyrim-translation-craft`）。
 
-需要数据操作时，先检索 `.agents/skills/` 内的现成工具，不重复实现现有能力。
+需要数据操作时，优先检索 `.agents/skills/` 内的现成工具，不重复实现现有能力。
 
 ## 6. 本文件维护原则
 
@@ -166,4 +168,4 @@ XML 结构完整性高于任何翻译层面的调整。修改仅限于目标字�
 
 - 发现了反复出现、需要依赖制度或程序强制防御的典型故障模式。
 
-临时性 MOD 翻译决策、单一任务的临时记录以及未经验证的构想，禁止写入本规范。
+临时性 MOD 翻译决策、单一任务的临时记录以及未经验证的构想，禁止写入规范。

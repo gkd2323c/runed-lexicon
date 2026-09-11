@@ -62,11 +62,11 @@ that is `dictionary-noun-audit`'s job on the translated output.
 ```text
 py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py build
 py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py build --dict <dir> --output <path>
-py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py scan .work/proper-noun-index/index.json --target mods/<plugin>/<file>_english_chinese.xml
+py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py scan .work/_shared/proper-noun-index/index.json --target mods/<plugin>/<file>_english_chinese.xml
 py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py scan <index.json> --target <mod.xml> --include-optional --json <out.json>
 ```
 
-Defaults: `build` writes `.work/proper-noun-index/index.json`; `scan` accepts a
+Defaults: `build` writes `.work/_shared/proper-noun-index/index.json`; `scan` accepts a
 translated XML or a translation-result JSON (executor schema). The index is a
 derived artifact — rebuild it whenever `dictionary/` changes; never hand-edit.
 
@@ -140,7 +140,7 @@ The Rift. The source shown in samples stays untouched.
 ## Safety boundaries
 
 - Read-only: never edits the MOD XML, translation JSON, DICTIONARY.md or
-  terms.json. `build` writes only the index JSON (default under `.work/`).
+  terms.json. `build` writes only the index JSON (default under `.work/_shared/`).
 - Never auto-writes terms; never upgrades a candidate to CONFIRMED/REVIEW.
 - Does not decide semantic variants; context ruling stays with the Agent.
 
@@ -151,7 +151,7 @@ Smoke checks after any change to the script:
 ```text
 py -3 -m py_compile .agents/skills/proper-noun-index/scripts/proper_noun_index.py
 py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py build
-py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py scan .work/proper-noun-index/index.json --target mods/SB1NeethmarinFollower.esp/SB1NeethmarinFollower_english_chinese.xml --json .work/proper-noun-index/sb1-smoke.json
+py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py scan .work/_shared/proper-noun-index/index.json --target mods/SB1NeethmarinFollower.esp/SB1NeethmarinFollower_english_chinese.xml --json .work/SB1NeethmarinFollower/reports/sb1-smoke.json
 ```
 
 Known baseline (79 dictionary files, 2026-09-06):

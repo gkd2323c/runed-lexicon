@@ -27,7 +27,7 @@ python .agents/skills/translation-batch-preparer/scripts/prepare_translation_bat
 Write a batch to a JSON file when the result should be reused:
 
 ```text
-python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 20 --output .work/sirenroot-info-001.json
+python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 20 --output .work/sirenroot/context/sirenroot-info-001.json
 ```
 
 If a MOD directory contains both the untouched source XML and one or more generated translated XML files, pass the intended source XML file directly instead of the directory. Use `PROGRESS.md` to identify the current source when available:
@@ -72,7 +72,7 @@ When multiple `--rec` filters are supplied together with a positive limit, the s
 
 The script recursively loads every XML file under `dictionary/` and builds an exact normalized phrase index. The directory is the trust boundary: every XML anywhere under that directory is treated as an official dictionary source. Do not assume fixed filenames, a fixed number of files, a fixed subdirectory layout, a fixed DLC set, or filename-specific priority; newly added XML files must participate automatically.
 
-For each MOD source string it checks word n-grams against that index, preferring longer phrases. Automatic hints are limited to term-like records such as names, locations, items, spells, effects, quests, and similar records. Original `INFO` / `DIAL` dialogue snippets are deliberately excluded so ordinary phrases are not mislabeled as terminology.
+For each MOD source string it checks word n-grams against that index, preferring longer phrases. Automatic term matches are limited to term-like records such as names, locations, items, spells, effects, quests, and similar records. Original `INFO` / `DIAL` dialogue snippets are deliberately excluded so ordinary phrases are not mislabeled as terminology.
 
 This first version deliberately favors precision over fuzzy recall:
 

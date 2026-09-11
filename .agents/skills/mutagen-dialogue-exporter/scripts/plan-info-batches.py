@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """按任务线生成 INFO 翻译批次计划（去重口径：唯一未译源句数）。
 
-输入: .work/<plugin>-info-split.json + 源 XML
-产出: .work/<plugin>-info-batches.json
+输入: .work/<plugin>/context/<plugin>-info-split.json + 源 XML
+产出: .work/<plugin>/context/<plugin>-info-batches.json
       每批 {id, line, dials, unique_src, srcs(唯一未译源句), idx(待写回 NAM1 行)}
       srcs 决定翻译工作量；idx 决定最终 patch 覆盖面（重复行全写）。
 """
@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 
 plugin = sys.argv[1] if len(sys.argv) > 1 else 'Druadach'
 moddir = sys.argv[2] if len(sys.argv) > 2 else 'mods/%s.esm' % plugin
-split = json.load(open('.work/%s-info-split.json' % plugin, encoding='utf-8'))
+split = json.load(open('.work/%s/context/%s-info-split.json' % (plugin, plugin), encoding='utf-8'))
 t = ET.parse('%s/%s_english_chinese.xml' % (moddir, plugin))
 strs = t.getroot().findall('.//String')
 CAP = 45
@@ -78,7 +78,7 @@ plan = {
                  'idx': sorted({i for t in b['topics'] for ti in t['infos'] for i in ti['idx'] if untranslated(i)})}
                 for n, b in enumerate(batches)],
 }
-json.dump(plan, open('.work/%s-info-batches.json' % plugin, 'w', encoding='utf-8'),
+json.dump(plan, open('.work/%s/context/%s-info-batches.json' % (plugin, plugin), 'w', encoding='utf-8'),
           ensure_ascii=False, indent=1)
 print('batches:', plan['batch_count'], 'unique srcs:', plan['total_unique_sources'])
 size = [b['unique_src'] for b in plan['batches']]

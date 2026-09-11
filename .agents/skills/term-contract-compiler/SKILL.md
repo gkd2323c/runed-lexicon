@@ -32,8 +32,8 @@ python .agents/skills/term-contract-compiler/scripts/compile_contract.py \
   --terms mods/<plugin>/terms.json \
   --id-prefix <plugin>. \
   --global-bans global-forbidden-words.json \
-  --output .work/term-contracts/<plugin>.compiled.json \
-  --keep-output .work/term-contracts/<plugin>.keep.json
+  --output .work/<plugin>/contracts/<plugin>.compiled.json \
+  --keep-output .work/<plugin>/contracts/<plugin>.keep.json
 ```
 
 `--global-bans <root>/global-forbidden-words.json` 把项目级全局禁用词库嵌入
@@ -64,8 +64,8 @@ Rules:
 python .agents/skills/term-contract-compiler/scripts/compile_contract.py \
   --dictionary mods/MVF1FollowerBeta.esp/DICTIONARY.md \
   --id-prefix mvf1. \
-  --output .work/term-contracts/MVF1FollowerBeta.esp.compiled.json \
-  --keep-output .work/term-contracts/MVF1FollowerBeta.esp.keep.json
+  --output .work/MVF1FollowerBeta/contracts/MVF1FollowerBeta.esp.compiled.json \
+  --keep-output .work/MVF1FollowerBeta/contracts/MVF1FollowerBeta.esp.keep.json
 ```
 
 Markdown tables must keep the first cell of every term row as the pure-English source (no `&`, `!`, or Chinese in that cell) and the second cell as the Chinese translation; the compiler identifies the English / Chinese columns heuristically, so rows that violate this can be silently mis-parsed. Prefer the structured JSON source for new content.

@@ -17,7 +17,7 @@ This is deliberately the layer immediately before XML writeback. It produces tra
 The target MOD directory is identified from `inputs.mod_dir`. Use JSON produced by `translation-context-builder`, for example:
 
 ```text
-.work/sirenroot-info-context.json
+.work/sirenroot/context/sirenroot-info-context.json
 ```
 
 The input should contain one or more `batches`, each with traceable `translation_unit_id` values and the original XML metadata, dialogue context, and terminology evidence.
@@ -38,7 +38,7 @@ Do not infer a speaker merely from prose when structural evidence is absent.
 Initialize a result file for one batch:
 
 ```text
-py -3 .agents/skills/translation-executor/scripts/translation_result.py init .work/sirenroot-info-context.json --batch 0 --output .work/sirenroot-info-translation-000.json
+py -3 .agents/skills/translation-executor/scripts/translation_result.py init .work/sirenroot/context/sirenroot-info-context.json --batch 0 --output .work/sirenroot/translations/sirenroot-info-translation-000.json
 ```
 
 Use the Python command that passed `skill-creator` preflight if it is not `py -3`.
@@ -136,9 +136,9 @@ py -3 .agents/skills/translation-executor/scripts/suggest_waived_tokens.py --res
 
 ```text
 py -3 .agents/skills/translation-executor/scripts/fill_translations.py \
-  --result .work/sirenroot-info-translation-000.json \
-  --map .work/sirenroot-info-map-blockA.json \
-  --output .work/sirenroot-info-translation-000.json --force
+  --result .work/sirenroot/translations/sirenroot-info-translation-000.json \
+  --map .work/sirenroot/maps/sirenroot-info-map-blockA.json \
+  --output .work/sirenroot/translations/sirenroot-info-translation-000.json --force
 ```
 
 The map is a flat JSON object keyed by `xml_index` (string form) whose values are
@@ -183,7 +183,7 @@ py -3 .agents/skills/translation-executor/scripts/fill_translations.py --result 
 After translating, run:
 
 ```text
-py -3 .agents/skills/translation-executor/scripts/translation_result.py validate .work/sirenroot-info-translation-000.json --context .work/sirenroot-info-context.json
+py -3 .agents/skills/translation-executor/scripts/translation_result.py validate .work/sirenroot/translations/sirenroot-info-translation-000.json --context .work/sirenroot/context/sirenroot-info-context.json
 ```
 
 Validation fails if, among other things:
@@ -203,7 +203,7 @@ Use `--allow-pending` only for checking an initialized template or an intentiona
 Get a compact progress summary with:
 
 ```text
-py -3 .agents/skills/translation-executor/scripts/translation_result.py summary .work/sirenroot-info-translation-000.json
+py -3 .agents/skills/translation-executor/scripts/translation_result.py summary .work/sirenroot/translations/sirenroot-info-translation-000.json
 ```
 
 ## 多文件修订：生成新结果集合
@@ -244,7 +244,7 @@ The result JSON is a review artifact, not an XML patch. It contains:
 - the SHA-256 of the exact context payload used;
 - the selected batch index;
 - the source xTranslator XML path and hash copied from the context payload;
-- MOD context / dictionary hashes;
+- machine term source hash (`terms.json`); no human documents are tracked — historical contexts' extra provenance entries are passed through for compatibility;
 - one result object for every translation unit in the selected batch.
 
 This provenance records exactly what evidence a draft was created from. A later writeback tool must reject the draft when the source XML identity no longer matches; context/dictionary hash differences are diagnostic evidence, not an automatic global-invalidity rule.

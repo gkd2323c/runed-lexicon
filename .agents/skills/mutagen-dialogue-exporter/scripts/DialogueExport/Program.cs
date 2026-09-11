@@ -10,7 +10,7 @@ using Noggog;
 // Export DIAL -> INFO structure from a Skyrim plugin via Mutagen overlays.
 // Usage: DialogueExport <plugin> <output.json> <dataDir>
 var plugin = args.Length > 0 ? args[0] : @"mods/Druadach.esm/Druadach.esm";
-var output = args.Length > 1 ? args[1] : @".work/Druadach-mutagen-dialogue.json";
+var output = args.Length > 1 ? args[1] : @$".work/{args[0]}/context/{args[0]}-mutagen-dialogue.json";
 var dataDir = args.Length > 2
     ? args[2]
     : @"D:\SteamLibrary\steamapps\common\Skyrim Special Edition\Data";

@@ -60,7 +60,7 @@ py -3 .agents/skills/dictionary-noun-audit/scripts/dictionary_noun_audit.py mods
 Also accepts a translation-result JSON (executor schema); write flags to a review file:
 
 ```text
-py -3 .agents/skills/dictionary-noun-audit/scripts/dictionary_noun_audit.py mods/<plugin>/<file>_translated.xml --json .work/noun-audit-flags.json
+py -3 .agents/skills/dictionary-noun-audit/scripts/dictionary_noun_audit.py mods/<plugin>/<file>_translated.xml --json .work/<plugin>/reports/<plugin>-noun-audit.json
 ```
 
 Options:

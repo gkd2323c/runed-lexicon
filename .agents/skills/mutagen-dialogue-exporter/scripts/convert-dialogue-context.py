@@ -14,10 +14,10 @@ translation-context-builder 消费的是 xEdit 风格结构（`dialogues[]` + `i
 用法:
   python convert-dialogue-context.py <plugin-stem> <moddir> [output.json]
   例: python convert-dialogue-context.py Artaeum mods/Artaeum.esp
-      → 读 .work/Artaeum-mutagen-dialogue.json
-      → 写 .work/Artaeum-dialogue-context.json
+      → 读 .work/Artaeum/context/Artaeum-mutagen-dialogue.json
+      → 写 .work/Artaeum/context/Artaeum-dialogue-context.json
 
-输出契约（确定性）：.work/<stem>-dialogue-context.json，同名覆盖，禁止版本后缀。
+输出契约（确定性）：.work/<stem>/context/<stem>-dialogue-context.json，同名覆盖，禁止版本后缀。
 """
 import json
 import re
@@ -28,10 +28,10 @@ from pathlib import Path
 
 stem = sys.argv[1] if len(sys.argv) > 1 else "Druadach"
 moddir = sys.argv[2] if len(sys.argv) > 2 else f"mods/{stem}.esm"
-out_path = sys.argv[3] if len(sys.argv) > 3 else f".work/{stem}-dialogue-context.json"
+out_path = sys.argv[3] if len(sys.argv) > 3 else f".work/{stem}/context/{stem}-dialogue-context.json"
 
 root = Path(".").resolve()
-src = root / f".work/{stem}-mutagen-dialogue.json"
+src = root / f".work/{stem}/context/{stem}-mutagen-dialogue.json"
 xml = root / moddir / f"{stem}_english_chinese.xml"
 
 with src.open("r", encoding="utf-8") as f:

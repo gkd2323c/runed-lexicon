@@ -2,14 +2,14 @@
 """make-batch-index.py — 从批次计划抽取单批次的 XML 索引清单。
 
 translation-context-builder 的 `--index-file` 需要一份每行一个整数 XML 索引的
-文本文件；本脚本从 `.work/<stem>-info-batches.json` 按批次 id 提取，落到批次目录
-`.work/<stem>-batches/<BATCH-ID>/index.txt`。
+文本文件；本脚本从 `.work/<stem>/context/<stem>-info-batches.json` 按批次 id 提取，落到批次目录
+`.work/<stem>/batches/<BATCH-ID>/index.txt`。
 
 用法:
   python make-batch-index.py <plugin-stem> <BATCH-ID> [batch-dir]
   例: python make-batch-index.py Artaeum INFO-001
-      → 读 .work/Artaeum-info-batches.json
-      → 写 .work/artaeum-batches/INFO-001/index.txt
+      → 读 .work/Artaeum/context/Artaeum-info-batches.json
+      → 写 .work/Artaeum/batches/INFO-001/index.txt
 
 输出契约（确定性）：批次目录与 index.txt 同名覆盖；批次 id 是稳定契约 ID。
 """
@@ -19,10 +19,10 @@ from pathlib import Path
 
 stem = sys.argv[1] if len(sys.argv) > 1 else "Druadach"
 batch_id = sys.argv[2] if len(sys.argv) > 2 else "INFO-001"
-batch_dir_name = sys.argv[3] if len(sys.argv) > 3 else f"{stem.lower()}-batches"
+batch_dir_name = sys.argv[3] if len(sys.argv) > 3 else f"{stem}/batches"
 
 root = Path(".").resolve()
-plan_path = root / f".work/{stem}-info-batches.json"
+plan_path = root / f".work/{stem}/context/{stem}-info-batches.json"
 
 with plan_path.open("r", encoding="utf-8") as f:
     plan = json.load(f)

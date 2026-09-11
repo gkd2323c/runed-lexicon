@@ -37,7 +37,7 @@ FAIL，不改任何文件。
 
 ```text
 # worker res JSON / translation result JSON（每批 apply 前可选）
-py -3 .agents/skills/fantasy-context-auditor/scripts/fantasy_audit.py --file .work/<mod>-info-<batch>-translation.json
+py -3 .agents/skills/fantasy-context-auditor/scripts/fantasy_audit.py --file .work/<mod>/batches/<batch>/translation.json
 
 # canonical XML 全扫（波末复查；可 --rec 过滤 REC、--limit 限量）
 py -3 .agents/skills/fantasy-context-auditor/scripts/fantasy_audit.py --xml mods/<plugin>/<plugin>_english_chinese_translated.xml --rec INFO --limit 500

@@ -32,16 +32,16 @@ workaround:
 
 ```text
 py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
-  --xml .work/<mod>-archive/<previous-sha256>/<mod>_english_chinese_translated.xml \
-  --patch .work/<mod>-fix-patch.json \
+  --xml .work/<mod>/archive/<previous-sha256>/<mod>_english_chinese_translated.xml \
+  --patch .work/<mod>/maps/<mod>-fix-patch.json \
   --output mods/<mod>/<mod>_english_chinese_translated.xml \
-  --report .work/<mod>-writeback-report.json \
+  --report .work/<mod>/reports/<mod>-writeback-report.json \
   --force
 ```
 
 Before a canonical revision, move the previous canonical artifact into a
 content-addressed archive directory such as
-`.work/<mod>-archive/<previous-sha256>/`, then use that archived file as the patch
+`.work/<mod>/archive/<previous-sha256>/`, then use that archived file as the patch
 baseline. The writer intentionally rejects `--xml` and `--output` resolving to the
 same path. Never manufacture `_final_vN` filenames to preserve history.
 
@@ -71,7 +71,7 @@ that already contains other `*_translated*.xml` files.
 Workflow for every new writeback generation:
 
 1. Archive the previous canonical into a content-addressed directory under
-   `.work/<mod>-archive/<previous-sha256>/` (move, do not copy). This preserves the
+   `.work/<mod>/archive/<previous-sha256>/` (move, do not copy). This preserves the
    canonical filename while allowing multiple historical generations without
    `vN` / `roundN` labels.
 2. Write the new generation as `<plugin>_english_chinese_translated.xml`
@@ -128,11 +128,11 @@ For deterministic families of files, `--result-glob` may be repeated:
 ```text
 py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
   --xml mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese.xml \
-  --result-glob ".work/sirenroot-info-translation-325-batch-*.json" \
-  --result-glob ".work/sirenroot-info-translation-549-batch-1[3-9].json" \
-  --result-glob ".work/sirenroot-noninfo-translation-batch-*.json" \
+  --result-glob ".work/sirenroot/translations/sirenroot-info-translation-325-batch-*.json" \
+  --result-glob ".work/sirenroot/translations/sirenroot-info-translation-549-batch-1[3-9].json" \
+  --result-glob ".work/sirenroot/translations/sirenroot-noninfo-translation-batch-*.json" \
   --output mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese_translated.xml \
-  --report .work/sirenroot-writeback-report.json
+  --report .work/sirenroot/reports/sirenroot-writeback-report.json
 ```
 
 Use quoted glob patterns so the script, rather than a shell, resolves the intended files consistently.

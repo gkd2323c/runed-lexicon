@@ -7,7 +7,7 @@ metadata:
   status: "已退役 2026-09-08，由 Mutagen 导出器接替（见下）"
 ---
 
-> **退役说明（2026-09-08）**：xEdit 命令行模式导出在 Druadach 上超时（>10 分钟无完成标记），且首次缓存构建极慢。已改用 Mutagen（C# 库，tools/Mutagen 克隆 + .agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport）以 overlay 模式解析插件：Druadach.esm 全量 DIAL→INFO 导出仅 **1.3 秒**（5235 DIAL / 8089 INFO，含 speaker 解析、prompt、responses、conditions），与 xTranslator 的 INFO EDID 连接率 99.2%。产物规范：`.work/<plugin>-mutagen-dialogue.json`。下文保留作为历史参考与兑备。
+> **退役说明（2026-09-08）**：xEdit 命令行模式导出在 Druadach 上超时（>10 分钟无完成标记），且首次缓存构建极慢。已改用 Mutagen（C# 库，tools/Mutagen 克隆 + .agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport）以 overlay 模式解析插件：Druadach.esm 全量 DIAL→INFO 导出仅 **1.3 秒**（5235 DIAL / 8089 INFO，含 speaker 解析、prompt、responses、conditions），与 xTranslator 的 INFO EDID 连接率 99.2%。产物规范：`.work/<plugin>/context/<plugin>-mutagen-dialogue.json`。下文保留作为历史参考与兑备。
 
 # xEdit Context Exporter
 
@@ -51,7 +51,7 @@ The Python wrapper:
 
 1. Reads the target plugin's TES4 header to obtain its declared masters.
 2. Locates Skyrim Special Edition's Data directory, or uses `--game-data`.
-3. Creates an isolated project-local staging Data directory under `.work/xedit-context-exporter/`.
+3. Creates an isolated project-local staging Data directory under `.work/_shared/xedit/xedit-context-exporter/`.
 4. Symlinks each required master from the real game Data directory and symlinks the target plugin from the MOD directory.
 5. Generates a dedicated `plugins.txt` containing the target masters, target plugin, and any explicitly requested context-only plugins plus their required dependencies.
 6. Launches xEdit in SSE Script mode with `-D`, `-P`, `-autoload`, `-script`, and `-autoexit`.
@@ -135,7 +135,7 @@ Scene-bound dialogue and non-unique alias conditions remain a later layer. Do no
 
 - Never save, clean, compact, renumber, or otherwise edit the plugin.
 - Never run an xEdit script containing save dialogs, confirmation dialogs, or mutation logic as part of this workflow.
-- Keep all staging files and xEdit caches under `.work/xedit-context-exporter/`.
+- Keep all staging files and xEdit caches under `.work/_shared/xedit/xedit-context-exporter/`.
 - Do not copy the target plugin into the real game Data directory.
 - Do not load unrelated user plugins. The generated `plugins.txt` should contain only declared masters and the target.
 - Context-only plugins are an explicit exception to the previous rule: load them only when the user/project needs their records to resolve a soft dependency or compatibility context. Do not silently sweep the user's whole load order into the export.

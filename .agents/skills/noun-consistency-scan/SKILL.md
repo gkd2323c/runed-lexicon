@@ -94,10 +94,10 @@ Extension pools (each needs its own input; run separately when needed):
 --pools B
 
 # C: official-name HIGH candidates on translated rows — needs noun-audit --json output
---pools C --audit .work/<plugin>-noun-audit.json --terms mods/<plugin>/terms.json
+--pools C --audit .work/<plugin>/reports/<plugin>-noun-audit.json --terms mods/<plugin>/terms.json
 
 # D: official names present (occ≥3, name-level hits) but not registered in terms
---pools D --scan .work/<plugin>-proper-noun-scan.json --terms mods/<plugin>/terms.json
+--pools D --scan .work/<plugin>/context/<plugin>-proper-noun-scan.json --terms mods/<plugin>/terms.json
 
 # E: untranslated rows (Dest==Source) with no dev-residue signal — needs human visibility judgment
 --pools E

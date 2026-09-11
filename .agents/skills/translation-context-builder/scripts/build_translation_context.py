@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import hashlib
 import json
 import re
@@ -12,7 +11,6 @@ import sys
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from functools import lru_cache
-from io import StringIO
 from pathlib import Path
 from typing import Iterable
 import xml.etree.ElementTree as ET
@@ -143,15 +141,15 @@ def resolve_inputs(args: argparse.Namespace) -> dict[str, Path | None]:
     dialogue_context_path = (
         resolve_path(args.dialogue_context) if args.dialogue_context else None
     )
-    context_path = resolve_path(args.context) if args.context else None
-    mod_dictionary_path = (
-        resolve_path(args.mod_dictionary) if args.mod_dictionary else None
-    )
+    mod_terms_path = resolve_path(args.mod_terms) if args.mod_terms else None
 
     if mod_dir:
         xml_path = xml_path or single_file(mod_dir, "*.xml", "xTranslator XML")
-        context_path = context_path or (mod_dir / "CONTEXT.md").resolve()
-        mod_dictionary_path = mod_dictionary_path or (mod_dir / "DICTIONARY.md").resolve()
+        if mod_terms_path is None:
+            candidate = mod_dir / "terms.json"
+            mod_terms_path = candidate if candidate.is_file() else None
+        elif not mod_terms_path.is_file():
+            raise ValueError(f"MOD terms file does not exist: {mod_terms_path}")
         if dialogue_context_path is None:
             candidates = sorted(
                 path for path in mod_dir.glob("*dialogue_context*.json") if path.is_file()
@@ -166,8 +164,6 @@ def resolve_inputs(args: argparse.Namespace) -> dict[str, Path | None]:
 
     required = {
         "xml": xml_path,
-        "context": context_path,
-        "mod_dictionary": mod_dictionary_path,
     }
     missing = [name for name, path in required.items() if path is None or not path.is_file()]
     if missing:
@@ -184,8 +180,7 @@ def resolve_inputs(args: argparse.Namespace) -> dict[str, Path | None]:
         "mod_dir": mod_dir,
         "xml": xml_path,
         "dialogue_context": dialogue_context_path,
-        "context": context_path,
-        "mod_dictionary": mod_dictionary_path,
+        "mod_terms": mod_terms_path,
     }
 
 
@@ -326,66 +321,38 @@ def dictionary_hit_allowed_for_target(hit: DictionaryHit, target_rec: str) -> bo
     return hit_prefix in DIALOGUE_SINGLE_TOKEN_TERM_PREFIXES
 
 
-def parse_markdown_tables(markdown: str) -> list[dict[str, str]]:
-    terms: list[dict[str, str]] = []
-    lines = markdown.splitlines()
-    for index, line in enumerate(lines):
-        stripped = line.strip()
-        if not stripped.startswith("|") or not stripped.endswith("|"):
-            continue
-        if index + 1 >= len(lines):
-            continue
-        separator = lines[index + 1].strip()
-        if not separator.startswith("|") or "---" not in separator:
-            continue
+def load_mod_terms(terms_path: Path | None) -> list[dict[str, str]]:
+    """Load machine-readable MOD term rows from terms.json.
 
-        headers = parse_pipe_row(stripped)
-        position = index + 2
-        while position < len(lines):
-            row_line = lines[position].strip()
-            if not row_line.startswith("|") or not row_line.endswith("|"):
-                break
-            values = parse_pipe_row(row_line)
-            if len(values) == len(headers):
-                row = {normalize_table_header(headers[i]): values[i] for i in range(len(headers))}
-                english = first_present(row, ["英文", "原文", "English", "Source"])
-                chinese = first_present(row, ["中文", "译名", "译法", "Chinese", "Dest"])
-                if english and english not in {"待补充", "待定"}:
-                    terms.append(
-                        {
-                            "english": english,
-                            "chinese": chinese,
-                            "type": first_present(row, ["类型", "Type"]),
-                            "status": first_present(row, ["状态", "Status"]),
-                            "source": first_present(row, ["来源 / 依据", "来源", "依据", "Source"]),
-                            "note": first_present(row, ["备注", "规则", "原因", "Note"]),
-                        }
-                    )
-            position += 1
-    return dedupe_dicts(terms)
-
-
-def normalize_table_header(header: str) -> str:
-    """'原文 (English)' -> '原文'；'译名 (Chinese)' -> '译名'。
-
-    项目 MOD DICTIONARY 模板历史上混用过「原文|译名」与「原文 (English)|译名 (Chinese)」
-    两种表头；剥掉尾部括号注释后再做列名匹配，两种形态都能识别。
+    The human DICTIONARY.md is documentation: translation agents (AI) read it
+    directly; tools never parse it. terms.json is the structured mirror
+    maintained alongside it and is the only machine-side term input.
     """
-    return re.sub(r"\s*[（(].*?[）)]\s*$", "", header).strip()
+    if terms_path is None or not terms_path.is_file():
+        return []
+    try:
+        data = json.loads(terms_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Invalid terms JSON in {terms_path}: {exc}") from exc
 
-
-def parse_pipe_row(line: str) -> list[str]:
-    content = line.strip().strip("|")
-    reader = csv.reader(StringIO(content), delimiter="|", escapechar="\\")
-    return [cell.strip() for cell in next(reader)]
-
-
-def first_present(row: dict[str, str], keys: list[str]) -> str:
-    for key in keys:
-        value = row.get(key, "").strip()
-        if value:
-            return value
-    return ""
+    rows: list[dict[str, str]] = []
+    for term in data.get("terms", []):
+        if not isinstance(term, dict):
+            continue
+        english = str(term.get("english", "")).strip()
+        if not english:
+            continue
+        rows.append(
+            {
+                "english": english,
+                "chinese": str(term.get("zh", "")).strip(),
+                "type": "",
+                "status": str(term.get("status", "")).strip(),
+                "source": "",
+                "note": str(term.get("note", "")).strip(),
+            }
+        )
+    return dedupe_dicts(rows)
 
 
 def dedupe_dicts(items: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -611,20 +578,20 @@ def chunked(entries: list[dict[str, object]], batch_size: int) -> list[dict[str,
 def build_payload(args: argparse.Namespace) -> dict[str, object]:
     paths = resolve_inputs(args)
     xml_path = paths["xml"]
-    context_path = paths["context"]
-    mod_dictionary_path = paths["mod_dictionary"]
+    mod_terms_path = paths["mod_terms"]
     assert isinstance(xml_path, Path)
-    assert isinstance(context_path, Path)
-    assert isinstance(mod_dictionary_path, Path)
 
     dictionary_dir = resolve_path(args.dictionary_dir) or DEFAULT_DICTIONARY_DIR
     if not dictionary_dir.is_dir():
         raise ValueError(f"Dictionary directory does not exist: {dictionary_dir}")
 
     xml_params, entries = load_xml_entries(xml_path)
-    context_markdown = context_path.read_text(encoding="utf-8")
-    mod_dictionary_markdown = mod_dictionary_path.read_text(encoding="utf-8")
-    mod_terms = parse_markdown_tables(mod_dictionary_markdown)
+    if mod_terms_path is None:
+        print(
+            "note: no terms.json found for this MOD; terminology.mod_terms_hits will be empty",
+            file=sys.stderr,
+        )
+    mod_terms = load_mod_terms(mod_terms_path if isinstance(mod_terms_path, Path) else None)
     official_index, official_files = build_official_dictionary_index(dictionary_dir)
 
     dialogue_context_path = paths["dialogue_context"]
@@ -674,7 +641,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, object]:
                     entry, info_index=info_index, dial_index=dial_index
                 ),
                 "terminology": {
-                    "mod_dictionary_hits": mod_terms_for_source(entry.source, mod_terms),
+                    "mod_terms_hits": mod_terms_for_source(entry.source, mod_terms),
                     "official_dictionary_hits": hits_for_source(
                         entry.source,
                         official_index,
@@ -717,16 +684,10 @@ def build_payload(args: argparse.Namespace) -> dict[str, object]:
                 if isinstance(dialogue_context_path, Path)
                 else None
             ),
-            "mod_context": {
-                "path": relative(context_path),
-                "sha256": sha256_file(context_path),
-                "content": context_markdown,
-            },
-            "mod_dictionary": {
-                "path": relative(mod_dictionary_path),
-                "sha256": sha256_file(mod_dictionary_path),
-                "content": mod_dictionary_markdown,
-                "parsed_terms": mod_terms,
+            "mod_terms": {
+                "path": relative(mod_terms_path) if isinstance(mod_terms_path, Path) else None,
+                "sha256": sha256_file(mod_terms_path) if isinstance(mod_terms_path, Path) else "",
+                "term_count": len(mod_terms),
             },
             "official_dictionary": {
                 "directory": relative(dictionary_dir),
@@ -778,12 +739,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "input",
         nargs="?",
-        help="MOD directory containing XML, CONTEXT.md, DICTIONARY.md, and optional dialogue context JSON",
+        help="MOD directory containing the xTranslator XML plus optional terms.json / dialogue context JSON",
     )
     parser.add_argument("--xml", help="Explicit xTranslator XML path")
     parser.add_argument("--dialogue-context", help="Explicit xEdit dialogue context JSON path")
-    parser.add_argument("--context", help="Explicit CONTEXT.md path")
-    parser.add_argument("--mod-dictionary", help="Explicit DICTIONARY.md path")
+    parser.add_argument(
+        "--mod-terms",
+        help="Explicit MOD terms.json path (machine-readable term source)",
+    )
     parser.add_argument(
         "--dictionary-dir",
         default=str(DEFAULT_DICTIONARY_DIR),

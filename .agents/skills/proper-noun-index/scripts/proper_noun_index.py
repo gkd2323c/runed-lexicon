@@ -451,7 +451,7 @@ def main():
     b = sub.add_parser('build', help='scan dictionary tree -> index JSON')
     b.add_argument('--dict', default=None, help='dictionary dir (default <project>/dictionary)')
     b.add_argument('--output', default=None,
-                   help='index JSON output (default .work/proper-noun-index/index.json)')
+                   help='index JSON output (default .work/_shared/proper-noun-index/index.json)')
 
     s = sub.add_parser('scan', help='list official proper nouns present in a MOD file')
     s.add_argument('index', help='index JSON from build')
@@ -471,7 +471,7 @@ def main():
         if not dict_dir.is_dir():
             print(f'error: dictionary dir not found: {dict_dir}', file=sys.stderr)
             return 2
-        out = Path(args.output) if args.output else root / '.work' / 'proper-noun-index' / 'index.json'
+        out = Path(args.output) if args.output else root / '.work' / '_shared' / 'proper-noun-index' / 'index.json'
         if not out.is_absolute():
             out = root / out
         data = build_index(dict_dir)

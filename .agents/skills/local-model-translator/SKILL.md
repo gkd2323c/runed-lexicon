@@ -100,7 +100,7 @@ The existence of a local worker should reduce repetitive sentence-level labor, n
 
 ## Prepare a worker request
 
-Create a UTF-8 JSON request in `.work/`. A minimal request looks like:
+Create a UTF-8 JSON request under `.work/<plugin>/local-requests/`. A minimal request looks like:
 
 ```json
 {
@@ -170,7 +170,7 @@ Batch by semantic coherence rather than an arbitrary row count. The current loca
 Before a new request shape or a difficult batch, inspect exactly what the local model will receive:
 
 ```text
-py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py prompt .work/sirenroot-local-request.json
+py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py prompt .work/sirenroot/local-requests/sirenroot-local-request.json
 ```
 
 The renderer deliberately places background first and repeats the hard translation contract immediately before the source items. This reduces completion-style drift in long prompts.
@@ -180,7 +180,7 @@ The renderer deliberately places background first and repeats the hard translati
 Use the HTTP API wrapper rather than piping Chinese prompts through the Windows shell. This avoids command-line encoding damage to terminology.
 
 ```text
-py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py run .work/sirenroot-local-request.json --output .work/sirenroot-local-response.json
+py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py run .work/sirenroot/local-requests/sirenroot-local-request.json --output .work/sirenroot/local-results/sirenroot-local-response.json
 ```
 
 Useful overrides:
@@ -237,7 +237,7 @@ For `required_phrases` failures specifically, one retry with clearer compact gui
 Revalidate an existing response without calling Ollama:
 
 ```text
-py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py validate .work/sirenroot-local-response.json --request .work/sirenroot-local-request.json
+py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py validate .work/sirenroot/local-results/sirenroot-local-response.json --request .work/sirenroot/local-requests/sirenroot-local-request.json
 ```
 
 ## 安全生成 executor 导入 map

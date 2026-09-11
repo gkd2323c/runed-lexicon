@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Mutagen DIAL→INFO 结构 → 按任务线拆 INFO 批次（v2 简洁版）。
 
-输入: .work/Druadach-mutagen-dialogue.json + 源 XML
-产出: .work/Druadach-info-split.json
+输入: .work/Druadach/context/Druadach-mutagen-dialogue.json + 源 XML
+产出: .work/Druadach/context/Druadach-info-split.json
       {lines: {questEdid: {topics: [{dial, edid, topic, subtype, infos: [{idx, prompt_idx, speaker, responses}]}], rows, untranslated}},
        unlinked: [未链接且未译的 INFO NAM1 xml_index], batch_plan: [...] }
 """
@@ -14,7 +14,7 @@ from collections import defaultdict
 
 plugin = sys.argv[1] if len(sys.argv) > 1 else 'Druadach'
 moddir = sys.argv[2] if len(sys.argv) > 2 else 'mods/%s.esm' % plugin
-doc = json.load(open('.work/%s-mutagen-dialogue.json' % plugin, encoding='utf-8'))
+doc = json.load(open('.work/%s/context/%s-mutagen-dialogue.json' % (plugin, plugin), encoding='utf-8'))
 t = ET.parse('%s/%s_english_chinese.xml' % (moddir, plugin))
 strs = t.getroot().findall('.//String')
 
@@ -79,9 +79,9 @@ for line, topics in lines.items():
     stats[line] = (len(topics), rows, ut)
     out_lines[line] = topics
 
-json.dump(out_lines, open('.work/%s-info-split.json' % plugin, 'w', encoding='utf-8'),
+json.dump(out_lines, open('.work/%s/context/%s-info-split.json' % (plugin, plugin), 'w', encoding='utf-8'),
           ensure_ascii=False)
-json.dump(unlinked, open('.work/%s-info-unlinked.json' % plugin, 'w', encoding='utf-8'),
+json.dump(unlinked, open('.work/%s/context/%s-info-unlinked.json' % (plugin, plugin), 'w', encoding='utf-8'),
           ensure_ascii=False)
 
 print('任务线 %d 条' % len(stats))

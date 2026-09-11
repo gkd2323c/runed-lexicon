@@ -25,7 +25,7 @@ Druadach.esm（约 98MB，5235 DIAL）上超过 10 分钟不出完成标记，Mu
 dotnet build .agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport/DialogueExport.csproj
 dotnet run --project .agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport -- `
   mods/<plugin>/<plugin>.esm `
-  .work/<plugin>-mutagen-dialogue.json `
+  .work/<plugin>/context/<plugin>-mutagen-dialogue.json `
   "<SkyrimSE Data 目录>"
 ```
 
@@ -34,7 +34,7 @@ master 解析按目标插件 TES4 头声明的 master 列表在该目录中查�
 
 ### 输出契约（确定性）
 
-`.work/<plugin>-mutagen-dialogue.json`，同名覆盖，禁止版本后缀：
+`.work/<plugin>/context/<plugin>-mutagen-dialogue.json`，同名覆盖，禁止版本后缀：
 
 - `topics[]`：目标插件每条 DIAL：`formKey`（`<local>:<mod>` 或 `<mod>:<local>` 形）、`edid`、`topic`（FULL 标题）、`category`/`subtype`（ForceGreet/Hello/Goodbye 等）、`quest`、`questEdid`（跨 master 经 LinkCache 解析）、`branch`。
 - `topics[].infos[]`：每条 INFO：`formKey`、`edid`、`prompt`（RNAM）、`speaker`+`speakerName`（ANAM 显式说话者，解析为 NPC 显示名）、`speakerFromCondition`（ANAM 缺失时从唯一 GetIsID(Subject) 条件解析的说话者 NPC 名；多个 GetIsID 或无法唯一确定时为 null）、`prev`（上一句 INFO，线程顺序）、`responses[]`（每回复一条，含全部候选文本）、`conditions[]`（`kind`=条件数据类型名、`runOn`=subject、`reference`=通用参考 FormKey、`paramLink`/`paramAlias`=特化参数）。
@@ -63,12 +63,12 @@ python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py Art
 ```
 
 - `split-info-lines.py`：Mutagen JSON × XML INFO 行连接，按 `questEdid` 聚合为任务线；
-  产出 `.work/<plugin>-info-split.json`（线→主题→INFO：xml idx、prompt_idx、speaker、
-  复读 responses）与 `.work/<plugin>-info-unlinked.json`。speaker 取值顺序：
+  产出 `.work/<plugin>/context/<plugin>-info-split.json`（线→主题→INFO：xml idx、prompt_idx、speaker、
+  复读 responses）与 `.work/<plugin>/context/<plugin>-info-unlinked.json`。speaker 取值顺序：
   `speakerName`（ANAM）→ `speakerFromCondition`（唯一 GetIsID 条件）→ `speaker`。
 - `plan-info-batches.py`：以任务线为批次边界，CAP=45 唯一未译源句；单主题超容量按
   INFO 均分子主题；跨批全局源句去重（同句在后批只占一次容量、也只需翻一次）。
-  产出 `.work/<plugin>-info-batches.json`（批次 → line/dials/unique_src）。
+  产出 `.work/<plugin>/context/<plugin>-info-batches.json`（批次 → line/dials/unique_src）。
 
 批次命名 `INFO-001…`，批次 id 是稳定契约 ID；重跑覆盖。
 
@@ -81,18 +81,18 @@ python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py Art
 ```text
 # 1. Mutagen 结构 → xEdit 风格 dialogue context（含 FormID 前缀自动推导）
 python .agents/skills/mutagen-dialogue-exporter/scripts/convert-dialogue-context.py Artaeum mods/Artaeum.esp
-#    → .work/Artaeum-dialogue-context.json
+#    → .work/Artaeum/context/Artaeum-dialogue-context.json
 
 # 2. 从批次计划抽取单批次索引（供 --index-file）
 python .agents/skills/mutagen-dialogue-exporter/scripts/make-batch-index.py Artaeum INFO-001
-#    → .work/artaeum-batches/INFO-001/index.txt
+#    → .work/Artaeum/batches/INFO-001/index.txt
 
 # 3. 生成批次上下文（注意显式传 --dialogue-context 与 --index-file）
 python .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/Artaeum.esp \
   --xml mods/Artaeum.esp/Artaeum_english_chinese.xml \
-  --dialogue-context .work/Artaeum-dialogue-context.json \
-  --index-file .work/artaeum-batches/INFO-001/index.txt \
-  --batch-size 0 --output .work/artaeum-batches/INFO-001/context.json --force
+  --dialogue-context .work/Artaeum/context/Artaeum-dialogue-context.json \
+  --index-file .work/Artaeum/batches/INFO-001/index.txt \
+  --batch-size 0 --output .work/Artaeum/batches/INFO-001/context.json --force
 ```
 
 完整流水线（新增 MOD 时按序执行）：
@@ -112,9 +112,9 @@ speakerName/speakerFromCondition→speaker_candidates、questEdid→quest_edid�
 **FormID 前缀自动推导**。xTranslator XML 的括号 EDID（`[0600F5AE]`）比 Mutagen 的
 局部 FormID（`00F5AE`）多 2 位 load 位，脚本从 XML 采样括号 EDID 与 Mutagen 局部
 FormID 交叉验证命中率，取最高频前缀——不写死、不猜 load order，推导结果打印在
-stdout（Artaeum 实测 7735/7735 全命中）。输出 `.work/<stem>-dialogue-context.json`。
-- `make-batch-index.py`：从 `.work/<stem>-info-batches.json` 按批次 id 抽 `idx` 到
-`.work/<stem.lower()>-batches/<BATCH-ID>/index.txt`（每行一个 XML 索引）。
+stdout（Artaeum 实测 7735/7735 全命中）。输出 `.work/<stem>/context/<stem>-dialogue-context.json`。
+- `make-batch-index.py`：从 `.work/<stem>/context/<stem>-info-batches.json` 按批次 id 抽 `idx` 到
+`.work/<stem>/batches/<BATCH-ID>/index.txt`（每行一个 XML 索引）。
 
 > 前缀推导报错（XML 与 Mutagen 无交叉命中）通常意味着 XML 与插件不是同一代次，
 > 或该 XML 尚无任何本插件 INFO 行。

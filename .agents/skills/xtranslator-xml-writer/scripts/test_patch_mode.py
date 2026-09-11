@@ -89,7 +89,7 @@ def main() -> int:
                         "batch_index": 0,
                         "xtranslator_xml": {"path": "x", "sha256": "x"},
                         "mod_context": {"path": "x", "sha256": "x"},
-                        "mod_dictionary": {"path": "x", "sha256": "x"},
+                        "mod_terms": {"path": "x", "sha256": "x"},
                     },
                     "translations": [],
                 }
@@ -109,7 +109,7 @@ def main() -> int:
                         "batch_index": 0,
                         "xtranslator_xml": {"path": str(xml), "sha256": "0" * 64},
                         "mod_context": {"path": "x", "sha256": "x"},
-                        "mod_dictionary": {"path": "x", "sha256": "x"},
+                        "mod_terms": {"path": "x", "sha256": "x"},
                     },
                     "translations": [],
                 }
