@@ -28,7 +28,7 @@ CI（`.github/workflows/ci.yml`）跑失败才发现问题太贵：推送前先�
 python tools/pre-push-check.py
 ```
 
-它按相同顺序复刻 CI 的三步（unittest discover、standalone 回归脚本、全 skill quick validation），5 秒左右出结果，失败即 exit 1。想让每次 `git push` 自动执行，安装一次 pre-push hook（`.git/hooks` 不随仓库发布，每台机器 clone 后装一次）：
+它按相同顺序复刻 CI 的四步（unittest discover、standalone 回归脚本、全 skill quick validation、全库语法下限检查），16 秒左右出结果，失败即 exit 1。想让每次 `git push` 自动执行，安装一次 pre-push hook（`.git/hooks` 不随仓库发布，每台机器 clone 后装一次）：
 
 ```bash
 python tools/pre-push-check.py --install-hook

@@ -71,3 +71,10 @@ jobs:
               python .agents/skills/skill-creator/scripts/quick_validate.py "$d"
             fi
           done
+
+      - name: Syntax floor check (whole repo)
+        # Mirrors tools/pre-push-check.py [4/4]. Runs on every supported
+        # version: the 3.10/3.11 legs are what catch syntax that only parses
+        # on 3.12+ (PEP 701 f-string quote reuse), which a 3.14 dev box cannot
+        # see. Compiles first-party .py only; git decides the file set.
+        run: python tools/pre-push-check.py --syntax-only

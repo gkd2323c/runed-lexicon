@@ -25,8 +25,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Python 3.10+，绝大多数脚本只用标准库。解释器以 `skill-creator` preflight 确认的为准（本机为 `py -3`；CI 与本文命令用 `python`）。CI 会额外安装 `pyyaml`、`zhconv`。
 
 ```bash
-# 推送前必跑：复刻 CI 三步（约 6 秒，失败 exit 1）
+# 推送前必跑：复刻 CI 四步（约 16 秒，失败 exit 1）
 python tools/pre-push-check.py
+python tools/pre-push-check.py --syntax-only      # 只跑第 4 步（CI 步骤入口）
 python tools/pre-push-check.py --install-hook   # 装 .git/hooks/pre-push，每台机器一次
 
 # 单个 skill 的 unittest 套件 / 跑单个测试文件
