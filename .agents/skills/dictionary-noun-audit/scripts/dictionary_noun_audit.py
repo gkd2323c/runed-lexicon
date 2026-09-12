@@ -660,7 +660,7 @@ def main():
                                 only_entity=args.entity, include_single=args.include_single,
                                 semantic_by_member=fam_by_member)
     print(f'entity checks: {checked}; CHECK candidates: {len(flags)} '
-          f'({sum(1 for f in flags if f.get('keep_row'))} from KEEP rows)', flush=True)
+          f'({sum(1 for f in flags if f.get("keep_row"))} from KEEP rows)', flush=True)
     shown = flags if not args.limit else flags[:args.limit]
     for f in shown:
         print('=' * 70)
