@@ -86,8 +86,12 @@ class OfficialDictionaryLookupTest(unittest.TestCase):
         from pathlib import Path
 
         dictionary_dir = B.PROJECT_ROOT / "dictionary"
-        if not dictionary_dir.is_dir():
-            raise unittest.SkipTest(f"official dictionary not present: {dictionary_dir}")
+        # The directory itself is tracked (README/EXPORT_GUIDE) while the XML
+        # exports are gitignored local evidence, so is_dir() alone is not a
+        # usable guard: a fresh clone has the folder but no corpus. Skip on
+        # missing data; malformed data still fails loudly.
+        if not dictionary_dir.is_dir() or not any(dictionary_dir.rglob("*.xml")):
+            raise unittest.SkipTest(f"official dictionary XML not present: {dictionary_dir}")
         cls.index, _ = B.build_official_dictionary_index(Path(dictionary_dir))
 
     def _hits(self, source):
