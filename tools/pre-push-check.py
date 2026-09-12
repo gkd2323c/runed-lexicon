@@ -160,7 +160,7 @@ def iter_repo_py_files():
         p = subprocess.run(
             ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard",
              "--", "*.py"],
-            cwd=ROOT, capture_output=True)
+            cwd=ROOT, capture_output=True, timeout=60)
     except (OSError, subprocess.SubprocessError):
         return _walk_py_files()
     if p.returncode != 0:
@@ -175,7 +175,10 @@ def compile_repo_files():
     bad = []
     for path in files:
         try:
-            with open(path, encoding="utf-8") as fh:
+            # utf-8-sig mirrors how Python itself opens source files: a UTF-8
+            # BOM is stripped, so a BOM'd file that imports fine does not
+            # fail here as a bogus syntax error.
+            with open(path, encoding="utf-8-sig") as fh:
                 src = fh.read()
         except (OSError, UnicodeDecodeError) as exc:
             bad.append((path, 0, f"cannot read: {exc}"))
