@@ -187,6 +187,32 @@ TERM002 路径（`find_forbidden_hits`）原先对 forbidden 只做简单子串�
 实例完整落在任一 target 出现区间内时不报；未被覆盖的独立实例仍报——按区间豁免
 而非整单元豁免。回归用例见 term-contract-core.json jong-substr-exempt-001/002。
 
+## 全库门禁复核（`scripts/export_full_result.py`）
+
+**`--result` 是批次级的，`units_checked` 不等于全库行数。** 流水线产出的 result 只覆盖该批次的 idx，因此既有 `*-gate-report.json` 的覆盖数通常远小于 canonical 行数（Artaeum 实测 74 / 14968）。**不能据此声明全库通过门禁。**
+
+真实事故（2026-09-12）：批次级 gate 全 PASS 的 canonical，在全库复核时抓出 `圣母`（现实宗教禁令 TERM004）违规——该行属于早已写回的批次，此后从未再经过任何 gate。
+
+收口或声明收敛前，用导出器把 canonical 转成全库 result 再跑一次：
+
+```text
+py -3 .agents/skills/translation-quality-gate/scripts/export_full_result.py \
+  --xml mods/<plugin>/<plugin>_english_chinese.xml \
+  --canonical mods/<plugin>/<plugin>_english_chinese_translated.xml \
+  --out _tmp/data/full-result.json
+
+py -3 .agents/skills/translation-quality-gate/scripts/quality_gate.py \
+  --result _tmp/data/full-result.json \
+  --contract .work/<plugin>/contracts/<plugin>.compiled.json \
+  --keep-list .work/<plugin>/contracts/<plugin>.keep.json \
+  --xml mods/<plugin>/<plugin>_english_chinese.xml \
+  --report .work/<plugin>/reports/<plugin>-gate-report.json
+```
+
+口径：`Source == Dest` 的行导出为 `KEEP`（gate 不计入翻译单元），其余为 `TRANSLATED`；`original_dest` 取 Source（本 result 用于校验现状，不参与增量写回）。导出的 result 是审计中间产物，放 `_tmp/`，不入 `mods/` 或 `.work/` 资产目录。
+
+**已知误报（中文无词边界导致的子串命中，需人工核销，不是缺陷）**：禁用词恰好是译文另一词的子串时必然命中。实例：禁用词 `上传`（现代计算机词）命中「她的腿**上传**来一股剧痛」；禁用变体 `游牧民` 命中「灰地诸**游牧民**族」（源文 `Ashlander nomads` 为普通描述）。核销时看命中的上下文词，不只看词表。
+
 ## TRUNC001 截断检测（WARNING，需人审）
 
 TRUNC001 检出“译文把后半句吞了”的候选：源文是完整长句、译文却以省略号中断且明显偏短。

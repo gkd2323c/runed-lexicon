@@ -1,6 +1,6 @@
 ---
 name: translation-review-tools
-description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a compact dispatch digest of per-idx terminology evidence (term_digest.py), search any word across a translated xTranslator XML with REC/EDID/status and batch attribution (query.py --src/--dst/--idx/--locate), and apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py). Use during translation acceptance (三查验收通读), terminology adjudication (查全库分布/先例), cross-batch consistency checks, dispatch preparation (pre-chewing context.json so subagents never shell-grep the dictionary), and post-review corrections. This is the standard toolkit replacing ad-hoc python -c / throwaway scripts for these jobs. Read-only except apply_fixes.py."
+description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a dispatch digest of per-idx terminology evidence (term_digest.py), search any word across a translated XML with REC/EDID/status and batch attribution (query.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), run long-text anti-hallucination probes for paragraph/length/numeral/gender anomalies (hallucination_probe.py), and slice long-text source-vs-destination readouts for semantic review (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, and post-review corrections. The standard toolkit replacing ad-hoc python -c / throwaway scripts for these jobs. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
   version: "0.2.0"
@@ -15,7 +15,60 @@ metadata:
 | `read_batch.py` | 读一个批次的源译对照（验收通读标配） | 各种 `readout_*.py` |
 | `term_digest.py` | 把批次 context.json 编译成一屏派单摘要（每 idx 的 MOD/官方术语命中 + 语境锚点） | 各种 `dump_*terms*.py` |
 | `query.py` | 全库搜词（源/译两侧）、idx 定位、批次归属 | 各种 `check_*.py` |
-| `apply_fixes.py` | 修正清单联动同步 map + result + canonical patch | 各种 `apply_fixes_*.py` / `fix_*.py` |
+| `apply_fixes.py` | 修正清单联动同步 map + result + canonical patch（支持跨批仅出 patch 模式） | 各种 `apply_fixes_*.py` / `fix_*.py` |
+| `hallucination_probe.py` | 长文本抗幻觉机械探针（段落/长度比/数字语义/性别代词） | 各种 `probe*.py` |
+| `longtext_readout.py` | 生成长文本源译对照分片读本（供语义精读） | 各种 `readout*.py` / `slice_*.py` |
+
+## hallucination_probe.py
+
+长文本**抗幻觉**机械探针：报可疑信号，不判语义（候选发现器）。只读。
+
+```text
+py -3 .agents/skills/translation-review-tools/scripts/hallucination_probe.py \
+  --xml mods/<plugin>/<plugin>_english_chinese_translated.xml
+py -3 .../hallucination_probe.py --xml <same> --json _tmp/data/probe.json
+```
+
+四类显性信号：
+
+| 探针 | 含义 |
+| --- | --- |
+| P1 段落少于源文 | 多段文本被合段/吞段（合段属 LOW，未必丢内容） |
+| P2 译文长度比 | 去标签后中文/英文 < 0.20 疑截断、> 0.62 疑增译 |
+| P3 数字语义缺失 | 源文数字在译文中既无原形也无中文数词对应 |
+| P4 性别代词强冲突 | 源文单一性别、译文相反性别 |
+
+**已知误报（需人工核销，不是缺陷）**：
+
+- **P2 只在长文本上成立**。短口语行（INFO）中文天然比英文短得多，`--min-len 120`
+  时实测 40 条 P2 全为正常压缩（「Meanwhile I suggest you keep at your practicing.」
+  →「平日多加练习。」）。**默认门槛 300 即为此故**；调低门槛时须核 P2 全部输出。
+- **P3**：中文习惯表达已由 `cn_number_variants` 覆盖（`2 meters`→「两米」、
+  `80%`→「八成」）；仍无法穷举的俗语会报。
+- **P1**：合段排版会报，但内容通常完整。
+- **P4**：作者笔误会报（源文 `He's been here` 实指女性角色）。探针报的是
+  「不一致」，**归因需人判**；角色性别应有词表或正文自证支撑后再改。
+- **不做专名编造检测**：实测信噪比极差（Artaeum 546/546 全误报——词表连写形
+  `soulgem` vs 源文分词 `soul gem`、项目规则性补全 `the Eye`→「玛格纳斯之眼」
+  均会误报）。该维度交语义精读。
+
+## longtext_readout.py
+
+生成长文本源译对照分片，供抗幻觉语义精读（分派给子代理或自己读）。
+
+```text
+py -3 .agents/skills/translation-review-tools/scripts/longtext_readout.py \
+  --xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
+  --out-dir _tmp/data/longtext-shards --min-src 300 --cap 17000
+```
+
+分片规则：同一 EDID 不拆开（保持一本书/一条任务线的上下文完整）；组间按组内
+最长行降序（高风险先审）；按源文字符量贪心装片。输出 `longtext-N.txt` 与
+`manifest.json`。
+
+**按 `[idx]` 头分块，不按空行**：BOOK:DESC / MESG:DESC 的 Dest 含 `<font>` 标记与
+空行，按空行分块会把一条切成残片，阅读者看似整段漏译（历史事故：某轮分片 1249 条
+里 83 条没打印 Dst，审校代理回查 canonical 才发现是切片缺陷）。
 
 ## read_batch.py
 
@@ -114,9 +167,36 @@ fixes JSON：
 
 **`new` 可选**：缺省时只改 status/notes/confidence（常见需求：把 REVIEW/KEEP 状态转成 TRANSLATED 而译文不动），避免为此手写一次性脚本。
 
-**`--find/--replace`（同型多行替换）**：不值得为 5 条同型修正写全量 new JSON 时用；从各 idx 现值做子串替换并生成 fixes，走同一条写盘链路。`--idx-list` 限定行；无可替换时 no-op 且 exit 0。
+**`--find/--replace`（同型多行替换）**：不值得为 5 条同型修正写全量 new JSON 时用；从各 idx 现值做子串替换并生成 fixes，走同一条写盘链路。`--idx-list` 限定行；无可替换时 no-op 且 exit 0。多行文本用 `--find-file` / `--replace-file`（见下「跨批模式」）。
 
 **CAS 双处校验（重要）**：expected_current 同时校验 `map.json` 与 `translation.json`，任何一个不匹配即中止且**两处都不写盘**。因此手工改过 map 数值后须同步 translation.json（正常流程由 `fill_translations.py` 保证两者一致）。
+
+### 跨批模式（省略 `--batch`）
+
+抗幻觉审查这类修订常跨多个批次，逐个绑定 batch 目录很繁琐。**patch 生成本就不依赖 batch**（它只读 canonical 并对 idx 做 CAS），故 `--batch` 可省略：
+
+```text
+py -3 .../apply_fixes.py --stem Artaeum \
+  --fixes _tmp/data/longtext-fix.json \
+  --translated-xml mods/Artaeum.esp/Artaeum_english_chinese_translated.xml \
+  --patch-out .work/Artaeum/maps/Artaeum-fix-patch.json
+```
+
+该模式只产出 canonical patch，不同步 map.json / translation.json（那两个文件本身就是批次的）。控制台会显式标 `map.json: 0（不存在）`，不是错误。
+
+**跨批字符串替换**：同样省略 `--batch`，`--find/--replace` 改从 canonical 读现值（而非 map.json）：
+
+```text
+py -3 .../apply_fixes.py --stem Artaeum \
+  --find "旧词" --replace "新词" --idx-list "6010,6513" \
+  --translated-xml <canonical> --patch-out <patch>
+```
+
+**多行替换用 `--find-file` / `--replace-file`**：诗节重写、段落改写这类含换行的替换，命令行传参不可靠，从 UTF-8 文件读最稳（文件末尾换行会自动剔除）。find 串不存在时 no-op 且 exit 0、不产出 patch（不得伪造）。
+
+**同一 idx 的多次替换会串联**：对已存在 patch 的 idx，下次替换以 patch 中的译文为基准继续改（而不是从 canonical 旧值重新出发）。因此一条目需改两处不同文字时，分两次调用即可，不会互相覆盖；`expected_dest` 始终取 canonical 现值（CAS 基准不变）。
+
+**方括号标记自动豁免**：译文把方括号内容中文化后（`[END OF SEASON 1]`→「[第一季终]」），writer 的占位符校验会报 `protected token mismatch`。patch 生成时**自动对比源译的方括号标记并写入 `waived_tokens`**，无需手工声明（手工补声明漏过两次）。两侧都保留的标记（如 `[pagebreak]`）不入豁免；显式提供 `waived_tokens` 时以调用方为准。
 
 ```text
 py -3 .../apply_fixes.py --stem Artaeum --batch NI-CELL-002 --fixes _tmp/data/fix.json

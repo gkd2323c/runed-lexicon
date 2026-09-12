@@ -16,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 新 MOD 启动、写回前、发布收敛声明前 | `skyrim-term-contract-workflow` |
 | 任何程序化操作之前（先检索复用） | `skyrim-tool-dev-rules` |
 | 批量改 XML 前后、出验证报告前 | `skyrim-xml-verification` |
+| 长文本抗幻觉审查、收口前长文复核 | `longtext-hallucination-review` |
 | 创建 / 修改 Skill | `skill-creator`（完整读取后才能动手） |
 | 创建 / 修改项目或 MOD 文档 | `skyrim-doc-system` |
 
@@ -73,7 +74,7 @@ Skill 分三层：
 - **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`、`xtranslator-xml-writer`
 - **契约与名词**：`term-contract-compiler`（编译契约）、`proper-noun-index`（源侧官方专名清点）、`dictionary-noun-audit`（译文侧漏项候选）、`noun-consistency-scan`（同源多译分裂）
 - **结构提取与扫描**：`mutagen-dialogue-exporter`（秒级解析插件，取代 xEdit；`xedit-context-exporter` 已退役）、`translation-fidelity-scan`、`fantasy-context-auditor`（本地 LLM 预筛）、`local-model-translator`
-- **纯规则**（无脚本）：`skyrim-translation-craft`、`skyrim-doc-system`、`skyrim-term-contract-workflow`、`skyrim-tool-dev-rules`、`skyrim-xml-verification`、`subagent-ops`
+- **纯规则**（无脚本）：`skyrim-translation-craft`、`skyrim-doc-system`、`skyrim-term-contract-workflow`、`skyrim-tool-dev-rules`、`skyrim-xml-verification`、`longtext-hallucination-review`、`subagent-ops`
 
 ## 必须知道的约束
 

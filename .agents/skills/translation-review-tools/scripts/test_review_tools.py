@@ -19,6 +19,8 @@ READ_BATCH = HERE / "read_batch.py"
 QUERY = HERE / "query.py"
 APPLY = HERE / "apply_fixes.py"
 TERM_DIGEST = HERE / "term_digest.py"
+PROBE = HERE / "hallucination_probe.py"
+READOUT = HERE / "longtext_readout.py"
 
 
 def build_xml(rows) -> str:
@@ -326,6 +328,186 @@ def main() -> int:
             failures.append(f"apply_fixes waived_tokens 未同步 translation: {u0.get('waived_tokens')}")
         if u0["translation"] != m8["0"]["translation"]:
             failures.append("apply_fixes waived_tokens 不应改译文")
+
+        # --- 抗幻觉探针 ---
+        probe_xml = tmp / "probe_english_chinese_translated.xml"
+        probe_xml.write_text(build_xml([
+            # P3：2 meters / 80% 中文习惯表达，不应报数字缺失
+            {"edid": "[A]", "rec": "INFO:NAM1", "source": "The walls are 2 meters of solid stone.",
+             "dest": "墙是两米厚的整石。"},
+            {"edid": "[B]", "rec": "INFO:NAM1", "source": "I will give you 80% for it.",
+             "dest": "我出八成价。"},
+            # P3 真缺失：源文有 3 而译文两个数都没有
+            {"edid": "[C]", "rec": "BOOK:DESC", "source": "He waited 3 days for the answer to come.",
+             "dest": "他等了些日子，答案始终没来。"},
+            # P3 边界：100% -> 「十成」不得越界报错
+            {"edid": "[G]", "rec": "INFO:NAM1", "source": "I am 100% certain of it.",
+             "dest": "我十成十肯定。"},
+            # P4：源男译女（强冲突）
+            {"edid": "[D]", "rec": "INFO:NAM1",
+             "source": "Talk to the blacksmith. He has been here since forever.",
+             "dest": "去找铁匠聊聊。她在这儿待了很久了。"},
+            # P1：源文多段、译文合段
+            {"edid": "[E]", "rec": "BOOK:DESC",
+             "source": "First paragraph here.\n\nSecond paragraph here.\n\nThird one.",
+             "dest": "第一段。第二段。第三段。"},
+        ]), encoding="utf-8")
+        probe_json = tmp / "probe.json"
+        res = run(PROBE, "--xml", str(probe_xml), "--min-len", "10", "--json", str(probe_json))
+        if res.returncode != 0:
+            failures.append(f"hallucination_probe 退出码 {res.returncode}: {res.stderr[:200]}")
+        else:
+            got = json.loads(probe_json.read_text(encoding="utf-8"))
+            kinds = {(g["xml_index"], g["kind"]) for g in got}
+            # 中文数词（两米 / 八成）不得报 P3
+            if (0, "P3-数字语义缺失") in kinds or (1, "P3-数字语义缺失") in kinds:
+                failures.append(f"探针 P3 未识别中文数词: {sorted(kinds)}")
+            if (2, "P3-数字语义缺失") not in kinds:
+                failures.append(f"探针 P3 漏报真缺失: {sorted(kinds)}")
+            # 100% -> 「十成」属中文习惯写法，且不得越界
+            if (3, "P3-数字语义缺失") in kinds:
+                failures.append(f"探针 P3 未识别「X成」/100% 边界: {sorted(kinds)}")
+            if (4, "P4-源男译女") not in kinds:
+                failures.append(f"探针 P4 漏报性别强冲突: {sorted(kinds)}")
+            if (5, "P1-段落少于源文") not in kinds:
+                failures.append(f"探针 P1 漏报合段: {sorted(kinds)}")
+
+        # --- 长文本分片（按 idx 头分块，不按空行）---
+        shard_xml = tmp / "shard_english_chinese_translated.xml"
+        shard_xml.write_text(build_xml([
+            {"edid": "[F]", "rec": "BOOK:DESC",
+             "source": "Alpha paragraph.\n\nBeta paragraph, long enough to be picked.",
+             "dest": "甲段。\n\n乙段，写得够长以便入选。"},
+        ]), encoding="utf-8")
+        out_dir = tmp / "shards"
+        res = run(READOUT, "--xml", str(shard_xml), "--out-dir", str(out_dir),
+                  "--min-src", "10", "--cap", "100000")
+        if res.returncode != 0:
+            failures.append(f"longtext_readout 退出码 {res.returncode}: {res.stderr[:200]}")
+        else:
+            files = sorted(p.name for p in out_dir.glob("longtext-*.txt"))
+            if files != ["longtext-1.txt"]:
+                failures.append(f"longtext_readout 分片文件异常: {files}")
+            else:
+                text = (out_dir / "longtext-1.txt").read_text(encoding="utf-8")
+                # 多段 Dest 必须完整保留（不得被空行截断）
+                if "乙段，写得够长以便入选。" not in text:
+                    failures.append("longtext_readout 丢失多段 Dest 尾段（空行分块回归）")
+                if "【源文】" not in text or "【译文】" not in text:
+                    failures.append("longtext_readout 缺少对照标题")
+            if not (out_dir / "manifest.json").is_file():
+                failures.append("longtext_readout 未写 manifest.json")
+
+        # --- 跨批 canonical patch 模式（无 --batch）---
+        # 场景：抗幻觉审查的修正常跨多个批次，不便逐个绑定 batch 目录。
+        # 机制上 patch 只读 canonical + 对 idx 做 CAS，与 batch 无关。
+        xp = tmp / "xp_english_chinese_translated.xml"
+        xp.write_text(build_xml([
+            {"edid": "[K]", "rec": "QUST:CNAM",
+             "source": "We won. [END OF SEASON 1]",
+             "dest": "我们赢了。[END OF SEASON 1]"},
+            {"edid": "[L]", "rec": "BOOK:DESC",
+             "source": "[pagebreak]\nSome text here.",
+             "dest": "[pagebreak]\n一些文字。"},
+        ]), encoding="utf-8")
+        xfix = tmp / "xp_fixes.json"
+        xfix.write_text(json.dumps({
+            "0": {"new": "我们赢了。[第一季终]"},
+            "1": {"new": "[pagebreak]\n一些文字，改过了。"},
+        }, ensure_ascii=False), encoding="utf-8")
+        xpatch = tmp / "xp_patch.json"
+        res = run(APPLY, "--stem", "T", "--fixes", str(xfix),
+                  "--translated-xml", str(xp), "--patch-out", str(xpatch),
+                  "--work-root", str(work))
+        if res.returncode != 0:
+            failures.append(f"跨批 patch 模式退出码 {res.returncode}: {res.stderr[:200]}")
+        else:
+            xd = json.loads(xpatch.read_text(encoding="utf-8"))
+            if sorted(xd) != ["0", "1"]:
+                failures.append(f"跨批 patch idx 集异常: {sorted(xd)}")
+            # 只有真正丢失的方括号标记入 waived_tokens；[pagebreak] 两侧都在，不得入
+            if xd.get("0", {}).get("waived_tokens") != ["[END OF SEASON 1]"]:
+                failures.append(f"自动豁免方括号标记错误: {xd.get('0', {}).get('waived_tokens')}")
+            if "waived_tokens" in xd.get("1", {}):
+                failures.append(f"两侧都保留的标记不该入豁免: {xd['1'].get('waived_tokens')}")
+            if xd.get("0", {}).get("expected_dest") != "我们赢了。[END OF SEASON 1]":
+                failures.append("跨批 patch 未记录 expected_dest")
+        # 无 --batch 却缺 --patch-out 必须报错，不得静默成功
+        res = run(APPLY, "--stem", "T", "--fixes", str(xfix),
+                  "--translated-xml", str(xp), "--work-root", str(work))
+        if res.returncode == 0:
+            failures.append("--batch 与 --patch-out 均缺时未报错")
+
+        # --- 跨批 --find/--replace（从 canonical 读现值）+ 多行输入 ---
+        # 场景：诗节/段落的整块重写是多行的，命令行传换行不可靠，故支持从文件读。
+        mfx = tmp / "multi_english_chinese_translated.xml"
+        mfx.write_text(build_xml([
+            {"edid": "[M]", "rec": "BOOK:DESC",
+             "source": "line A\nline B\nline C",
+             "dest": "甲行\n乙行\n丙行"},
+        ]), encoding="utf-8")
+        mfind = tmp / "mfind.txt"
+        mfind.write_text("甲行\n乙行", encoding="utf-8")
+        mrepl = tmp / "mrepl.txt"
+        mrepl.write_text("改甲\n改乙", encoding="utf-8")
+        mpatch2 = tmp / "mpatch.json"
+        res = run(APPLY, "--stem", "T", "--find-file", str(mfind),
+                  "--replace-file", str(mrepl), "--idx-list", "0",
+                  "--translated-xml", str(mfx), "--patch-out", str(mpatch2),
+                  "--work-root", str(work))
+        if res.returncode != 0:
+            failures.append(f"跨批多行替换退出码 {res.returncode}: {res.stderr[:200]}")
+        else:
+            md = json.loads(mpatch2.read_text(encoding="utf-8"))
+            if md.get("0", {}).get("translation") != "改甲\n改乙\n丙行":
+                failures.append(f"多行替换结果错误: {md.get('0', {}).get('translation')!r}")
+            if md.get("0", {}).get("expected_dest") != "甲行\n乙行\n丙行":
+                failures.append("多行替换未记录原值")
+        # 文件里的串不在 canonical 出现时须 no-op 且 exit 0（不得伪造 patch）
+        miss = tmp / "miss.txt"
+        miss.write_text("不存在的文本", encoding="utf-8")
+        res = run(APPLY, "--stem", "T", "--find-file", str(miss),
+                  "--replace-file", str(mrepl), "--idx-list", "0",
+                  "--translated-xml", str(mfx), "--patch-out", str(tmp / "mpatch3.json"),
+                  "--work-root", str(work))
+        if res.returncode != 0:
+            failures.append(f"no-op 未返回 0: rc={res.returncode}")
+        elif (tmp / "mpatch3.json").exists():
+            failures.append("no-op 不应产出 patch 文件")
+
+        # --- 同一 idx 的多次替换必须串联（不得互相覆盖）---
+        # 真实场景：一个条目需改两处不同文字，分两次 --find/--replace 执行。
+        # 若第二次从 canonical 旧值重新出发，就会把第一次的修改冲掉。
+        chained = tmp / "chain_english_chinese_translated.xml"
+        chained.write_text(build_xml([
+            {"edid": "[N]", "rec": "BOOK:DESC",
+             "source": "Alpha beta gamma.",
+             "dest": "甲项乙项丙项。"},
+        ]), encoding="utf-8")
+        f1 = tmp / "c1f.txt"
+        r1 = tmp / "c1r.txt"
+        f1.write_text("甲项", encoding="utf-8")
+        r1.write_text("改甲", encoding="utf-8")
+        f2 = tmp / "c2f.txt"
+        r2 = tmp / "c2r.txt"
+        f2.write_text("丙项", encoding="utf-8")
+        r2.write_text("改丙", encoding="utf-8")
+        cpatch = tmp / "chain_patch.json"
+        for ff, rf in ((f1, r1), (f2, r2)):
+            res = run(APPLY, "--stem", "T", "--find-file", str(ff),
+                      "--replace-file", str(rf), "--idx-list", "0",
+                      "--translated-xml", str(chained), "--patch-out", str(cpatch),
+                      "--work-root", str(work))
+            if res.returncode != 0:
+                failures.append(f"串联替换退出码 {res.returncode}: {res.stderr[:150]}")
+                break
+        else:
+            cd = json.loads(cpatch.read_text(encoding="utf-8"))
+            got = cd.get("0", {}).get("translation")
+            if got != "改甲乙项改丙。":
+                failures.append(f"多次替换未串联（后次冲掉前次）: {got!r}")
+            if cd.get("0", {}).get("expected_dest") != "甲项乙项丙项。":
+                failures.append(f"串联后 expected_dest 应仍取 canonical 现值: {cd.get('0', {}).get('expected_dest')!r}")
 
         if failures:
             for failure in failures:
