@@ -10,15 +10,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `AGENTS.md` §A 有一张强制加载路由表：命中触发条件时，必须完整读取对应 `.agents/skills/<skill>/SKILL.md` 再执行，禁止用摘要或记忆代行。常用映射：
 
-| 场景 | 必读 Skill |
-| --- | --- |
-| 开始 / 审校翻译批次前 | `skyrim-translation-craft` |
-| 新 MOD 启动、写回前、发布收敛声明前 | `skyrim-term-contract-workflow` |
-| 任何程序化操作之前（先检索复用） | `skyrim-tool-dev-rules` |
-| 批量改 XML 前后、出验证报告前 | `skyrim-xml-verification` |
-| 长文本抗幻觉审查、收口前长文复核 | `longtext-hallucination-review` |
-| 创建 / 修改 Skill | `skill-creator`（完整读取后才能动手） |
-| 创建 / 修改项目或 MOD 文档 | `skyrim-doc-system` |
+| 场景                                | 必读 Skill                            |
+| ----------------------------------- | ------------------------------------- |
+| 开始 / 审校翻译批次前               | `skyrim-translation-craft`            |
+| 新 MOD 启动、写回前、发布收敛声明前 | `skyrim-term-contract-workflow`       |
+| 任何程序化操作之前（先检索复用）    | `skyrim-tool-dev-rules`               |
+| 批量改 XML 前后、出验证报告前       | `skyrim-xml-verification`             |
+| 长文本抗幻觉审查、收口前长文复核    | `longtext-hallucination-review`       |
+| 创建 / 修改 Skill                   | `skill-creator`（完整读取后才能动手） |
+| 创建 / 修改项目或 MOD 文档          | `skyrim-doc-system`                   |
 
 ## 常用命令
 
@@ -107,7 +107,7 @@ Skill 分三层：
 
 ## 本地数据（公开仓库不附带）
 
-`dictionary/**/*.xml`、`mods/**`、`tools/xEdit/**`、`tools/term-rules/*.txt`、`tools/Mutagen/`、`.work/`、`_tmp/`、`.agents/skills/hana-subagent-ops/` 均由 `.gitignore` 排除。**全新 clone 下涉及 `mods/<plugin>/` 与 `dictionary/` 的命令无法直接运行**——需要用户自备官方英中 xTranslator XML（导出方法见 `dictionary/EXPORT_GUIDE.md`）与目标 MOD XML。
+`dictionary/**/*.xml`、`mods/**`、`tools/xEdit/**`、`tools/term-rules/*.txt`、`tools/Mutagen/`、`.work/`、`_tmp/`、`.agents/skills/hana-subagent-ops/` 均被 git 排除（不发布）。其中 `dictionary/**/*.xml` 的规则不在 `.gitignore`，而在本机 `.git/info/exclude-dictionary`（由 `core.excludesFile` 指向）：平台检索工具会跳过 `.gitignore` / `.git/info/exclude` 排除的文件、但不读 `core.excludesFile` 来源，规则置于该来源使 Agent 可检索词典且 git 仍不追踪。**新 clone 需重建**：将 `dictionary/**/*.xml` 写入 `.git/info/exclude-dictionary` 并执行 `git config --local core.excludesFile <repo>/.git/info/exclude-dictionary`。**全新 clone 下涉及 `mods/<plugin>/` 与 `dictionary/` 的命令无法直接运行**——需要用户自备官方英中 xTranslator XML（导出方法见 `dictionary/EXPORT_GUIDE.md`）与目标 MOD XML。
 
 各 MOD 工作区典型内容：`<plugin>_english_chinese.xml`（源）、`<plugin>_english_chinese_translated.xml`（canonical 成品）、插件二进制（仅结构恢复需要时）、`CONTEXT.md` / `DICTIONARY.md` / `PROGRESS.md`、`terms.json`。翻译前必须完整读取 `CONTEXT.md` 与 `DICTIONARY.md`；**任一缺失就停下询问用户是否补建，不得静默创建空模板、不得启动翻译**。
 

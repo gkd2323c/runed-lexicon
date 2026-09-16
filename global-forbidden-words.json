@@ -94,6 +94,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Divines",
+      "forbidden": [
+        "诸神"
+      ],
+      "target": "圣灵",
+      "reason": "官方：Divines=九圣灵（Nine Divines），非泛称诸神；By the Divines→圣灵啊/圣灵在上、Thank the divines→感谢圣灵。Falskaar 实测误译「诸神在上/诸神保佑」已回正；「诸神」仅可用于 the gods 类泛称（源无 Divines 锚点不受影响）",
+      "category": "lore-name"
+    },
+    {
       "english": "Dragonsreach",
       "forbidden": [
         "龙霄宫"
@@ -150,6 +159,15 @@
       ],
       "target": "灰胡子",
       "reason": "官方词典：霍斯加高峰修道者（MVF1 DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Hagraven",
+      "forbidden": [
+        "鹰身女妖"
+      ],
+      "target": "乌鸦鬼婆",
+      "reason": "官方 RACE/CLAS/NPC:FULL 均'乌鸦鬼婆'；鹰身女妖为混淆 Harpy 的社区错译（KW-Kaidan INFO-021 实测）",
       "category": "lore-name"
     },
     {
@@ -212,6 +230,16 @@
       ],
       "target": "凯娜瑞丝",
       "reason": "官方词典：凯娜瑞丝；错拼高频（MVF1 round4 P1-6）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Kyne",
+      "forbidden": [
+        "克妮",
+        "凯茵"
+      ],
+      "target": "凯娜",
+      "reason": "官方 WOOP:TNAM Kyne→凯娜（'凯娜之静''凯娜的祝福'；《天空之子》'以凯娜、舒尔之名'）；克妮/凯茵为音译错形（KW-Kaidan INFO-016/025 实测）。注意与 Kynareth→凯娜瑞丝 区分",
       "category": "lore-name"
     },
     {

@@ -217,6 +217,7 @@ py -3 .../apply_fixes.py --stem Artaeum --batch NI-CELL-002 --fixes fix.json \
 - **幂等**：译文已等于 new 时跳过（不报错）；只携带 notes/status/confidence 的修正仍会应用字段。
 - **KEEP 自动转换**：把 KEEP 条目改译时，status 自动转 `TRANSLATED`（避免写回时被 KEEP 语义把译文还原成英文），并打印 WARN。
 - **patch 生成**：`--patch-out` 已存在时默认合并（同 idx 以本次值为准并计数提示）；XML 当前 Dest 已等于 new 的条目跳过（已就位）。
+- **修正单编制纪律（验收侧）**：单内必须覆盖该批全部 `REVIEW` 条目（裁决「保留」也用无 new 的 status 项转正，漏转会在写回时被 writer 拦截 `non-final status 'REVIEW'`）；`--batch` 为单批工具，idx 先对照该批 map/index 核实归属、按批拆单（凭记忆归档会整单被拒）。
 - 不触 MOD XML 本身；patch 由 `xtranslator-xml-writer` 消费写回。
 
 ## 安全边界
