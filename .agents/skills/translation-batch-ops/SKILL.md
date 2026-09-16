@@ -100,9 +100,12 @@ py -3 .agents/skills/translation-batch-ops/scripts/shard_batch.py split --stem <
 # 子代理各持自己的 index-part-<x>.txt，写 map-part-<x>.json
 py -3 .agents/skills/translation-batch-ops/scripts/shard_batch.py merge --stem <S> --batch <B> --parts a b
 # -> map.json；分片键重叠或合并键集 != index.txt 时拒绝（退出码非零）
+
+# 手动拆半场景（失败后拆半，产 map-blockX.json）：--pattern 指定文件命名
+py -3 .../shard_batch.py merge --stem <S> --batch <B> --parts blockA blockB --pattern "map-{lab}.json"
 ```
 
-`split` 按源文字符权重贪心平分，让两片承载量接近；按行数切会失衡：一条长文抵几十条短文。
+`split` 按源文字符权重贪心平分，让两片承载量接近；按行数切会失衡：一条长文抵几十条短文。`merge` 默认找 `map-part-<lab>.json`，`--pattern` 可适配其它命名（分片键重叠、合并键集与 index.txt 不等均拒绝）。
 
 ## 6. 跨工具约定
 
