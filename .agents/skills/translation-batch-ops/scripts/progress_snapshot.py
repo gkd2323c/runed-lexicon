@@ -142,12 +142,19 @@ def batch_summary(plan, batches_dir, canonical=None):
     return summary
 
 
-def plan_totals(plan):
+def plan_totals(plans):
+    """多计划合计：主计划（info） + 补遗计划（gaps）等依次相加。"""
     target_lines = 0
-    for b in plan.get('batches', []):
-        target_lines += len(b.get('idx') or [])
+    unique = 0
+    for plan in plans:
+        tub = plan.get('total_unique_sources')
+        if tub is None:
+            tub = sum((b.get('unique_src') or 0) for b in plan.get('batches', []))
+        unique += tub or 0
+        for b in plan.get('batches', []):
+            target_lines += len(b.get('idx') or [])
     return {'target_lines': target_lines,
-            'unique_sources': plan.get('total_unique_sources')}
+            'unique_sources': unique}
 
 
 def build_snapshot(args):
@@ -172,10 +179,11 @@ def build_snapshot(args):
             'campaign_from_canonical': can_info['translated'] - src_info['translated'],
         }
     if args.plan and args.batches_dir:
-        plan = load_plan(args.plan)
+        plans = [load_plan(p) for p in args.plan]
+        merged = {'batches': [b for p in plans for b in p.get('batches', [])]}
         canonical = load_canonical_map(args.xml) if args.xml else None
-        snap['batches'] = batch_summary(plan, args.batches_dir, canonical)
-        snap['plan'] = plan_totals(plan)
+        snap['batches'] = batch_summary(merged, args.batches_dir, canonical)
+        snap['plan'] = plan_totals(plans)
         if 'info_crosscheck' in snap:
             from_pipe = snap['batches']['filled_lines']
             from_canon = snap['info_crosscheck']['campaign_from_canonical']
@@ -249,7 +257,8 @@ def main():
     ap = argparse.ArgumentParser(description='MOD 翻译整体进度快照')
     ap.add_argument('--xml', help='canonical 译文 XML')
     ap.add_argument('--source-xml', help='原始源 XML（可选，用于战役口径交叉校验）')
-    ap.add_argument('--plan', help='批次计划 JSON')
+    ap.add_argument('--plan', action='append',
+                    help='批次计划 JSON；可重复（主计划 + 补遗计划合并统计）')
     ap.add_argument('--batches-dir', help='批次目录（.work/<plugin>/batches）')
     ap.add_argument('--log', help='进度日志路径（默认 .work/<plugin>/reports/<plugin>-progress-log.json）')
     ap.add_argument('--record', action='store_true', help='把快照追加到日志')
@@ -259,15 +268,15 @@ def main():
 
     log_path = args.log
     if not log_path and args.plan:
-        base = os.path.basename(args.plan)
+        base = os.path.basename(args.plan[0])
         suffix = '-info-batches.json'
         if base.endswith(suffix):
             plugin = base[:-len(suffix)]
-            plan_dir = os.path.dirname(os.path.abspath(args.plan))
+            plan_dir = os.path.dirname(os.path.abspath(args.plan[0]))
             if os.path.basename(plan_dir) == 'context':
                 log_path = os.path.join(os.path.dirname(plan_dir), 'reports', plugin + '-progress-log.json')
             else:
-                log_path = os.path.join(os.path.dirname(args.plan), plugin + '-progress-log.json')
+                log_path = os.path.join(os.path.dirname(args.plan[0]), plugin + '-progress-log.json')
     if args.record and not log_path:
         print('error: --record 需要 --log 或可推导的 plan 文件名', file=sys.stderr)
         return 2
@@ -286,7 +295,7 @@ def main():
             print('（与上一快照一致，跳过记录）')
             return 0
         if log.get('plugin') is None and args.plan:
-            base = os.path.basename(args.plan)
+            base = os.path.basename(args.plan[0])
             if base.endswith('-info-batches.json'):
                 log['plugin'] = base[:-len('-info-batches.json')]
         log['snapshots'].append(snap)

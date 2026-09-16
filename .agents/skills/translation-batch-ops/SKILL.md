@@ -80,9 +80,13 @@ py -3 .agents/skills/translation-batch-ops/scripts/scan_plan_gaps.py \
 py -3 .agents/skills/translation-batch-ops/scripts/progress_snapshot.py \
   --xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
   --source-xml mods/<plugin>/<plugin>_english_chinese.xml \
-  --plan .work/<plugin>/context/<plugin>-info-batches.json --batches-dir .work/<plugin>/batches \
+  --plan .work/<plugin>/context/<plugin>-info-batches.json \
+  --plan .work/<plugin>/context/<plugin>-gaps-batches.json \
+  --batches-dir .work/<plugin>/batches \
   [--record] [--json] [--note "<备注>"]
 ```
+
+`--plan` 可重复：主计划与补遗计划（存在时）一并传入合并统计——只传主计划会使缺口批写回的译文不进流水线口径，战役交叉校验持续报「口径不一致」（差值恰为缺口批行数）。
 
 四段输出：① 全库已译/总数与分类分布（INFO/DIAL/QUST/NPC_/BOOK/其他——让未开工类别可见）；② INFO 战役口径（canonical 与流水线双口径交叉校验，不一致时显式告警）；③ 批次状态（已验收/待消费/已备料/未备料），并在存在「已验收但未写回」时追加告警行（需带 `--xml`）；④ 较上次快照增量。性能基线：约 1.5 万条（4.6MB）规模的全量统计 **~0.8s**。
 
