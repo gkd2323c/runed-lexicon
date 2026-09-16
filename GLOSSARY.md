@@ -140,6 +140,24 @@ target 的猜测性音译。`keep` 数组只收“项目级明确保留英文、
 | Gray Fox / the Cowl               | 灰狐 / 面具                         | 角色 / 回指        | CONFIRMED   | 官方（灰狐为盗贼传说角色；CC 神器为诺克图娜尔的灰面具）                                            | 角色“灰狐”与 CC 神器“诺克图娜尔的灰面具”区分；台词中 the Cowl 口语回指译“面具”（MVF1 DICTIONARY 约定）                                                                  |
 | Daedra / Daedric / Daedric Prince | 迪德拉 / 迪德拉（前缀）/ 迪德拉君王 | 界域 / 修饰 / 头衔 | CONFIRMED   | 官方词典（迪德拉种族/装备前缀/君王头衔）                                                           | 社区通行“魔族/魔族王子/魔神”为高频错译（已入 gfw）。区分：Dremora=魔人（迪德拉战士种族，官方固定）；Oblivion=湮灭界；Prince of Oblivion 亦作湮灭君王                    |
 | Ulfric Stormcloak                 | 乌弗瑞克·风暴斗篷                   | 角色               | CONFIRMED   | 官方（全名带姓氏；dg04 v2）                                                                        | 全名统一带“风暴斗篷”姓氏；单称 Ulfric 亦“乌弗瑞克”，不与他名混                                                                                                          |
+| Daedric Princes（君王名录） | 阿祖拉、波耶西亚、卡拉威库斯·维尔、赫麦尤斯·莫拉、海尔辛、玛拉凯斯、梅法拉、美瑞蒂亚、莫拉格·巴尔、娜米拉、诺克图娜尔、魄伊特、桑吉恩、谢尔格拉、瓦尔迷纳、梅鲁涅斯·大衮 | 神系名录 | CONFIRMED | 官方词典（各名均有 Skyrim/DLC/CC 记录）；Dragonborn《帝国信仰种种》 | Prince of X 统一译“X君王”（官方先例：Sheogorath“疯狂君王”、Boethiah“阴谋君王”）；别名官方形：the Huntsman=大狩猎者（海尔辛）、Lady Luck=幸运女神（诺克图娜尔） |
+| Peryite | 魄伊特 | 神祇 | CONFIRMED | 官方 Skyrim（TACT:FULL“魄伊特的化身”） | 社区通行“佩伊特”为错形；跨 MOD 统一“魄伊特” |
+| Vaermina | 瓦尔迷纳 | 神祇 | CONFIRMED | 官方 CC（“瓦尔迷纳的祭坛”“瓦尔迷纳的祝福”） | 注意“迷纳”非“迷娜”；“瓦尔迷娜”为错形 |
+| Ruptga / Tall Papa / Leki | 卢普特迦 / 大老爹 / 蕾姬 | 神祇（尤库达） | CONFIRMED | 官方 Dragonborn《帝国信仰种种》（“卢普特迦（大老爹）”“蕾姬（精魂之剑的圣徒）”） | “鲁普特加”为错形；Tall Papa 为 Ruptga 别号；Leki 为大老爹之女 |
+| Y'ffre | 伊’符瑞 | 神祇 | CONFIRMED | 官方 Dragonborn《帝国信仰种种》 | 隔字符 U+2019 保留，勿写“伊弗尔”；弱形“伊'符瑞”（U+0027）为常见输入变体 |
+| Z'en / Zenithar | 泽’恩 / 泽尼萨尔 | 神祇 | CONFIRMED | 官方 Dragonborn《帝国信仰种种》（波斯莫与希罗帝尔两词形分列） | 两个英文词形对应两个中文形，不可互换（波斯莫“泽’恩”vs 九圣灵“泽尼萨尔”） |
+| Riddle'Thar | 瑞德'塔尔 | 神祇（卡吉特） | CONFIRMED | 官方 Dragonborn《帝国信仰种种》 | 隔字符 U+0027 保留 |
+| Baan Dar | 班·达尔 | 神祇 | CONFIRMED | 官方 Dragonborn《帝国信仰种种》 | 间隔点 U+00B7 保留 |
+| Jone / Jode | 琼恩 / 琼德 | 神祇（卡吉特双月） | CONFIRMED | 官方 Dragonborn《帝国信仰种种》 | 卡吉特月相信仰的核心双月名 |
+| Tribunal | 审判席 | 宗教 | CONFIRMED | 官方 CC（“审判席的面具”“审判席的幽灵”） | 晨风三神（阿玛莱西亚、维威克、索萨·希尔）；勿用“法庭”“三人组” |
+| All-Maker | 造物主 | 宗教 | CONFIRMED | 官方 Dragonborn（“造物主是什么？”《造物主的孩子们》） | 斯卡尔信仰核心；勿写“万灵”等散形 |
+| Green Pact | 绿约 | 宗教 | CONFIRMED | 官方 CC（“违背绿约”） | 木精灵（波斯莫）与伊’符瑞的誓约；勿写“绿色契约” |
+| Shor | 舒尔 | 神祇 | CONFIRMED | 官方（“舒尔之石”；《帝国信仰种种》诺德注记） | 诺德神系之主；“舒尔的遗孀”（Widow of Shor）为凯娜称号 |
+| Xarxes / Phynaster | 沙克斯 / 菲纳斯特 | 神祇（傲特莫） | CONFIRMED | 官方（“沙克斯的最终秘密”“沙克斯秘典”；“菲纳斯特之戒”“杰符瑞和菲纳斯特”） | 傲特莫神系；勿写“扎克斯”等散形 |
+| Herma-Mora / Hermaeus Mora | 赫玛-莫拉 / 赫麦尤斯·莫拉 | 神祇（称谓分层） | CONFIRMED | 官方：诺德神系词形 Herma-Mora 译“赫玛-莫拉”（《帝国信仰种种》）；常规形 Hermaeus Mora 词典与对话 68 处统一“赫麦尤斯·莫拉” | 两个英文词形对应两个中文形，按源文词形对应，不可互换 |
+| et'Ada | 艾’阿达 | 世界观 | CONFIRMED | 官方 Dragonborn《帝国信仰种种》（“Other et'Ada, especially Daedra” → “至于其他的艾’阿达，尤其是迪德拉”） | 原灵（Aedra/Daedra 共同源头）概念；隔字符 U+2019 保留 |
+| Khajiiti 神名（Azurah 等） | 阿祖菈、肯娜希、斯'仁达尔、洛卡吉、谢格拉斯、拉钦、阿尔科什、贾-卡'贾伊 | 神祇（卡吉特体现） | CONFIRMED | 官方 Dragonborn《帝国信仰种种》艾斯维尔神系清单 | 为 Azura/Kynareth/Stendarr/Lorkhan/Sheogorath 等的卡吉特词形：Azurah=阿祖菈、Khenarthi=肯娜希、S'rendarr=斯'仁达尔、Lorkhaj=洛卡吉、Sheggorath=谢格拉斯；卡吉特语境按此表，不可回改为主流形 |
+| Kyne / Kynareth | 凯娜 / 凯娜瑞丝 | 神祇（称谓分层） | CONFIRMED | 官方（WOOP:TNAM Kyne→凯娜；“凯娜瑞丝神殿”）；GLOBAL §8.2 | 诺德名与原版帝国名对应；词形不可互换（跨 MOD 已有多起误用记录） |
 
 > 状态说明：CONFIRMED 词条均有官方语料或跨 MOD 一致用法支撑，作为跨 MOD 默认；后续发现冲突可修订并升级为 OVERRIDE（记录覆盖原因）。PROVISIONAL（当前仅 Murkmire）允许随更强证据修订。MOD 明确采用不同命名体系时，按 §5 在该 MOD DICTIONARY 建局部覆盖并说明理由。
 

@@ -32,7 +32,7 @@ different Chinese forms across rows (e.g. 70× "Remarkable Gravestone" split 68/
 - After a writeback that unified names — rerun to prove remaining splits are all adjudicated.
 - On a new MOD after batches are translated, to surface splits early.
 - Before a subagent fan-out review: the JSON shards are sized for per-subagent judgment
-  (default 170 rows/piece, matching the review caps in hana-subagent-ops).
+  (default 170 rows/piece, matching the review caps in subagent-ops).
 
 The scanner is a candidate finder, not a judge: a split is either a real defect
 (same thing, two names), a legitimate register/layer difference (official dictionary

@@ -72,7 +72,7 @@ ESP/ESM ──xTranslator──> mods/<plugin>/<plugin>_english_chinese.xml   �
 
 Skill 分三层：
 
-- **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`、`xtranslator-xml-writer`
+- **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`、`xtranslator-xml-writer`、`translation-batch-ops`（批次运维：验收/覆盖/缺口/进度/分片）
 - **契约与名词**：`term-contract-compiler`（编译契约）、`proper-noun-index`（源侧官方专名清点）、`dictionary-noun-audit`（译文侧漏项候选）、`noun-consistency-scan`（同源多译分裂）
 - **结构提取与扫描**：`mutagen-dialogue-exporter`（秒级解析插件，取代 xEdit；`xedit-context-exporter` 已退役）、`translation-fidelity-scan`、`fantasy-context-auditor`（本地 LLM 预筛）、`local-model-translator`
 - **纯规则**（无脚本）：`skyrim-translation-craft`、`skyrim-doc-system`、`skyrim-term-contract-workflow`、`skyrim-tool-dev-rules`、`skyrim-xml-verification`、`longtext-hallucination-review`、`subagent-ops`
