@@ -162,9 +162,8 @@ Rules:
 
 ### Two keying modes
 
-Default keying is by `xml_index`. When batch scope is unstable (散件收尾、跨批重叠、
-或从 untranslated 1-based index 抄序号），改用 `--by-source`：map 以精确 Source 文本为 key，
-与序号基准（skyrim-xml-tools 1-based / context·executor·writer 0-based）无关，且可读性更好：
+Default keying is by `xml_index`. When batch scope is unstable (散件收尾、跨批重叠），改用 `--by-source`：map 以精确 Source 文本为 key，
+与序号基准无关（全工具链已统一 0-based），且可读性更好：
 
 ```json
 {

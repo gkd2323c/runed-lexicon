@@ -81,7 +81,7 @@ Skill 分三层：
 
 以下几条是跨多个文件才能看出的规则，违反即事故：
 
-1. **序号基准不统一（最容易误判）**：`skyrim-xml-tools` 的 `inspect` / `untranslated` 输出 **1-based** index；`translation-context-builder` / `translation-executor` / `xtranslator-xml-writer` 的 `xml_index`（`progress_snapshot` 里叫 `idx`）是 **0-based**（String 元素序号，非文件行号）。跨工具对照先减 1，拿不准用 `Source` 文本核对——历史上曾因此误删批次条目。
+1. **序号基准已统一 0-based**：`skyrim-xml-tools` 的 `inspect` / `untranslated` 与 `translation-context-builder` / `translation-executor` / `xtranslator-xml-writer` 的 `xml_index`（`progress_snapshot` 里叫 `idx`）同为 **0-based**（String 元素序号，非文件行号）。历史会话与旧文档中按 1-based 记录的 inspect 序号需减 1 对照——旧基准曾导致误删批次条目；拿不准仍用 `Source` 文本核对。
 
 2. **确定性输出契约**（AGENTS.md §2.0.1）：文件名 = 角色 + 目标对象，**禁止**日期戳、序号、`final` / `vN` / `roundN` / `backup` 等版本标签。写回产物恒为 `<plugin>_english_chinese_translated.xml`（同名覆盖式演进，上一代移入 `.work/<plugin>/archive/<previous-sha256>/`）；报告恒为 `.work/<plugin>/reports/<plugin>-{gate,noun-audit,writeback}-report.json`。writer 会机械拒绝违规路径，**不得用 shell 复制/重命名伪造产出**。
 

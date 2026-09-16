@@ -113,7 +113,7 @@ py -3 .../shard_batch.py merge --stem <S> --batch <B> --parts blockA blockB --pa
 
 ## 6. 跨工具约定
 
-**idx 坐标系**：批次目录 `index.txt`（`.work/<plugin>/batches/<BID>/index.txt`）里的数字是流水线的 `xml_index` 契约——即 ElementTree `findall('.//String')` 的 **String 元素序号**（从 0 开始），不是文件物理行号。用物理行号去 canonical 取行会落在 FURN/WEAP 等错误记录上（Ming 审计已验证）。派单/验收描述统一用「xml_index」或「idx 行号（String 元素序号）」，不要叫物理行号。（`skyrim-xml-tools` 的 inspect/untranslated 输出是 1-based，对照时先减 1。）
+**idx 坐标系**：批次目录 `index.txt`（`.work/<plugin>/batches/<BID>/index.txt`）里的数字是流水线的 `xml_index` 契约——即 ElementTree `findall('.//String')` 的 **String 元素序号**（从 0 开始），不是文件物理行号。用物理行号去 canonical 取行会落在 FURN/WEAP 等错误记录上（Ming 审计已验证）。派单/验收描述统一用「xml_index」或「idx 行号（String 元素序号）」，不要叫物理行号。（全工具链已统一 0-based；2026-09-17 前 `skyrim-xml-tools` 输出为 1-based，旧记录对照时先减 1。）
 
 **术语本体 vs 修辞形**：词表 note 里的修辞说明不是术语译名（Blood Price=血价，note 中的"血债血偿"仅指整句修辞的译法）。术语本体位置必须用词表译名，修辞形只在整句修辞中使用。验收时对 note 含修辞/例外说明的术语，重点查本体位置是否用了正确译名。
 

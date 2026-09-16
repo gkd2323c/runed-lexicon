@@ -41,6 +41,7 @@ import io
 import json
 import re
 import sys
+from datetime import datetime, timezone
 
 
 # ---------------------------------------------------------------- md table parsing
@@ -534,6 +535,72 @@ def load_global_bans(path):
     return bans, keep
 
 
+# ---------------------------------------------------------------- 双轨一致性检查
+
+def _norm_source(s):
+    return re.sub(r'\s+', ' ', (s or '').strip()).lower()
+
+
+def check_terms_consistency(dictionary_path, terms_path):
+    """DICTIONARY.md 表格（人类 canonical）与 terms.json（机器 canonical）的集合 diff。
+
+    双轨制下两份术语资产靠手工同步，漂移是常态：词典改了没补 terms，或 terms 改了
+    没回填词典，gate 就会拿与词典不一致的契约做检查。本函数按归一化英文锚比对：
+      - ONLY_IN_DICTIONARY / ONLY_IN_TERMS：词条存在性差异（必然漂移，报）
+      - TARGET_DIFF：两边都有但目标译名不同（最危险，优先级最高）
+      - FORBIDDEN_DIFF / STATUS_DIFF：禁形集合与状态差异（次级，提示）
+    无差异 exit 0；任一差异 exit 1。只读，不写任何文件。
+    """
+    lines = open(dictionary_path, encoding='utf-8-sig').read().splitlines()
+    entries = []
+    for tb in find_table_blocks(lines):
+        entries += parse_dictionary_table(tb)
+    terms_md, _keep_md = build_terms(entries)
+    raw_js = parse_terms_json(terms_path)
+    terms_js, _keep_js = build_terms_json(raw_js)
+
+    md_by_src = {}
+    for t in terms_md.values():
+        md_by_src[_norm_source(t['source'])] = t  # 同源重复后者赢（与编译器撞 key 行为一致）
+    js_by_src = {}
+    for t in terms_js.values():
+        js_by_src[_norm_source(t['source'])] = t
+
+    only_md = sorted(set(md_by_src) - set(js_by_src))
+    only_js = sorted(set(js_by_src) - set(md_by_src))
+    target_diff, forbidden_diff, status_diff = [], [], []
+    for key in sorted(set(md_by_src) & set(js_by_src)):
+        m, j = md_by_src[key], js_by_src[key]
+        if (m.get('target') or '').strip() != (j.get('target') or '').strip():
+            target_diff.append((m['source'], m.get('target'), j.get('target')))
+        if set(m.get('forbidden') or []) != set(j.get('forbidden') or []):
+            forbidden_diff.append((m['source'], sorted(set(m.get('forbidden') or []) - set(j.get('forbidden') or [])),
+                                   sorted(set(j.get('forbidden') or []) - set(m.get('forbidden') or []))))
+        if (m.get('decision_status') or '') != (j.get('decision_status') or ''):
+            status_diff.append((m['source'], m.get('decision_status'), j.get('decision_status')))
+
+    print(f'dictionary: {dictionary_path} ({len(md_by_src)} 词)')
+    print(f'terms.json: {terms_path} ({len(js_by_src)} 词)')
+    for src in only_md:
+        print(f'  ONLY_IN_DICTIONARY: {md_by_src[src]["source"]} -> {md_by_src[src].get("target")}')
+    for src in only_js:
+        print(f'  ONLY_IN_TERMS:      {js_by_src[src]["source"]} -> {js_by_src[src].get("target")}')
+    for src, mt, jt in target_diff:
+        print(f'  TARGET_DIFF:        {src}: dictionary={mt!r} vs terms={jt!r}')
+    for src, m_only, j_only in forbidden_diff:
+        print(f'  FORBIDDEN_DIFF:     {src}: dictionary-only={m_only} terms-only={j_only}')
+    for src, ms, js_ in status_diff:
+        print(f'  STATUS_DIFF:        {src}: dictionary={ms} vs terms={js_}')
+
+    n = len(only_md) + len(only_js) + len(target_diff) + len(forbidden_diff) + len(status_diff)
+    if n:
+        print(f'\ndrift: {n} 处差异（ONLY_DICTIONARY={len(only_md)} ONLY_TERMS={len(only_js)} '
+              f'TARGET={len(target_diff)} FORBIDDEN={len(forbidden_diff)} STATUS={len(status_diff)}）')
+        sys.exit(1)
+    print('\ndrift: 0（双轨一致）')
+    sys.exit(0)
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -543,14 +610,26 @@ def main():
     src.add_argument('--dictionary', default=None, help='DICTIONARY.md path (Markdown source)')
     src.add_argument('--terms', default=None, help='MOD terms JSON path (structured canonical source)')
     ap.add_argument('--glossary', default=None, help='optional GLOSSARY.md path')
-    ap.add_argument('--output', required=True, help='output term-index JSON')
+    ap.add_argument('--output', default=None, help='output term-index JSON（check 模式外必需）')
     ap.add_argument('--keep-output', default=None, help='optional keep-list JSON output')
     ap.add_argument('--conf', default=None, help='optional confirmation JSON (overrides)')
     ap.add_argument('--id-prefix', default='', help='term_id prefix, e.g. mvf1.')
     ap.add_argument('--global-bans', default=None,
                     help='project-wide global-forbidden-words JSON; its bans/keep are embedded\n'
                          'into the compiled contract under global_bans / global_keep for the gate')
+    ap.add_argument('--check-terms', default=None,
+                    help='双轨一致性检查：与 --dictionary 同用，编译 Markdown 表格后与指定\n'
+                         'terms.json 做集合 diff（词条存在性 / target / forbidden / status），\n'
+                         '不产出 contract（--output 不再必需）；无差异 exit 0，有差异 exit 1')
     args = ap.parse_args()
+
+    if args.check_terms:
+        if not args.dictionary:
+            raise SystemExit('error: --check-terms 需要与 --dictionary 同用（Markdown 侧为比对基准）')
+        check_terms_consistency(args.dictionary, args.check_terms)
+        return
+    if not args.output:
+        raise SystemExit('error: --output is required（--check-terms 模式除外）')
 
     conf = json.load(open(args.conf, encoding='utf-8-sig')) if args.conf else {}
     if args.id_prefix:
@@ -591,7 +670,8 @@ def main():
                         t['match']['accepted'] = [ov['target']]
 
     json.dump({'schema_version': '1.0', 'terms': terms,
-               'compiled_from': args.terms or args.dictionary},
+               'compiled_from': args.terms or args.dictionary,
+               'compiled_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')},
               open(args.output, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
     if args.keep_output:
         json.dump(keep, open(args.keep_output, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)

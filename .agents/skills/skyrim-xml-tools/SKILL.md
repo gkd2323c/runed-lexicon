@@ -16,7 +16,7 @@ metadata:
 
 ## ⚠️ index 基准（重要）
 
-本工具所有命令输出的 `index` / 条目序号为 **1-based**（XML 中 `<Content/String>` 节点从 1 起枚举的顺序位置，非 `List` 属性）。而 `translation-context-builder` / `translation-executor` / `xtranslator-xml-writer` 的 `xml_index` 为 **0-based**（从 0 起）。两套序号差 1：用本工具的输出（如 `untranslated --json` 的 index）去对照 context/result 的 `xml_index` 时，必须先减 1，否则会误判“哪条已译 / 译到哪条”，曾导致批次 dedup 误删。拿不准时用 `Source` 文本对照，不要用序号。
+本工具所有命令输出的 `index` / 条目序号为 **0-based**（XML 中 `<Content/String>` 节点从 0 起枚举的顺序位置，非 `List` 属性），与 `translation-context-builder` / `translation-executor` / `xtranslator-xml-writer` 的 `xml_index` 基准一致，跨工具对照无需换算。注意：2026-09-17 之前本工具输出为 1-based，历史文档中按旧基准记录的序号须减 1；拿不准时用 `Source` 文本对照，不要用序号。
 
 ## 适用场景
 

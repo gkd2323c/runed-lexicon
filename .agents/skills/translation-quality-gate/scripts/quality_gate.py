@@ -24,6 +24,7 @@ import json
 import re
 import sys
 import io
+from datetime import datetime
 from pathlib import Path
 
 
@@ -402,6 +403,52 @@ def run_gate(results: list, contract: dict, keep_list: list, xml_text=None,
     }
 
 
+def stale_contract_issue(contract, contract_path):
+    """契约过期检查（STALE001）：编译源文件 mtime 新于契约编译时刻 → WARNING。
+
+    术语决策改了 terms.json / DICTIONARY.md 却忘了重编译时，gate 在拿过期契约做
+    检查，PASS 声明失去意义。契约里的 compiled_at（编译时刻）为基准；旧契约无该
+    字段时回退到契约文件 mtime。源文件路径按 原样 → 相对契约目录 → 相对 cwd 解析；
+    解析不到静默跳过（不制造新故障）。不触发 FAIL：过期契约不等于翻译错误，但
+    PASS 声明必须带这条可见警告。
+    """
+    if not isinstance(contract, dict):
+        return None
+    src = contract.get('compiled_from')
+    if not src:
+        return None
+    p = Path(src)
+    if not p.exists():
+        alt = Path(contract_path).parent / src
+        if alt.exists():
+            p = alt
+        else:
+            return None
+    src_mtime = p.stat().st_mtime
+    compiled_at = contract.get('compiled_at')
+    ref = None
+    if compiled_at:
+        try:
+            ref = datetime.fromisoformat(str(compiled_at).replace('Z', '+00:00')).timestamp()
+        except Exception:
+            ref = None
+    if ref is None:
+        ref = Path(contract_path).stat().st_mtime
+    if src_mtime > ref + 1:  # 1s 容差，防文件系统时间粒度误报
+        from datetime import datetime as _dt
+        fmt = lambda ts: _dt.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        return {
+            'code': 'STALE001', 'severity': 'WARNING',
+            'detail': (f'编译源 {p.name}（{fmt(src_mtime)}）新于契约编译时刻（{fmt(ref)}）：'
+                       f'术语决策可能未重编译，先重跑 term-contract-compiler 再信本次 PASS'),
+            'expected': '',
+            'translation_unit_id': '(contract)',
+            'rec': None,
+            'edid': None,
+        }
+    return None
+
+
 def standalone_forbidden_issues(src: str, dst: str, term_index: dict,
                                 bound_ids: set) -> list:
     """R19 (v0.2.0): forbidden variants of unbound terms are enforced on
@@ -513,6 +560,11 @@ def main():
 
     report = run_gate(results, contract, keep_list, xml_text, auto_bind=args.auto_bind,
                       auto_strict_terms=auto_strict)
+    stale = stale_contract_issue(contract, args.contract)
+    if stale:
+        report['warnings'].append(stale)
+        report['warning_count'] += 1
+        print('STALE CONTRACT:', stale['detail'])
     # human summary
     print(json.dumps({
         'verdict': report['verdict'],

@@ -12,7 +12,7 @@ Build Agent-ready translation context batches without modifying source XML.
 
 ## ⚠️ xml_index 基准（重要）
 
-本工具生成 entry 的 `xml_index` 为 **0-based**（从 0 起枚举 `<Content/String>`），与 `translation-executor` / `xtranslator-xml-writer` 一致。但 `skyrim-xml-tools`（inspect / untranslated）输出的 index 为 **1-based**，两套差 1。跨工具对照时先确认基准，否则会误判批次 scope；拿不准用 `Source` 文本核对。`--index-file` 传 0-based 序号。
+本工具生成 entry 的 `xml_index` 为 **0-based**（从 0 起枚举 `<Content/String>`），与 `skyrim-xml-tools` / `translation-executor` / `xtranslator-xml-writer` 一致（全链已统一；2026-09-17 前 skyrim-xml-tools 为 1-based，旧记录对照先减 1）。`--index-file` 传 0-based 序号。拿不准用 `Source` 文本核对。
 
 Use this after xTranslator XML exists and, for dialogue-heavy work, after `xedit-context-exporter` has produced a dialogue context JSON. The builder joins deterministic record context to XML translation strings so the translating Agent can focus on wording instead of rediscovering plugin structure.
 

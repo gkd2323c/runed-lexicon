@@ -18,6 +18,61 @@ metadata:
 | `apply_fixes.py` | 修正清单联动同步 map + result + canonical patch（支持跨批仅出 patch 模式） | 各种 `apply_fixes_*.py` / `fix_*.py` |
 | `hallucination_probe.py` | 长文本抗幻觉机械探针（段落/长度比/数字语义/性别代词） | 各种 `probe*.py` |
 | `longtext_readout.py` | 生成长文本源译对照分片读本（供语义精读） | 各种 `readout*.py` / `slice_*.py` |
+| `adjudication_pack.py` | 裁决包生成（扫描候选 + XML/对话主题/terms 证据预切）与 verdict 机械校验、修正计划生成 | 各种 `build_*pack*.py` / 裁决对账脚本 |
+
+## adjudication_pack.py
+
+裁决层并行化的确定性底座：把「候选 → 裁决 → 修正」从主会话串行流程拆成可 fan-out
+的三段。与 noun-consistency-scan（发现）和 apply_fixes.py（写回）衔接，本身只做
+证据预切与机械校验，不做任何语义判断。
+
+### build：裁决证据包生成
+
+```text
+py -3 .../adjudication_pack.py build \
+  --pool _tmp/data/noun-scan/pool-a.json \
+  --xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
+  --terms mods/<plugin>/terms.json \
+  --dialogue-context .work/<plugin>/context/<plugin>-dialogue-context.json \
+  --out _tmp/data/adj-pack --cap 25
+```
+
+每候选一块（`pack-NNN.txt`，子代理读）+ 全量 JSON（`pack-NNN.json`，消费基准）：
+
+- 每个形态附全部行的 idx/REC/EDID；>8 行的形态压缩尾部（idx 全量在 JSON 侧）。
+- `--dialogue-context` 为 INFO/DIAL 行补**对话主题**（xTranslator 导出的 EDID 常为
+  FormID，主题是同一场景判断的唯一可靠证据；FormID 无主题时显式标注无家族信息）。
+- `--terms` 标注候选英文锚在 terms.json 的登记状态与目标形。
+- `--cap` 每片候选数（默认 25），对齐子代理单实例体量上限；多片出 manifest.json。
+
+### 裁决协议（子代理三选一）
+
+| verdict | 含义 | 约束 |
+| --- | --- | --- |
+| `unify` | 真漂移，统一 | 必须给 `target`，且 target ∈ 该候选**已出现形态集合**（禁止发明第三形态） |
+| `legitimate-split` | 语域/分层合法（守卫 vs 卫兵、湖 vs 堡） | 必须给非空 `reason`（分层依据） |
+| `different-object` | 同源不同物 | 必须给非空 `reason`（EDID/主题归属依据） |
+
+### consume：verdict 机械校验 + 修正计划
+
+```text
+py -3 .../adjudication_pack.py consume \
+  --pack _tmp/data/adj-pack/pack-001.json \
+  --verdicts _tmp/data/verdicts.json \
+  --plan-out _tmp/data/adj-plan.json
+```
+
+机械校验（任一不过即 exit 1，零产出）：键集合 == pack 候选集合；verdict 枚举合法；
+unify.target ∈ 已出现形态集合；split 类 reason 非空。通过后生成 plan：
+
+- `plan[]`: `{kid, source, find, replace, idx[], reason}`，主会话终审后逐条调
+  `apply_fixes.py --find/--replace/--idx-list`（跨批模式，从 canonical 读现值）。
+- `splits[]`: legitimate-split / different-object 清单，**主会话必须全量复读**
+  （唯一需要 lore 判断的部分），unify 抽审 10~20%。
+- **子串重叠防御**：find 是其他形态的子串时（如「岩湖」命中「岩湖堡」），plan 项
+  带 `warn: substring-overlap`，禁用 --find/--replace，改整句 new。
+
+写回仍走既有链路（单一写者原则）：consume 不碰 map/result/canonical。
 
 ## hallucination_probe.py
 

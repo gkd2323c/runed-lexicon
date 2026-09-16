@@ -33,10 +33,10 @@ Two keying modes:
 - Default: map keyed by xml_index (integer as string). Exact, index-stable;
   use when the result scope is fixed and you can reference indexes reliably.
 - --by-source: map keyed by the exact Source text. The map becomes readable
-  (the English line is the key) and immune to the 1-based/0-based index
-  confusion between skyrim-xml-tools (1-based) and context/executor/writer
-  (0-based). A source that matches zero items, or more than one PENDING item
-  (duplicate line), is an error — duplicates must use the index-keyed mode.
+  (the English line is the key) and immune to index-base confusion
+  (the toolchain has been unified to 0-based xml_index throughout). A source
+  that matches zero items, or more than one PENDING item (duplicate line),
+  is an error — duplicates must use the index-keyed mode.
 """
 from __future__ import annotations
 

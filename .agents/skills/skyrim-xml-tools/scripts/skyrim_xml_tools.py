@@ -84,7 +84,9 @@ def load_entries(xml_path: Path) -> list[Entry]:
             source=_text(node.find("Source")),
             dest=_text(node.find("Dest")),
         )
-        for index, node in enumerate(strings, start=1)
+        # 0-based：与 translation-context-builder / executor / writer 的 xml_index 基准一致，
+        # 跨工具对照不再需要人工减 1（历史上 1-based 输出曾导致误删批次条目）
+        for index, node in enumerate(strings)
     ]
 
 
