@@ -184,6 +184,29 @@ def main() -> int:
         if m4["0"]["translation"] != m3["0"]["translation"]:
             failures.append(f"apply_fixes status-only changed translation: {m4['0']}")
 
+        # status-only fix + --patch-out: must not crash and must not emit a patch
+        # entry (Dest text did not change; patch generation previously read fix["new"]
+        # unconditionally and raised KeyError for `new`-less fixes).
+        m4b = json.loads((batch_dir / "map.json").read_text(encoding="utf-8"))
+        m4b["0"]["status"] = "REVIEW"
+        (batch_dir / "map.json").write_text(json.dumps(m4b, ensure_ascii=False, indent=2), encoding="utf-8")
+        t4b = json.loads((batch_dir / "translation.json").read_text(encoding="utf-8"))
+        for u in t4b["translations"]:
+            if u["xml_index"] == 0:
+                u["status"] = "REVIEW"
+        (batch_dir / "translation.json").write_text(json.dumps(t4b, ensure_ascii=False, indent=2), encoding="utf-8")
+        patch_st = tmp / "patch-st.json"
+        res = run(APPLY, "--stem", "T", "--batch", "B1", "--work-root", str(work),
+                  "--fixes", str(fixes_st), "--translated-xml", str(xml_path), "--patch-out", str(patch_st))
+        if res.returncode != 0:
+            failures.append(f"apply_fixes status-only+patch failed: rc={res.returncode} err={res.stderr[:200]}")
+        else:
+            m4c = json.loads((batch_dir / "map.json").read_text(encoding="utf-8"))
+            if m4c["0"]["status"] != "TRANSLATED":
+                failures.append(f"apply_fixes status-only+patch status not applied: {m4c['0']}")
+            if patch_st.is_file() and json.loads(patch_st.read_text(encoding="utf-8")):
+                failures.append("apply_fixes status-only+patch 不应产生 patch 条目")
+
         # ---------- query --anchors ----------
         anch = tmp / "anchors.txt"
         anch.write_text("Thrall\nHello\n", encoding="utf-8")

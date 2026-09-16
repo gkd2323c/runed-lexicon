@@ -328,6 +328,10 @@ def main() -> int:
                 if not (0 <= idx < len(nodes)):
                     errors.append(f"patch: idx 越界 {idx}")
                     continue
+                if "new" not in fix:
+                    # status/notes-only 修正不改变 Dest，无需 patch 条目。
+                    patch_skipped += 1
+                    continue
                 current = nodes[idx].findtext("Dest") or ""
                 if current == fix["new"]:
                     patch_skipped += 1
