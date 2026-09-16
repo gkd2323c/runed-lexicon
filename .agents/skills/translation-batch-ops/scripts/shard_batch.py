@@ -76,7 +76,7 @@ def cmd_merge(a) -> int:
         return 2
     merged: dict = {}
     for lab in a.parts:
-        p = batch_dir / f"map-part-{lab}.json"
+        p = batch_dir / a.pattern.format(lab=lab)
         if not p.is_file():
             print(f"error: 分片文件不存在: {p}", file=sys.stderr)
             return 2
@@ -116,7 +116,10 @@ def main() -> int:
     mp = sub.add_parser("merge", help="合并分片 map")
     mp.add_argument("--stem", required=True)
     mp.add_argument("--batch", required=True)
-    mp.add_argument("--parts", nargs="+", required=True, help="分片标签，如 a b")
+    mp.add_argument("--parts", nargs="+", required=True, help="分片标签，如 a b；或 blockA blockB（配合 --pattern）")
+    mp.add_argument("--pattern", default="map-part-{lab}.json",
+                    help="分片文件名模式，{lab} 替换为分片标签（默认 map-part-{lab}.json；"
+                         "手动拆半场景可传 map-{lab}.json）")
     mp.add_argument("--work-root", default=".work")
     mp.set_defaults(func=cmd_merge)
 
