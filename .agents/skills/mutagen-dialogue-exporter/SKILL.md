@@ -66,9 +66,23 @@ python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py Art
   产出 `.work/<plugin>/context/<plugin>-info-split.json`（线→主题→INFO：xml idx、prompt_idx、speaker、
   复读 responses）与 `.work/<plugin>/context/<plugin>-info-unlinked.json`。speaker 取值顺序：
   `speakerName`（ANAM）→ `speakerFromCondition`（唯一 GetIsID 条件）→ `speaker`。
-- `plan-info-batches.py`：以任务线为批次边界，CAP=45 唯一未译源句；单主题超容量按
-  INFO 均分子主题；跨批全局源句去重（同句在后批只占一次容量、也只需翻一次）。
+
+  **INFO EDID 双通道（关键）**：xTranslator 对 `INFO:NAM1`/`RNAM` 的 EDID 列有两种形态，脚本必须同时支持：
+  - FormID 型 `[04197AF5]`：作者未给 INFO 起 EditorID 时（Druadach 等）。连 local FormID（后 6 位）。
+  - 命名型 `SIGREL_HELLO_F90_H05`：作者为每条 INFO 填了 EditorID 时（TheKalpicAnomaly 实测）。按原样 EDID 精确匹配 mutagen 的 `info.edid`。
+  两通道键空间互斥（实测交集 0），优先命名通道、回退 FormID 通道。
+  只用 FormID 通道会静默漏掉命名型行：TheKalpicAnomaly 命名型占 NAM1 行 68%（20,142/29,634），
+  单通道连接率仅 31%（9,093 行），双通道后 98.5%（29,176 行）。**新 MOD 接入后必须核对
+  「全 XML 未译 INFO NAM1 行数」与「各线未译之和」是否接近，差距大即说明存在未接入的 EDID 形态。**
+- `plan-info-batches.py`：以任务线为批次边界，CAP=45 唯一未译源句；单主题超容量时按
+  **唯一未译源句数**（不是 INFO 条数）均分为子主题；跨批全局源句去重（同句在后批只占一次容量、也只需翻一次）。
   产出 `.work/<plugin>/context/<plugin>-info-batches.json`（批次 → line/dials/unique_src）。
+
+  **切分单位必须是源句**：INFO 与 NAM1 行是 1:N 关系（同一句台词被引擎按条件复制成多条
+  记录，TheKalpicAnomaly 实测 mean 4.11 / max 23）。按 `len(infos)` 切分会让每片仍携带
+  远超 CAP 的源句（事故：16 条 INFO 的 topic 带 165 个唯一源句，191 批超 CAP、最大 165）。
+  正确做法：按 INFO 逐条累加新增源句数，装满 CAP 切一刀，片内去重、切片后重置计数器。
+  验收：`max(unique_src) <= CAP` 且 `sum(len(b.idx))` 与 split 侧未译 idx 唯一数守恒。
 
 批次命名 `INFO-001…`，批次 id 是稳定契约 ID；重跑覆盖。
 
@@ -136,6 +150,20 @@ stdout（Artaeum 实测 7735/7735 全命中）。输出 `.work/<stem>/context/<s
   不得从条件集小反推说话者（继承 xedit-context-exporter 的纪律）。
 
 ## 已知坑（禁止重踩）
+
+0. **INFO EDID 有两种形态，拆线脚本必须双通道**（2026-09-18 事故）：xTranslator 的 EDID
+   列对同一插件可能混用 FormID 型（`[04197AF5]`）与命名型（`SIGREL_HELLO_F90_H05`）。
+   旧版 `split-info-lines.py` 只认 FormID 型，在 TheKalpicAnomaly 上静默漏掉 68% 的 NAM1 行
+   （连接率 31%），且不报错——拆线结果「看起来正常」（unlinked=0）但覆盖严重不足。
+   判据：`全 XML 未译 INFO NAM1 行数` 应约等于 `各线未译之和 + unlinked`；不等即漏通道。
+   修复：`by_edid` 命名通道优先、`by_fk` 回退；两池键空间互斥（实测交集 0），互不影响。
+   验证：命名通道新增行数 = XML 命名型行唯一数；FormID 通道命中数不变。
+
+0b. **拆批切分单位必须是唯一源句，不是 INFO 条数**（2026-09-18 事故）：INFO 与 NAM1 行是
+   1:N 关系（同一句台词被引擎按条件复制成多条记录，实测 mean 4.11 / max 23）。
+   旧版 `topic_units` 按 `len(tp['infos'])` 均分，在 16 条 INFO 的 topic 上算出 k=1、不切分，
+   结果单批带 165 个唯一源句，191 批超 CAP。修复：按 INFO 累加新增源句数，装满 CAP 切一刀。
+   验收：`max(unique_src) <= CAP` 且所有批 `idx` 并集 = split 侧未译 idx 唯一数（守恒）。
 
 1. `IConditionGetter` 无 `Function`，函数枚举在 `c.Data` 派生 getter 上，而 overlay
    的 `IConditionDataGetter.Function` 未实现 → 输出条件用类型名（`kind`=如

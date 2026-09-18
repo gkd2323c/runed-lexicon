@@ -19,16 +19,24 @@ t = ET.parse('%s/%s_english_chinese.xml' % (moddir, plugin))
 strs = t.getroot().findall('.//String')
 
 # local FormKey(hex6) -> {subrecord -> [xml_index]}
+# xTranslator 对 INFO 的 EDID 列有两种形态，必须同时支持：
+#   1) FormID 型 [04197AF5] —— 作者未给 INFO 起 EditorID 时（Druadach 等）
+#   2) 命名型 SIGREL_HELLO_F90_H05 —— 作者为每条 INFO 填了 EditorID 时
+#      （TheKalpicAnomaly 实测：命名型占 NAM1 行 68%，只用 FormID 通道会漏掉）
+# 命名型按原样 EDID 精确匹配 mutagen 的 info.edid；两通道互斥，不重叠。
 fk_pat = re.compile(r'\[(\d\d)([0-9a-fA-F]{6})\]')
 by_fk = defaultdict(lambda: defaultdict(list))
+by_edid = defaultdict(lambda: defaultdict(list))
 for i, s in enumerate(strs):
     rec = s.findtext('REC') or ''
     if not rec.startswith('INFO:'):
         continue
-    m = fk_pat.fullmatch(s.findtext('EDID') or '')
-    if not m:
-        continue
-    by_fk[m.group(2).lower()][rec[5:]].append(i)
+    edid = s.findtext('EDID') or ''
+    m = fk_pat.fullmatch(edid)
+    if m:
+        by_fk[m.group(2).lower()][rec[5:]].append(i)
+    elif edid:
+        by_edid[edid][rec[5:]].append(i)
 
 
 def untranslated(i):
@@ -41,11 +49,13 @@ for tl in doc['topics']:
     line = tl['questEdid'] or 'NOQUEST'
     tinfos = []
     for info in tl['infos']:
-        fk = info['formKey']
-        if not fk:
-            continue
-        local = fk.split(':')[0][-6:].lower()
-        rows = by_fk.get(local)
+        # 优先命名 EDID 通道（作者填了 EditorID），回退 FormID 通道
+        rows = by_edid.get(info.get('edid') or '') if info.get('edid') else None
+        if not rows:
+            fk = info['formKey']
+            if not fk:
+                continue
+            rows = by_fk.get(fk.split(':')[0][-6:].lower())
         if not rows:
             continue
         nam1s = sorted(rows.get('NAM1', []))
@@ -68,7 +78,8 @@ for tl in doc['topics']:
                             'subtype': tl['subtype'], 'infos': tinfos})
 
 unlinked = sorted(
-    i for rows in by_fk.values() for i in rows.get('NAM1', [])
+    i for pool in (by_fk.values(), by_edid.values())
+    for rows in pool for i in rows.get('NAM1', [])
     if i not in linked and untranslated(i))
 
 stats = {}
@@ -88,5 +99,6 @@ print('任务线 %d 条' % len(stats))
 for line, (ntp, rows, ut) in sorted(stats.items(), key=lambda x: -x[1][2]):
     print('%-28s topics %4d  rows %5d  未译 %5d' % (line, ntp, rows, ut))
 print('unlinked 未译:', len(unlinked))
-tot = sum(1 for rows in by_fk.values() for i in rows.get('NAM1', []) if untranslated(i))
+tot = sum(1 for pool in (by_fk.values(), by_edid.values())
+          for rows in pool for i in rows.get('NAM1', []) if untranslated(i))
 print('全 XML 未译 INFO NAM1 行数:', tot)

@@ -41,14 +41,34 @@ seen_global = set()
 
 
 def topic_units(tp):
+    """把超容量 topic 按【唯一未译源句数】均分为子主题。
+
+    切分单位必须是源句而不是 INFO 条数：INFO 与 NAM1 行是 1:N 关系（同一句台词被
+    引擎按条件复制成多条记录，实测 mean 4.11、max 23），按 INFO 条数切分会让
+    每片仍携带远超 CAP 的源句（TheKalpicAnomaly 事故：16 条 INFO 带 165 个源句）。
+    子主题内 INFO 保持原有顺序，不跨 DIAL 重排。
+    """
     srcs = topic_unique_untranslated(tp)
     if len(srcs) <= CAP:
         yield tp
         return
-    k = (len(tp['infos']) + CAP - 1) // CAP
-    per = (len(tp['infos']) + k - 1) // k
-    for n in range(0, len(tp['infos']), per):
-        yield {**tp, 'infos': tp['infos'][n:n + per]}
+    # 按 INFO 逐条累加其新增源句数，装满 CAP 就切一刀。
+    # cur_seen 只用于当前片内去重（同句在同一片只计一次），切片后重置，
+    # 否则第二片的新增数恒为 0、再也不会切分。跨批全局去重由调用方的
+    # seen_global 负责，不在这里处理。
+    chunks, cur, cur_seen = [], [], set()
+    for info in tp['infos']:
+        add = {strs[i].findtext('Source') or '' for i in info['idx'] if untranslated(i)} - cur_seen
+        if cur and len(cur_seen) + len(add) > CAP:
+            chunks.append(cur)
+            cur, cur_seen = [], set()
+            add = {strs[i].findtext('Source') or '' for i in info['idx'] if untranslated(i)}
+        cur.append(info)
+        cur_seen |= add
+    if cur:
+        chunks.append(cur)
+    for c in chunks:
+        yield {**tp, 'infos': c}
 
 
 for line in sorted(split):
