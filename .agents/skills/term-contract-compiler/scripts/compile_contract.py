@@ -519,6 +519,14 @@ def load_global_bans(path):
         record = {'english': eng, 'forbidden': fb, 'target': tgt, 'reason': reason}
         if uncond is True:
             record['unconditional'] = True
+        # allow_english: 可选字符串列表，双实体共存豁免（R20）；元素必须非空字符串
+        allow = b.get('allow_english')
+        if allow is not None:
+            if not isinstance(allow, list) or not all(
+                    isinstance(a, str) and a.strip() for a in allow):
+                problems.append(f'  [{i}] ({eng or "?"}) "allow_english" must be a list of non-empty strings')
+            else:
+                record['allow_english'] = [a.strip() for a in allow]
         if isinstance(b.get('category'), str) and b['category'].strip():
             record['category'] = b['category'].strip()
         bans.append(record)

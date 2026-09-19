@@ -262,6 +262,9 @@ def resolve_global_bans(contract: Dict) -> List[Dict]:
             'reason': str(b.get('reason') or '').strip(),
             # 无条件禁词（anachronism-*）：跳过英文锚检查，dest 含 forbidden 即拦
             'unconditional': b.get('unconditional') is True,
+            # R20 allow_english：双实体共存豁免（如 Falmer 行同时讨论 Snow Elves）
+            'allow_english': [a for a in (b.get('allow_english') or [])
+                              if isinstance(a, str) and a.strip()],
         }
         if isinstance(b.get('category'), str) and b['category'].strip():
             record['category'] = b['category'].strip()
@@ -317,9 +320,22 @@ def find_global_ban_hits(source: str, dest: str, ban: Dict) -> List[str]:
     Root cause of 1 false TERM004 FAIL in Druadach-book xml-index:8530
     (2026-09-08): "第十八..天：周一...，晨星...月..日" 的 "晨星" 被报，
     而其后 "...月" 正是 target 剩余部分。
+
+    R20 (v0.2.3): allow_english 双实体共存豁免——ban 声明 allow_english 列表时，
+    源文同时含列表中任一锚（_anchor_present 变体容忍）且 dest 已含本 ban 的
+    target 时，forbidden 命中判为合法另一实体的译名而非本 ban 的误译。
+    场景：Falmer 行同时讨论 Snow Elves（"The Snow Elves fell long before the
+    Falmer changed physically"），「雪精灵」是 Snow Elves 的官方译名而非 Falmer
+    的剧透误译。target-present 条件保证真正漏译（把 Falmer 译成雪精灵且无
+    「伐莫」）的行仍被拦截；allow 锚不在源文的行豁免不生效。
     """
     if ban.get("unconditional") is not True:
         if not list(_iter_word_matches(source, ban['english'])):
+            return []
+    allow = ban.get('allow_english') or []
+    if allow:
+        tgt = (ban.get('target') or '').strip()
+        if tgt and tgt in dest and any(_anchor_present(source, a) for a in allow):
             return []
     target = (ban.get('target') or '').strip()
     target_spans = []
