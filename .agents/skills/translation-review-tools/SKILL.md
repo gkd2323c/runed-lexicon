@@ -198,6 +198,25 @@ py -3 .../query.py --xml <same> --anchors anchors.txt
 
 输出每行：`[idx] REC EDID 状态` + SRC/DST 两行；`--locate` 输出 `[idx] -> <batch-id> (<plan 路径>)`。
 
+**同源句核对用 `--src` 而非 `--anchors`**：查「同一英文句在不同批次是否同译」时，用 `--src "<源文片段>"` 直接列出全部出现位置与各自译文；`--anchors` 是按词锚统计形态分布，两者用途不同。
+
+## lookup_terms.py
+
+在 `dictionary/` 官方词典中查证一批英文术语的既有中文译名，输出「源文 -> 译文」对照并标注来源文件。
+
+```text
+py -3 .agents/skills/translation-review-tools/scripts/lookup_terms.py Vyrthur "Ice Wraith" Dremora
+
+# 区分同形词：只保留源文同时匹配该正则的命中
+py -3 .../lookup_terms.py Seeker --context "Apocrypha|Mora|Black Book"
+# 放宽/收紧源文长度上限（默认 170），每词列出条数（默认 4）
+py -3 .../lookup_terms.py Dwarven --max-len 70 --per-term 6
+```
+
+用途：子代理把原版既有名词标 MEDIUM / REVIEW 悬置时，编排者批量查证后入词表（见 `skyrim-translation-craft` §8）。**无命中时显式输出「(无官方见证)」**，以便区分「官方没有这个词」与「脚本没查到」——前者需要编排者自行定名并标 PROVISIONAL。
+
+只读工具，不修改任何文件。
+
 ## apply_fixes.py
 
 把修正清单一次应用到 `map.json` + `translation.json`，并可生成带 CAS 守卫的 canonical patch。

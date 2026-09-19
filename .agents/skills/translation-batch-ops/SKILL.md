@@ -111,13 +111,38 @@ py -3 .../shard_batch.py merge --stem <S> --batch <B> --parts blockA blockB --pa
 
 `split` 按源文字符权重贪心平分，让两片承载量接近；按行数切会失衡：一条长文抵几十条短文。`merge` 默认找 `map-part-<lab>.json`，`--pattern` 可适配其它命名（分片键重叠、合并键集与 index.txt 不等均拒绝）。
 
-## 6. 跨工具约定
+## 6. 由修正 map 生成 canonical patch（`make_patch_from_maps.py`）
+
+对**已写回 canonical** 的条目做审查修正时，不能用 result 模式重放：增量模式的 `original_dest` 软保护会报 `original_dest mismatch` 并整批拒写。必须改用 `--patch`，其 `expected_dest` 取 canonical 的当前 Dest。
+
+本脚本读 canonical 现值，为每条修正补上 `expected_dest` / `source`：
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/make_patch_from_maps.py \
+    .work/<mod>/maps/<mod>-fix-map-blockA.json [blockB.json ...]
+
+# 显式指定（跨 MOD 目录或推断失败时）
+py -3 .../make_patch_from_maps.py --canonical <translated.xml> --out <patch.json> <map.json>
+```
+
+约定：
+
+- 输入 map 为扁平 JSON：`{ "<xml_index>": { "translation": ..., ... } }`，键是 xml_index（见 §6 坐标系），不是文件行号。
+- canonical 默认由 map 路径 `.work/<stem>/maps/` 上推，按 `mods/*/<stem>_english_chinese_translated.xml` 匹配（`<stem>` 与目录名可不同，如目录带 `.esp` 后缀）。
+- 同一 idx 在多个 map 中译文冲突 → 报错退出，不静默取后者。
+- 输出默认 `.work/<stem>/maps/<stem>-fix-patch.json`，可直接喂给 `write_translations.py --patch`。
+
+只读 canonical，只写 `--out` 指定的补丁文件。
+
+## 7. 跨工具约定
 
 **idx 坐标系**：批次目录 `index.txt`（`.work/<plugin>/batches/<BID>/index.txt`）里的数字是流水线的 `xml_index` 契约——即 ElementTree `findall('.//String')` 的 **String 元素序号**（从 0 开始），不是文件物理行号。用物理行号去 canonical 取行会落在 FURN/WEAP 等错误记录上（Ming 审计已验证）。派单/验收描述统一用「xml_index」或「idx 行号（String 元素序号）」，不要叫物理行号。（全工具链已统一 0-based；2026-09-17 前 `skyrim-xml-tools` 输出为 1-based，旧记录对照时先减 1。）
 
+**同源句与专名分裂的全量核销**：用 `query.py --src "<源文片段>"` 列出同一英文句/词的全部出现位置与各自译文；发现多形时按 `skyrim-translation-craft` §8 收敛，改完复扫确认零分裂。
+
 **术语本体 vs 修辞形**：词表 note 里的修辞说明不是术语译名（Blood Price=血价，note 中的"血债血偿"仅指整句修辞的译法）。术语本体位置必须用词表译名，修辞形只在整句修辞中使用。验收时对 note 含修辞/例外说明的术语，重点查本体位置是否用了正确译名。
 
-## 7. 验证方式
+## 8. 验证方式
 
 ```text
 cd .agents/skills/translation-batch-ops/scripts
