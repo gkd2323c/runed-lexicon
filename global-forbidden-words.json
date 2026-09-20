@@ -7338,6 +7338,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Bromjunaar",
+      "forbidden": [
+        "布罗姆尤纳尔"
+      ],
+      "target": "布罗姆琼那",
+      "reason": "官方词典：Bromjunaar's Mystery→布罗姆琼那之秘（Skyrim）；TheKalpicAnomaly 实测错形「布罗姆尤纳尔」（231）",
+      "category": "lore-name"
+    },
+    {
       "english": "Buddha / Bodhisattva",
       "forbidden": [
         "佛陀",
@@ -7707,12 +7716,30 @@
       "category": "lore-name"
     },
     {
+      "english": "Fallowstone",
+      "forbidden": [
+        "荒石"
+      ],
+      "target": "休石",
+      "reason": "官方词典：Fallowstone Cave→休石洞穴（Skyrim）；TheKalpicAnomaly 实测错形「荒石」（230）",
+      "category": "lore-name"
+    },
+    {
       "english": "First Seed",
       "forbidden": [
         "初种"
       ],
       "target": "初种月",
       "reason": "泰姆瑞尔历月名带月字；裸译初种缺月（dg04 v5 实测 2 处）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Fjotli",
+      "forbidden": [
+        "菲约特莉"
+      ],
+      "target": "芙优蒂",
+      "reason": "官方词典：Fjotli's Silver Locket→芙优蒂的银吊坠（Skyrim）；TheKalpicAnomaly 实测错形「菲约特莉」（234）",
       "category": "lore-name"
     },
     {
@@ -7814,6 +7841,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Gloombound",
+      "forbidden": [
+        "幽暗界矿场"
+      ],
+      "target": "昏暗边界",
+      "reason": "官方词典：Gloombound Mine→昏暗边界矿场（Skyrim）；TheKalpicAnomaly 实测错形「幽暗界矿场」（235）",
+      "category": "lore-name"
+    },
+    {
       "english": "Goblin",
       "forbidden": [
         "哥不林"
@@ -7839,6 +7875,15 @@
       ],
       "target": "黄金龙爪",
       "reason": "官方词典：黄金龙爪（dg04/MVF1 修正金爪）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Golldir",
+      "forbidden": [
+        "高迪尔"
+      ],
+      "target": "果迪尔",
+      "reason": "官方词典：Letter to Golldir→致果迪尔的信（Skyrim）；TheKalpicAnomaly 实测错形「高迪尔」（228）",
       "category": "lore-name"
     },
     {
@@ -7879,12 +7924,30 @@
       "category": "lore-name"
     },
     {
+      "english": "Hajvarr Iron-Hand",
+      "forbidden": [
+        "哈瓦尔·铁手"
+      ],
+      "target": "“铁手”哈瓦尔",
+      "reason": "官方词典：Hajvarr Iron-Hand→“铁手”哈瓦尔（Skyrim）；TheKalpicAnomaly 实测错形「哈瓦尔·铁手」（240）",
+      "category": "lore-name"
+    },
+    {
       "english": "Hall of the Dead",
       "forbidden": [
         "亡者大厅"
       ],
       "target": "亡者之厅",
       "reason": "官方词典：亡者之厅（dg04 v3 废止亡者大厅）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Hall of the Vigilants",
+      "forbidden": [
+        "警戒者大厅"
+      ],
+      "target": "警戒者之厅",
+      "reason": "官方词典：Hall of the Vigilants→警戒者之厅（Dawnguard）；TheKalpicAnomaly 实测错形「警戒者大厅」（221）",
       "category": "lore-name"
     },
     {
@@ -7969,12 +8032,30 @@
       "category": "lore-name"
     },
     {
+      "english": "Honrich",
+      "forbidden": [
+        "霍恩里奇"
+      ],
+      "target": "霍利奇",
+      "reason": "官方词典：Lake Honrich→霍利奇湖（Skyrim）；TheKalpicAnomaly 实测错形「霍恩里奇」（232）",
+      "category": "lore-name"
+    },
+    {
       "english": "Horker",
       "forbidden": [
         "兽人母亲"
       ],
       "target": "海象",
       "reason": "Horker 是獠牙海兽（horker meat 海象肉/Horker dung 海象粪）；05067E26 horker mother（骂人话，意为你海象老娘）被误读为兽人母亲",
+      "category": "lore-name"
+    },
+    {
+      "english": "Ice Wraith",
+      "forbidden": [
+        "冰噬魔"
+      ],
+      "target": "冰怒灵",
+      "reason": "官方词典：Ice Wraith→冰怒灵（Dragonborn/Skyrim 实证）；TheKalpicAnomaly 实测错形「冰噬魔」（223）",
       "category": "lore-name"
     },
     {
@@ -8176,6 +8257,15 @@
       "category": "lore-name"
     },
     {
+      "english": "M'aiq",
+      "forbidden": [
+        "麦奎"
+      ],
+      "target": "麦'奎",
+      "reason": "官方词典：M'aiq→麦'奎（保留撇号）、M'aiq the Liar→骗子麦'奎（Skyrim）；TheKalpicAnomaly 实测无撇号形「麦奎」（222）",
+      "category": "lore-name"
+    },
+    {
       "english": "Madonna / Our Lady",
       "forbidden": [
         "圣母"
@@ -8252,6 +8342,24 @@
       "category": "lore-name"
     },
     {
+      "english": "Masser",
+      "forbidden": [
+        "玛瑟尔"
+      ],
+      "target": "马瑟尔",
+      "reason": "官方词典：Ring of Masser→马瑟尔之戒（ccbgssse051）；TheKalpicAnomaly 实测错形「玛瑟尔」（240）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Medresi",
+      "forbidden": [
+        "梅德雷西"
+      ],
+      "target": "迈德雷斯",
+      "reason": "官方词典：Medresi Dran→迈德雷斯·德兰（Skyrim）；TheKalpicAnomaly 实测错形「梅德雷西」（234）",
+      "category": "lore-name"
+    },
+    {
       "english": "Merilar",
       "forbidden": [
         "梅里拉尔"
@@ -8288,6 +8396,15 @@
       ],
       "target": "米拉墨尼尔",
       "reason": "官方词典：米拉墨尼尔（天际第一头被杀的古龙）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Monolith",
+      "forbidden": [
+        "独石"
+      ],
+      "target": "石匣",
+      "reason": "官方词典：Stone Monolith→石匣（Dawnguard）；TheKalpicAnomaly 实测错形「独石」（220）",
       "category": "lore-name"
     },
     {
@@ -8491,6 +8608,15 @@
       "unconditional": true
     },
     {
+      "english": "Peryite",
+      "forbidden": [
+        "佩伊特"
+      ],
+      "target": "魄伊特",
+      "reason": "官方词典：Aspect of Peryite→魄伊特的化身（Skyrim）；TheKalpicAnomaly 实测错形「佩伊特」（228）",
+      "category": "lore-name"
+    },
+    {
       "english": "Prelate",
       "forbidden": [
         "教长"
@@ -8682,6 +8808,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Secunda",
+      "forbidden": [
+        "赛昆达"
+      ],
+      "target": "瑟坤达",
+      "reason": "官方词典：Secunda's Kiss→瑟坤达之吻、Secunda's Shelf→瑟坤达岩架（Skyrim）；TheKalpicAnomaly 实测错形「赛昆达」（240）",
+      "category": "lore-name"
+    },
+    {
       "english": "Seeker",
       "forbidden": [
         "搜寻者"
@@ -8736,6 +8871,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Silus",
+      "forbidden": [
+        "西鲁斯"
+      ],
+      "target": "希鲁斯",
+      "reason": "官方词典：Silus's Chest→希鲁斯的箱子（Skyrim）；TheKalpicAnomaly 实测错形「西鲁斯」（229）",
+      "category": "lore-name"
+    },
+    {
       "english": "Skjor",
       "forbidden": [
         "斯约尔"
@@ -8780,6 +8924,15 @@
       ],
       "target": "灵魂荚",
       "reason": "官方词典：soul husks→灵魂荚、Soul Husk Extract→灵魂荚提取物（Dawnguard）；TheKalpicAnomaly 实测错形「灵魂石壳」（212）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Southfringe",
+      "forbidden": [
+        "南陲"
+      ],
+      "target": "南部边缘",
+      "reason": "官方词典：Southfringe Sanctum→南部边缘圣所（Skyrim）；TheKalpicAnomaly 实测错形「南陲」（230）",
       "category": "lore-name"
     },
     {
@@ -9010,6 +9163,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Ulag",
+      "forbidden": [
+        "乌拉格"
+      ],
+      "target": "乌莱格",
+      "reason": "官方词典：Ulag→乌莱格（Skyrim）；TheKalpicAnomaly 实测错形「乌拉格」（224）",
+      "category": "lore-name"
+    },
+    {
       "english": "Vaermina",
       "forbidden": [
         "瓦米纳",
@@ -9017,6 +9179,15 @@
       ],
       "target": "瓦尔迷纳",
       "reason": "官方词典：Vaermina's Torpor→瓦尔迷纳之眠、Vaermina Robes→瓦尔迷纳长袍；TheKalpicAnomaly 实测错形「瓦米纳」（992/996）与「瓦尔迷娜」（808/900）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Valtheim",
+      "forbidden": [
+        "瓦尔特海姆"
+      ],
+      "target": "沃尔瑟姆",
+      "reason": "官方词典：Valtheim Towers→沃尔瑟姆塔楼、Valtheim Keep→沃尔瑟姆堡垒（Skyrim）；TheKalpicAnomaly 实测错形「瓦尔特海姆」（240）",
       "category": "lore-name"
     },
     {
@@ -9071,6 +9242,15 @@
       ],
       "target": "维托利亚",
       "reason": "官方词典：Vittoria's Wedding Band→维托利亚的婚戒（Skyrim）；TheKalpicAnomaly 实测错形",
+      "category": "lore-name"
+    },
+    {
+      "english": "Volendrung",
+      "forbidden": [
+        "沃伦神锤"
+      ],
+      "target": "沃伦卓朗",
+      "reason": "官方词典：Volendrung Enchantment→沃伦卓朗附魔（Skyrim）；TheKalpicAnomaly 实测意译形「沃伦神锤」（227）",
       "category": "lore-name"
     },
     {
