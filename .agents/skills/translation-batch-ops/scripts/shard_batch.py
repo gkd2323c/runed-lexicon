@@ -76,11 +76,21 @@ def cmd_merge(a) -> int:
         return 2
     merged: dict = {}
     for lab in a.parts:
+        # maps/ 分片兼容：分片文件不在批次目录时，尝试 maps/<BID>{lab}-map.json
+        # （翻译子代理按分片各自交付的扁平 map 命名，如 GAP-INFO-002a-map.json）
         p = batch_dir / a.pattern.format(lab=lab)
+        if not p.is_file():
+            alt = batch_dir.parent.parent / "maps" / f"{a.batch}{lab}-map.json"
+            if alt.is_file():
+                p = alt
         if not p.is_file():
             print(f"error: 分片文件不存在: {p}", file=sys.stderr)
             return 2
         part = json.loads(p.read_text(encoding="utf-8"))
+        # 值形态归一：扁平字符串分片（子代理交付形态）与 object 分片均可合并
+        for k, v in part.items():
+            if isinstance(v, str) and v.strip():
+                part[k] = {"translation": v.strip(), "status": "TRANSLATED", "confidence": "HIGH"}
         overlap = set(part) & set(merged)
         if overlap:
             print(f"error: {p.name} 与已合并分片键重叠: {sorted(overlap)[:8]}", file=sys.stderr)

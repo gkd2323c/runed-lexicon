@@ -7185,6 +7185,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Arondil",
+      "forbidden": [
+        "阿隆迪尔"
+      ],
+      "target": "阿荣迪尔",
+      "reason": "官方词典：Arondil's Journal→阿荣迪尔的日记（Skyrim）；TheKalpicAnomaly 实测错形，清零后入库防复发",
+      "category": "lore-name"
+    },
+    {
       "english": "Ash Yam",
       "forbidden": [
         "灰薯"
@@ -7249,6 +7258,16 @@
       "reason": "现实宗教禁令；建议改写：经文/圣典（TES 书籍语境）",
       "category": "anachronism-religion",
       "unconditional": true
+    },
+    {
+      "english": "Black Book",
+      "forbidden": [
+        "黑暗魔经",
+        "黑书"
+      ],
+      "target": "黑暗经书",
+      "reason": "官方词典：Black Book 系列→黑暗经书（如 Black Book: Waking Dreams→黑暗经书：清醒之梦）；实测变体「黑暗魔经」「黑书」",
+      "category": "lore-name"
     },
     {
       "english": "Blackreach",
@@ -7475,6 +7494,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Dexion",
+      "forbidden": [
+        "德克西翁"
+      ],
+      "target": "戴希翁",
+      "reason": "官方词典：Dexion Evicus→戴希翁·艾维库斯（Dawnguard）；TheKalpicAnomaly 实测错形",
+      "category": "lore-name"
+    },
+    {
       "english": "Divines",
       "forbidden": [
         "诸神"
@@ -7552,6 +7580,15 @@
       ],
       "target": "锻莫",
       "reason": "官方设定专名；泛化为矮人族丢失文明主体（MVF1 DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Epistolary Acumen",
+      "forbidden": [
+        "书信敏悟"
+      ],
+      "target": "信札巧笔",
+      "reason": "官方词典：Black Book: Epistolary Acumen→黑暗经书：信札巧笔（Dragonborn）；实测错形「书信敏悟」",
       "category": "lore-name"
     },
     {
@@ -7659,6 +7696,15 @@
       ],
       "target": "弗拉兹-阿尔",
       "reason": "Druadach Master 辈人名，连字符保留；对白 3 处误写富拉兹已回正；TERM004 防回流",
+      "category": "lore-name"
+    },
+    {
+      "english": "Gelebor",
+      "forbidden": [
+        "格勒博尔"
+      ],
+      "target": "盖勒布",
+      "reason": "官方词典：Knight-Paladin Gelebor→圣骑士盖勒布（Dawnguard）；TheKalpicAnomaly 实测错形",
       "category": "lore-name"
     },
     {
@@ -7961,6 +8007,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Loreius",
+      "forbidden": [
+        "洛雷乌斯"
+      ],
+      "target": "罗瑞尤斯",
+      "reason": "官方词典：Vantus Loreius→万图斯·罗瑞尤斯（Skyrim）；TheKalpicAnomaly 实测错形",
+      "category": "lore-name"
+    },
+    {
       "english": "Lydia",
       "forbidden": [
         "莉迪亚"
@@ -8034,6 +8089,15 @@
       ],
       "target": "马瑟尔",
       "reason": "官方词典：马瑟尔（meresis DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Maurice",
+      "forbidden": [
+        "莫里斯"
+      ],
+      "target": "毛利斯",
+      "reason": "官方词典：Maurice Jondrelle→毛利斯·钱德利（Skyrim）；TheKalpicAnomaly 实测错形",
       "category": "lore-name"
     },
     {
@@ -8157,6 +8221,15 @@
       ],
       "target": "纳奇姆",
       "reason": "官方词典：纳奇姆（白漫势利眼；社区纳泽姆为错译）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Nchardak",
+      "forbidden": [
+        "查达克"
+      ],
+      "target": "尼查达克",
+      "reason": "官方词典：Nchardak→尼查达克（Dragonborn）；实测错形「查达克」，清零后入库防复发（forbidden 为 target 子串，依赖 R12 覆盖豁免）",
       "category": "lore-name"
     },
     {
@@ -8404,6 +8477,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Silus",
+      "forbidden": [
+        "西卢斯"
+      ],
+      "target": "希鲁斯",
+      "reason": "官方词典：Silus Vesuius→希鲁斯·维西欧斯（Skyrim）；TheKalpicAnomaly 实测错形",
+      "category": "lore-name"
+    },
+    {
       "english": "Skjor",
       "forbidden": [
         "斯约尔"
@@ -8615,6 +8697,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Untold Legends",
+      "forbidden": [
+        "不为人知的传说"
+      ],
+      "target": "未叙传说",
+      "reason": "官方词典：Black Book: Untold Legends→黑暗经书：未叙传说（Dragonborn）；实测错形「不为人知的传说」",
+      "category": "lore-name"
+    },
+    {
       "english": "Vampire Lord",
       "forbidden": [
         "吸血鬼大君"
@@ -8648,6 +8739,15 @@
       ],
       "target": "威尔卡斯",
       "reason": "官方词典：战友团成员（dg04 v2 修正维尔卡斯）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Vittoria",
+      "forbidden": [
+        "维多利亚"
+      ],
+      "target": "维托利亚",
+      "reason": "官方词典：Vittoria's Wedding Band→维托利亚的婚戒（Skyrim）；TheKalpicAnomaly 实测错形",
       "category": "lore-name"
     },
     {

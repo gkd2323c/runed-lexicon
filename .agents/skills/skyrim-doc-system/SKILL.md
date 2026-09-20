@@ -1,9 +1,9 @@
 ---
 name: skyrim-doc-system
-description: runed-lexicon 项目的文档体系规范：GLOBAL.md、GLOSSARY.md 与每个 MOD 的 CONTEXT.md / DICTIONARY.md / PROGRESS.md 五个文档的职责边界、收录标准、状态体系、术语优先级与维护规则。Use when creating or updating GLOBAL.md, GLOSSARY.md, or any MOD's CONTEXT.md / DICTIONARY.md / PROGRESS.md, deciding where a term or plot fact belongs, choosing term status (CONFIRMED/PROVISIONAL/REVIEW/KEEP), or resolving terminology priority conflicts.
+description: runed-lexicon 项目的文档体系规范：GLOBAL.md、GLOSSARY.md 与每个 MOD 的 CONTEXT.md / DICTIONARY.md / PROGRESS.md / SOP.md 六个文档的职责边界、收录标准、状态体系、术语优先级与维护规则。Use when creating or updating GLOBAL.md, GLOSSARY.md, or any MOD's CONTEXT.md / DICTIONARY.md / PROGRESS.md / SOP.md, deciding where a term or plot fact belongs, choosing term status (CONFIRMED/PROVISIONAL/REVIEW/KEEP), or resolving terminology priority conflicts.
 compatibility: Reference rules only; no scripts.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # 文档体系规范
@@ -86,14 +86,15 @@ MOD 原创人名、地点名等能根据全文、拼写、发音、TES 命名习
 
 翻译 Agent 默认承担普通本地化决策责任。流程：先读足够上下文（必要时通读全文或完整剧情段落）；查官方词典或相关 TES 语料，区分既有世界观术语与 MOD 原创内容；对 MOD 原创内容形成可用方案并记录为 `PROVISIONAL`；后续出现更强证据时统一修订。用户不是普通翻译歧义的人工路由器；需要用户拍板的情况是例外，不是默认降级路径。
 
-## 8. 三个文件的职责边界
+## 8. 职责边界速查
 
 - "这个词以后应该怎么翻？" → `DICTIONARY.md`
 - "这句话为什么应该这么理解？" → `CONTEXT.md`
 - "这一批具体文本翻到哪里了？" → `PROGRESS.md`
+- "这个 MOD 的翻译循环怎么跑？" → `SOP.md`
 - "这个官方名词的坏形态为什么全局禁？" → `global-forbidden-words.json`（GLOSSARY.md §6）
 
-三个文件都保持人工可读，允许 Agent 直接读取和维护。
+以上文件均保持人工可读，允许 Agent 直接读取和维护。
 
 ## 9. `PROGRESS.md`：MOD 翻译执行状态
 
@@ -102,3 +103,32 @@ MOD 原创人名、地点名等能根据全文、拼写、发音、TES 命名习
 `PROGRESS.md` 不保存：大段剧情或人物设定（进 `CONTEXT.md`）、固定译名与术语候选（进 `DICTIONARY.md`）、每条文本的完整 Source/Translation 副本（在结构化结果中）、未实际执行的验证结果。
 
 维护规则：实际翻译范围、结果文件集合、状态统计或工作阶段明显变化时更新；按有意义的阶段节点维护，不每翻一条就更新；`.work/` 存在多代历史批次时，指出当前应继续使用的那一组；"已完成""已验证"必须来自实际结果与实际命令执行；计数尽量来自确定性脚本，人工估算必须标注；`PROGRESS.md` 不因 CONTEXT/DICTIONARY 的小改动频繁重建历史结果或重算无关哈希。
+
+## 10. `SOP.md`：MOD 翻译操作程序
+
+每个进入实际翻译阶段的 `mods/<plugin>/` 目录维护 `SOP.md`，保存该 MOD 的**可执行操作序列**：接手顺序、每轮推进循环（备料 → 派单 → 验收 → 写回 → 快照）的命令级步骤（含本 MOD 的具体路径与参数）、派单与验收纪律的 MOD 特化、诊断命令、故障处置与收口清单。
+
+分层约定：通用方法在 `.agents/skills/`（`translation-batch-ops` §0 标准续推循环、`subagent-ops`、`hana-subagent-ops` 等）；`SOP.md` 是这些通用规则的 **MOD 实例**，同一序列不在两处各写一半。新会话接手该 MOD 时先读 `SOP.md` 与 `PROGRESS.md` 再动手，不现场拼装流程。
+
+`SOP.md` 不保存：当前进度与统计数字（进 `PROGRESS.md`）、术语与语境（进 `DICTIONARY.md` / `CONTEXT.md`）、执行过程叙事。维护时机：工具命令、路径、纪律发生变更时同步更新，保证照抄可执行。
+
+创建时机：新 MOD 启动时与其他文档一并创建；存量 MOD 在下次推进会话时补建。
+
+## 11. 收尾交接标准（新会话可直接开工）
+
+任何工作停止点（停下汇报、等待用户、等待后台结果）之前，agent 必须把 `PROGRESS.md` 与 `SOP.md` 维护到新会话可直接开工的状态（硬规则见 AGENTS.md §5）。验收清单：
+
+**`PROGRESS.md`**
+
+- 下一批编号 / 下一个动作明确；
+- 待做列表反映真实现状，无「全部完成」式歧义表述（已完成与剩余量分别标明）；
+- 阶段快照为最近一次实际快照（数字以 `progress_snapshot.py --record` 为准）；
+- 在途批次、受阻事项写明（如有）。
+
+**`SOP.md`**
+
+- 操作序列命令与当前工具、路径一致；
+- 本轮如有流程 / 命令 / 路径变化已同步；
+- 接手顺序清晰，第一步动作可直接执行。
+
+维护动作以「确认 + 按需更新」执行：无变化时确认即过，不为维护而维护。自检一句话：新会话只读这两份文档，能否直接确定并执行第一个动作？不能则补全。

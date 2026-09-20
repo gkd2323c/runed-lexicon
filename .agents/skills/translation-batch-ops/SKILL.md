@@ -1,22 +1,42 @@
 ---
 name: translation-batch-ops
-description: runed-lexicon 批次流水线的状态、覆盖、验收与进度工具集。覆盖批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）。Use when 验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、或在声明批次/类别收敛前做证据核查。Do NOT trigger for 翻译与词表裁决本身、XML 写回（归 xtranslator-xml-writer）、契约编译（归 term-contract-compiler）。
+description: runed-lexicon 批次流水线的状态、覆盖、验收与进度工具集。覆盖批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次 context 单批重建（rebuild_context）。Use when 验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、XML 写回（归 xtranslator-xml-writer）、契约编译（归 term-contract-compiler）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.0.0"
+  version: "1.2.0"
 ---
 
 # Translation Batch Ops
 
 批次流水线运维工具集。五个工具回答流水线的四个问题：
 
-| 问题 | 工具 | 核心产出 |
-| --- | --- | --- |
-| 这批产出合格吗？ | `scripts/verify_subagent_batch.py` | 验收报告 `.work/<plugin>/reports/<BID>-verify-report.json` |
-| 批次推进到哪了？ | `scripts/check_batch_coverage.py` | 每批状态（VERIFIED / TRANSLATED / PREPPED / MISSING）+ 未写回告警 |
-| 还有未译行没有归属吗？ | `scripts/scan_plan_gaps.py` | 缺口清单 + 可选补遗批次（GAP- 前缀） |
-| 整体进度如何？ | `scripts/progress_snapshot.py` | 快照日志 `.work/<plugin>/reports/<plugin>-progress-log.json` |
-| 批次太大怎么派？ | `scripts/shard_batch.py` | 按字符权重的 index 分片与 map 合并 |
+| 问题                     | 工具                               | 核心产出                                                          |
+| ------------------------ | ---------------------------------- | ----------------------------------------------------------------- |
+| 这批产出合格吗？         | `scripts/verify_subagent_batch.py` | 验收报告 `.work/<plugin>/reports/<BID>-verify-report.json`        |
+| 批次推进到哪了？         | `scripts/check_batch_coverage.py`  | 每批状态（VERIFIED / TRANSLATED / PREPPED / MISSING）+ 未写回告警 |
+| 还有未译行没有归属吗？   | `scripts/scan_plan_gaps.py`        | 缺口清单 + 可选补遗批次（GAP- 前缀）                              |
+| 整体进度如何？           | `scripts/progress_snapshot.py`     | 快照日志 `.work/<plugin>/reports/<plugin>-progress-log.json`      |
+| 批次太大怎么派？         | `scripts/shard_batch.py`           | 按字符权重的 index 分片与 map 合并                                |
+| 子代理交付怎么消费？     | `scripts/consume_batch.py`         | map 归位 → 展平 → immutable 同步 → fill → verify 一键链           |
+| context 备料坏了怎么修？ | `scripts/rebuild_context.py`       | 单批模式重建 context + 骨架重生成（保留已有译文）                 |
+
+## 0. 标准续推循环（SOP）
+
+推进一个 MOD 的翻译主线时，每一轮按同一序列执行（`<stem>` 为 `.work` 下的 MOD 名，`<BID>` 为批次号；命令均在项目根运行）：
+
+1. **备料·索引**：`py -3 .agents/skills/mutagen-dialogue-exporter/scripts/make-batch-index.py <stem> <BID>` → 生成 `batches/<BID>/index.txt`（从主计划 JSON 提取该批 idx）。
+2. **备料·context + 骨架**：`py -3 .agents/skills/translation-batch-ops/scripts/rebuild_context.py --stem <stem> --batch <BID>` → 单批全量 context.json + translation.json 骨架（mods 目录名自动探测）。
+3. **备料·术语摘要**：`py -3 .agents/skills/translation-review-tools/scripts/term_digest.py --context .work/<stem>/batches/<BID>/context.json --out .work/<stem>/batches/<BID>/term-digest.txt`
+4. **派单**：子代理 **write** 权限，产出落 `batches/<BID>/map.json`；译者轮换（hanako 分身 / butter）；任务卡按 `subagent-ops` 模板（输入指向 index.txt 与 term-digest.txt，禁枚举术语）。
+5. **消费 + 验收**：`py -3 .agents/skills/translation-batch-ops/scripts/consume_batch.py --stem <stem> --batch <BID> --xml <source-xml> --contract <compiled.json>` → 归位→展平→immutable→fill→verify；退出码 0 = verify PASS。
+6. **写回**：`py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py --xml <canonical> --in-place --archive-to .work/<stem>/archive --source-xml <source-xml> --result .work/<stem>/batches/<BID>/translation.json --report .work/<stem>/reports/<stem>-writeback-report.json --force`
+7. **快照**：`progress_snapshot.py`（完整参数见 §4）加 `--record` 记录一条。
+
+派单安全规范（体量上限、验收三查、送达纪律）以 `subagent-ops` / `hana-subagent-ops` 为准，本表不重复。
+
+**新会话接手指南**：读 `mods/<mod>/PROGRESS.md` 取「下一批编号」→ 按上表从步 1 开跑 → 每轮写回后步 7 记录快照。步 1~3 为幂等备料，可安全重跑。
+
+**收尾交接要素**：任何停止点（停下汇报、等待用户、等待后台结果）之前，把 `PROGRESS.md`（下一批编号、待做、快照）与 `SOP.md`（命令序列）确认到「新会话可直接开工」；无变化时确认即过。验收细则见 `skyrim-doc-system` §11。
 
 ## 1. 批次验收（`verify_subagent_batch.py`）
 
@@ -111,6 +131,55 @@ py -3 .../shard_batch.py merge --stem <S> --batch <B> --parts blockA blockB --pa
 
 `split` 按源文字符权重贪心平分，让两片承载量接近；按行数切会失衡：一条长文抵几十条短文。`merge` 默认找 `map-part-<lab>.json`，`--pattern` 可适配其它命名（分片键重叠、合并键集与 index.txt 不等均拒绝）。
 
+**maps/ 分片兼容（v1.1.0）**：翻译子代理按分片各自交付时，产物通常落在 `maps/<BID><lab>-map.json`（如 `GAP-INFO-002a-map.json`）且值为扁平 `{idx: "译文"}`。merge 自动回退到该路径与形态（扁平字符串自动升格为 object 形态）。
+
+```text
+py -3 .../shard_batch.py merge --stem <S> --batch GAP-INFO-002 --parts a b \
+    --pattern "../../maps/{lab}-map.json"   # 或省略 pattern，自动尝试 maps/<BID><lab>-map.json
+```
+
+## 5a. 子代理产出一键消费（`consume_batch.py`）
+
+把「翻译产出 → 验收就绪」的机械链条收敛为一个命令（2026-09-20 GAP 战役沉淀；
+此前此链条散落在多个一次性脚本中，属流程缺陷）：
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/consume_batch.py \
+  --stem <plugin> --batch <BID> \
+  --xml mods/<plugin>/<plugin>_english_chinese.xml \
+  --contract .work/<plugin>/contracts/<plugin>.compiled.json
+```
+
+五步链（每步可独立失败退出，不产生半成品状态）：
+
+1. **归位**：优先 `batches/<BID>/map.json`；否则从 `maps/<BID>-map.json` 复制；
+2. **展平**：扁平 `{idx: "译文"}` 自动升格为 `{idx: {translation, status, confidence}}`
+   写 `map.filled.json`（object 形态原样通过）；
+3. **immutable 同步**：`review_reasons` / `protected_tokens` 以 context 为唯一真相，
+   用 `translation_result.review_reasons()` / `protected_tokens()` 原函数重算——
+   **禁止手写近似逻辑**（曾因手写推断导致 immutable field changed FAIL）；
+4. **fill**：`fill_translations.py --force --overwrite`（map 为唯一真相源，已译也覆盖）；
+5. **verify**：`verify_subagent_batch.py` 全链（--plan 自动探测：GAP- 前缀走 gaps 计划）。
+
+前置条件：批次目录已有 `context.json` 与 `translation.json`（备料产物）；context 必须
+单批结构（见 5b）。退出码：0 PASS / 1 链中失败 / 2 用法错误。
+
+## 5b. context 单批重建（`rebuild_context.py`）
+
+修复备料 context 的多批结构缺陷：`build_translation_context.py` 若以 `--batch-size 1`
+备料，会生成 N 批每批 1 条的 context；而 `translation_result.expected_items()` 只认
+`batch_index=0` 那批，validate 对其余单元报 `unknown translation_unit_id`。
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/rebuild_context.py \
+  --stem <plugin> --batch <BID>
+```
+
+行为：① `--batch-size 0` 重建 context（强制单批全量）；② 按新 context 重生成
+translation.json 骨架；③ 已有译文（TRANSLATED 且非空）按 xml_index 保留，
+immutable 字段一律以新 context 重算。mods 目录名与 stem 不一致（`.esp` 后缀）
+自动探测；`--xml` / `--mod-terms` 可显式覆盖。
+
 ## 6. 由修正 map 生成 canonical patch（`make_patch_from_maps.py`）
 
 对**已写回 canonical** 的条目做审查修正时，不能用 result 模式重放：增量模式的 `original_dest` 软保护会报 `original_dest mismatch` 并整批拒写。必须改用 `--patch`，其 `expected_dest` 取 canonical 的当前 Dest。
@@ -151,4 +220,20 @@ py -3 -m unittest test_batch_coverage test_scan_plan_gaps
 
 测试覆盖：覆盖率分类的未写回检测（含 KEEP 行不计）、缺口扫描的未认领行检测（含空白行排除）、补遗批次装批（同源不拆）、gaps 计划幂等与保护、活跃批次目录拒写。
 
+新命令（consume_batch / rebuild_context / shard merge maps 兼容）的验证方式：
+对任一已消费批次做幂等复跑（应 PASS 且译文保留数不变），例如：
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/consume_batch.py \
+  --stem <plugin> --batch <已验收批> --xml <source xml> --contract <compiled.json>
+py -3 .agents/skills/translation-batch-ops/scripts/rebuild_context.py --stem <plugin> --batch <已验收批>
+# 重建后 translation.json 的 TRANSLATED 数应不变
+```
+
 修改任一脚本后同步跑上列测试；接口或行为变化时更新本 SKILL。
+
+## 9. 工具化纪律
+
+批次消费链、context 重建、分片合并均有正式命令（5a/5b/§5）；**禁止再为同类需求手写
+一次性脚本**。遇到流水线断点时的正确顺序：先查本 SKILL 与相关 skill 是否已有对应能力
+→ 无则在本 skill 内扩展子命令 → 确无通用性才落 `_tmp/scripts/` 且当轮清理。
