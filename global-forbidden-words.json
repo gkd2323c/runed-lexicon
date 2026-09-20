@@ -2,6 +2,15 @@
   "doc": "项目级全局禁用词库（Global Forbidden Words）。canonical 机器源，供 term-contract-compiler 编译进各 MOD 的 Translation Contract，由 translation-quality-gate 以 TERM004 对每个已翻译单元执行。收录规则见 GLOSSARY.md §7 与 skyrim-doc-system §4；每条 reason 必须说清\"为什么禁\"，让 gate 报错可解释。两类条目：1. lore-name：官方专名译名裁决（english 为真实英文锚，source 整词命中才检查 dest）。2. anachronism-* / pollution-*（unconditional: true）：世界观荒谬词，不看源文、dest 出现即拦。收录判据：【该词在 TES 世界观中有没有合理存在理由】——有理由则不禁（哪怕听感现代，如 council=议会、network=联络网、scalpel=手术刀、修士/修女/小恶魔均有源文或官方依据）；无理由则禁（现实一神教/现代科技/互联网/企业制度等泰姆瑞尔无对应物）。宁缺毋滥：拿不准就不收；不建自动大词表，现代感候选词先经人工判定再入库。同形误报处置：unconditional 条目若在真实译文被证实同形误报（禁词是成语/跨词组合的子串），立即撤除或收窄为更长短语，并记入 _retracted 防重复收录。中文无词边界，跨词同形无法用通用规则区分，个案撤除是既定路径。",
   "bans": [
     {
+      "english": "Adril",
+      "forbidden": [
+        "阿德里尔"
+      ],
+      "target": "阿德尔",
+      "reason": "官方词典：Adril→阿德尔、Adril Arano→阿德尔·阿拉诺（Dragonborn）；TheKalpicAnomaly 实测错形「阿德里尔」（200）",
+      "category": "lore-name"
+    },
+    {
       "english": "Aetherial",
       "forbidden": [
         "以太"
@@ -3693,16 +3702,6 @@
       "unconditional": true
     },
     {
-      "english": "anachronism:座机",
-      "forbidden": [
-        "座机"
-      ],
-      "target": "",
-      "reason": "现代通讯/媒体禁令",
-      "category": "anachronism-communication",
-      "unconditional": true
-    },
-    {
       "english": "anachronism:开通会员",
       "forbidden": [
         "开通会员"
@@ -7212,6 +7211,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Auri-El",
+      "forbidden": [
+        "奥瑞埃尔"
+      ],
+      "target": "奥瑞-艾尔",
+      "reason": "官方词典：Chantry of Auri-El→奥瑞-艾尔的神殿（Dawnguard）；TheKalpicAnomaly 实测错形「奥瑞埃尔」（204）",
+      "category": "lore-name"
+    },
+    {
       "english": "Aventus Aretino",
       "forbidden": [
         "阿雷蒂诺"
@@ -7270,6 +7278,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Blackguard",
+      "forbidden": [
+        "黑卫"
+      ],
+      "target": "恶棍",
+      "reason": "官方词典：Blackguard's Armor→恶棍护甲、Blackguard's Boots→恶棍靴子（Dragonborn）；TheKalpicAnomaly 实测错形「黑卫」（202）",
+      "category": "lore-name"
+    },
+    {
       "english": "Blackreach",
       "forbidden": [
         "黑降",
@@ -7277,6 +7294,15 @@
       ],
       "target": "黑境",
       "reason": "官方词典：黑境（MVF1 DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "bonemold",
+      "forbidden": [
+        "骨螺"
+      ],
+      "target": "骨模",
+      "reason": "官方词典：Bonemold Gauntlets→骨模腕甲（Dragonborn）；TheKalpicAnomaly 实测错形「骨螺」（199）",
       "category": "lore-name"
     },
     {
@@ -7336,6 +7362,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Chantry",
+      "forbidden": [
+        "圣堂"
+      ],
+      "target": "神殿",
+      "reason": "官方词典：Chantry of Auri-El→奥瑞-艾尔的神殿（Dawnguard）；TheKalpicAnomaly 实测错形「圣堂」（207）",
+      "category": "lore-name"
+    },
+    {
       "english": "Chaurus",
       "forbidden": [
         "查乌斯"
@@ -7381,6 +7416,15 @@
       ],
       "target": "康斯坦斯·米切尔",
       "reason": "官方词典：荣耀堂孤儿院（dg04 v2 修正康斯坦丝；康斯坦斯简短合法）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Coven",
+      "forbidden": [
+        "结社"
+      ],
+      "target": "女巫团",
+      "reason": "官方词典：coven→女巫团、Glenmoril Coven→格伦摩利女巫团；TheKalpicAnomaly 实测错形「结社」（206）",
       "category": "lore-name"
     },
     {
@@ -7496,7 +7540,9 @@
     {
       "english": "Dexion",
       "forbidden": [
-        "德克西翁"
+        "德克西翁",
+        "德希安",
+        "德西昂"
       ],
       "target": "戴希翁",
       "reason": "官方词典：Dexion Evicus→戴希翁·艾维库斯（Dawnguard）；TheKalpicAnomaly 实测错形",
@@ -7552,6 +7598,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Drovas",
+      "forbidden": [
+        "德罗瓦斯"
+      ],
+      "target": "多瓦斯",
+      "reason": "官方词典：Drovas Relvi→多瓦斯·雷维（Dragonborn）；TheKalpicAnomaly 实测错形（194），清零后入库防复发",
+      "category": "lore-name"
+    },
+    {
       "english": "Dunmer",
       "forbidden": [
         "暗精灵",
@@ -7580,6 +7635,16 @@
       ],
       "target": "锻莫",
       "reason": "官方设定专名；泛化为矮人族丢失文明主体（MVF1 DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Dwemer Lexicon",
+      "forbidden": [
+        "锻莫词典",
+        "锻莫典籍"
+      ],
+      "target": "锻莫方典",
+      "reason": "官方词典：Lexicon→方典（Skyrim 主线/Blackreach）；TheKalpicAnomaly 实测错形「锻莫典籍」（774），审查拟修「锻莫词典」亦无官方依据，一并封禁",
       "category": "lore-name"
     },
     {
@@ -7612,6 +7677,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Ewer",
+      "forbidden": [
+        "水罐"
+      ],
+      "target": "壶",
+      "reason": "官方词典：Initiate's Ewer→新人之壶（Dawnguard）；TheKalpicAnomaly 实测错形「水罐」（206）",
+      "category": "lore-name"
+    },
+    {
       "english": "Falmer",
       "forbidden": [
         "雪精灵"
@@ -7628,6 +7702,15 @@
       ],
       "target": "初种月",
       "reason": "泰姆瑞尔历月名带月字；裸译初种缺月（dg04 v5 实测 2 处）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Florentius",
+      "forbidden": [
+        "弗洛伦提乌斯"
+      ],
+      "target": "佛伦提乌斯",
+      "reason": "官方词典：Florentius Baenius→佛伦提乌斯·贝尼乌斯（Dawnguard）；TheKalpicAnomaly 实测错形「弗洛伦提乌斯」（206）",
       "category": "lore-name"
     },
     {
@@ -7701,7 +7784,8 @@
     {
       "english": "Gelebor",
       "forbidden": [
-        "格勒博尔"
+        "格勒博尔",
+        "盖勒博尔"
       ],
       "target": "盖勒布",
       "reason": "官方词典：Knight-Paladin Gelebor→圣骑士盖勒布（Dawnguard）；TheKalpicAnomaly 实测错形",
@@ -7742,6 +7826,24 @@
       ],
       "target": "黄金龙爪",
       "reason": "官方词典：黄金龙爪（dg04/MVF1 修正金爪）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Gratian",
+      "forbidden": [
+        "格拉提安"
+      ],
+      "target": "格瑞希安",
+      "reason": "官方词典：Gratian Caerellius→格瑞希安·凯利乌斯（Dragonborn）；TheKalpicAnomaly 实测错形「格拉提安」（200），191 已正确使用「格瑞希安」仍被偏离，入库防复发",
+      "category": "lore-name"
+    },
+    {
+      "english": "Greathall",
+      "forbidden": [
+        "大会堂"
+      ],
+      "target": "大厅",
+      "reason": "官方词典：Greathall→大厅（Dragonborn）；TheKalpicAnomaly 实测错形「大会堂」（199，且有现代政治建筑联想）",
       "category": "lore-name"
     },
     {
@@ -7863,6 +7965,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Ildari",
+      "forbidden": [
+        "伊尔达莉"
+      ],
+      "target": "伊达利",
+      "reason": "官方词典：Ildari→伊达利、Ildari Sarothril→伊达利·萨罗希里（Dragonborn）；TheKalpicAnomaly 实测错形「伊尔达莉」（200），193 已正确使用「伊达利」仍被偏离，入库防复发",
+      "category": "lore-name"
+    },
+    {
       "english": "Imperial Library",
       "forbidden": [
         "帝都图书馆"
@@ -7921,6 +8032,15 @@
       ],
       "target": "克拉科",
       "reason": "官方词典：战友团首领；21 条候选高频错译（MVF1 round4）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Kolbjorn",
+      "forbidden": [
+        "科尔比约恩"
+      ],
+      "target": "寇泊琼",
+      "reason": "官方词典：Kolbjorn Barrow→寇泊琼古坟（Dragonborn）；TheKalpicAnomaly 实测错形「科尔比约恩」（190）",
       "category": "lore-name"
     },
     {
@@ -8016,6 +8136,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Lurker",
+      "forbidden": [
+        "潜伏者"
+      ],
+      "target": "深潜者",
+      "reason": "官方词典：Lurker→深潜者（Dragonborn）；TheKalpicAnomaly 实测错形「潜伏者」（599/600）",
+      "category": "lore-name"
+    },
+    {
       "english": "Lydia",
       "forbidden": [
         "莉迪亚"
@@ -8101,6 +8230,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Merilar",
+      "forbidden": [
+        "梅里拉尔"
+      ],
+      "target": "梅莉拉",
+      "reason": "官方词典：Merilar Rendas→梅莉拉·伦达斯（Dragonborn）；TheKalpicAnomaly 实测错形「梅里拉尔」（192）",
+      "category": "lore-name"
+    },
+    {
       "english": "Mid Year",
       "forbidden": [
         "年中",
@@ -8165,6 +8303,15 @@
       ],
       "target": "晨风",
       "reason": "官方词典：晨风省；莫萨尔是另一地名（MVF1 DICTIONARY 严禁清单，不得错翻）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Morvayn",
+      "forbidden": [
+        "莫瓦恩"
+      ],
+      "target": "莫尔凡",
+      "reason": "官方词典：Lleril Morvayn→雷里尔·莫尔凡、Morvayn Manor Key→莫尔凡宅邸钥匙（Dragonborn）；TheKalpicAnomaly 实测错形「莫瓦恩」（200）",
       "category": "lore-name"
     },
     {
@@ -8312,6 +8459,15 @@
       "reason": "现实宗教禁令：神父是基督教圣职，TES 官方 priest=祭司；建议改写：祭司（官方 priest=祭司）",
       "category": "anachronism-religion",
       "unconditional": true
+    },
+    {
+      "english": "Qahnaarin",
+      "forbidden": [
+        "Qahnaarin"
+      ],
+      "target": "夸纳林",
+      "reason": "官方词典：Why do you call me \"Qahnaarin?\"→你为什么叫我“夸纳林”？（Dawnguard）；TheKalpicAnomaly 实测「保留原文不译」（207）",
+      "category": "lore-name"
     },
     {
       "english": "Quaestor",
@@ -8468,6 +8624,42 @@
       "category": "lore-name"
     },
     {
+      "english": "Seeker",
+      "forbidden": [
+        "搜寻者"
+      ],
+      "target": "探求者",
+      "reason": "官方词典：Seeker→探求者（异典生物，Dragonborn）；TheKalpicAnomaly 实测错形「搜寻者」（834）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Septimus",
+      "forbidden": [
+        "塞普汀默斯"
+      ],
+      "target": "赛普蒂莫斯",
+      "reason": "官方词典：将血液/方典交给 Septimus→赛普蒂莫斯（Dawnguard）；TheKalpicAnomaly 实测错形「塞普汀默斯」（828）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Severin",
+      "forbidden": [
+        "塞维林"
+      ],
+      "target": "瑟佛林",
+      "reason": "官方词典：Severin Manor→瑟佛林宅邸、Tilisu Severin→蒂莉苏·瑟佛林（Dragonborn）；TheKalpicAnomaly 实测错形「塞维林」（200）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Sheogorath",
+      "forbidden": [
+        "歇尔格拉"
+      ],
+      "target": "谢尔格拉",
+      "reason": "官方词典：Sheogorath→谢尔格拉（Dragonborn 实证）；TheKalpicAnomaly 实测错形「歇尔格拉」（806）",
+      "category": "lore-name"
+    },
+    {
       "english": "Shrine",
       "forbidden": [
         "神龛"
@@ -8524,6 +8716,15 @@
       ],
       "target": "木灵",
       "reason": "官方词典：木灵；禁音译与树精（MVF1 DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Stalhrim",
+      "forbidden": [
+        "霜晶"
+      ],
+      "target": "魔冰",
+      "reason": "官方词典：Stalhrim 系列→魔冰（魔冰战锤/魔冰巨剑，Dragonborn）；TheKalpicAnomaly 实测错形「霜晶」（192），清零后入库防复发",
       "category": "lore-name"
     },
     {
@@ -8593,6 +8794,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Talvas",
+      "forbidden": [
+        "塔尔瓦斯"
+      ],
+      "target": "塔瓦斯",
+      "reason": "官方词典：Talvas Fathryon→塔瓦斯·法斯瑞恩（Dragonborn）；TheKalpicAnomaly 实测错形（194）",
+      "category": "lore-name"
+    },
+    {
       "english": "Temple of Mara",
       "forbidden": [
         "玛拉神庙"
@@ -8659,6 +8869,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Thirsk",
+      "forbidden": [
+        "瑟斯克"
+      ],
+      "target": "瑟斯科",
+      "reason": "官方词典：Thirsk→瑟斯科、Thirsk Mead Hall→瑟斯科蜜酒大厅（Dragonborn）；TheKalpicAnomaly 实测错形「瑟斯克」（198），清零后入库防复发",
+      "category": "lore-name"
+    },
+    {
       "english": "Tirdas",
       "forbidden": [
         "提尔达斯",
@@ -8706,12 +8925,30 @@
       "category": "lore-name"
     },
     {
+      "english": "Varona",
+      "forbidden": [
+        "瓦罗娜"
+      ],
+      "target": "瓦罗纳",
+      "reason": "官方词典：Varona→瓦罗纳、Varona Nelas→瓦罗纳·尼拉斯（Dragonborn）；TheKalpicAnomaly 实测错形（181/194），清零后入库防复发",
+      "category": "lore-name"
+    },
+    {
       "english": "Vampire Lord",
       "forbidden": [
         "吸血鬼大君"
       ],
       "target": "吸血鬼领主",
       "reason": "官方词典：吸血鬼领主（MVF1 round6 实测 大君 漏网；社区通行）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Veleth",
+      "forbidden": [
+        "维莱斯"
+      ],
+      "target": "维黎斯",
+      "reason": "官方词典：Veleth→维黎斯、Captain Veleth→维黎斯队长（Dragonborn）；TheKalpicAnomaly 实测错形「维莱斯」（200）",
       "category": "lore-name"
     },
     {
@@ -8751,6 +8988,15 @@
       "category": "lore-name"
     },
     {
+      "english": "wayshrine",
+      "forbidden": [
+        "圣祠"
+      ],
+      "target": "路龛",
+      "reason": "官方词典：wayshrine→路龛、Wayshrine Chest→路龛宝箱（Dawnguard）；TheKalpicAnomaly 实测错形「圣祠」（206）",
+      "category": "lore-name"
+    },
+    {
       "english": "Whiterun",
       "forbidden": [
         "雪漫"
@@ -8778,6 +9024,15 @@
       "reason": "字面映射：源文 Wood Elf=木精灵；波斯莫是 Bosmer 专属",
       "category": "lore-name",
       "unconditional": true
+    },
+    {
+      "english": "word wall",
+      "forbidden": [
+        "符文墙"
+      ],
+      "target": "龙语墙",
+      "reason": "官方词典：word wall→龙语墙（Dragonborn 实证）；TheKalpicAnomaly 实测错形「符文墙」（896/198）",
+      "category": "lore-name"
     },
     {
       "english": "Yatul",
@@ -8842,6 +9097,7 @@
     "域名",
     "钉钉",
     "秒杀",
-    "清真"
+    "清真",
+    "座机"
   ]
 }

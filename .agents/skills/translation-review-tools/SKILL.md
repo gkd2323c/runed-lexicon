@@ -1,9 +1,9 @@
 ---
 name: translation-review-tools
-description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a dispatch digest of per-idx terminology evidence (term_digest.py), search any word across a translated XML with REC/EDID/status and batch attribution (query.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), run long-text anti-hallucination probes for paragraph/length/numeral/gender anomalies (hallucination_probe.py), and slice long-text source-vs-destination readouts for semantic review (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, and post-review corrections. The standard toolkit replacing ad-hoc python -c / throwaway scripts for these jobs. Read-only except apply_fixes.py."
+description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a dispatch digest of per-idx terminology evidence (term_digest.py), search any word across a translated XML with REC/EDID/status and batch attribution (query.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run long-text anti-hallucination probes (hallucination_probe.py), and slice long-text source-vs-destination readouts for semantic review (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Translation Review Tools
@@ -16,6 +16,7 @@ metadata:
 | `term_digest.py` | 把批次 context.json 编译成一屏派单摘要（每 idx 的 MOD/官方术语命中 + 语境锚点） | 各种 `dump_*terms*.py` |
 | `query.py` | 全库搜词（源/译两侧）、idx 定位、批次归属 | 各种 `check_*.py` |
 | `apply_fixes.py` | 修正清单联动同步 map + result + canonical patch（支持跨批仅出 patch 模式） | 各种 `apply_fixes_*.py` / `fix_*.py` |
+| `normalize_charset.py` | 非简体字符检测与规范化（CHAR001 同源表），输出 apply_fixes 兼容的修正清单 | 各种手工「」→“”替换脚本 |
 | `hallucination_probe.py` | 长文本抗幻觉机械探针（段落/长度比/数字语义/性别代词） | 各种 `probe*.py` |
 | `longtext_readout.py` | 生成长文本源译对照分片读本（供语义精读） | 各种 `readout*.py` / `slice_*.py` |
 | `adjudication_pack.py` | 裁决包生成（扫描候选 + XML/对话主题/terms 证据预切）与 verdict 机械校验、修正计划生成 | 各种 `build_*pack*.py` / 裁决对账脚本 |
@@ -293,6 +294,26 @@ py -3 .../apply_fixes.py --stem Artaeum --batch NI-CELL-002 --fixes fix.json \
 - **patch 生成**：`--patch-out` 已存在时默认合并（同 idx 以本次值为准并计数提示）；XML 当前 Dest 已等于 new 的条目跳过（已就位）。
 - **修正单编制纪律（验收侧）**：单内必须覆盖该批全部 `REVIEW` 条目（裁决「保留」也用无 new 的 status 项转正，漏转会在写回时被 writer 拦截 `non-final status 'REVIEW'`）；`--batch` 为单批工具，idx 先对照该批 map/index 核实归属、按批拆单（凭记忆归档会整单被拒）。
 - 不触 MOD XML 本身；patch 由 `xtranslator-xml-writer` 消费写回。
+
+## normalize_charset.py
+
+将译文中的非简体字符（繁体字形、台港标点如「」、台港用词）规范化为简体形式：与 `translation-quality-gate` 的 CHAR001 同源——运行期动态加载同一 vendored 表与转换算法（零漂移），并保留其 R11 误报过滤（已简化字符的上下文误报不替换，如「么」不得被转为「幺」）。
+
+```text
+# 检查批次（有差异 exit 1，无差异 exit 0）
+py -3 .agents/skills/translation-review-tools/scripts/normalize_charset.py --result .work/<plugin>/batches/<BID>/translation.json
+
+# 全库扫描 canonical（只读）
+py -3 .agents/skills/translation-review-tools/scripts/normalize_charset.py --xml mods/<plugin>/<plugin>_english_chinese_translated.xml
+
+# 生成修正清单 → apply_fixes 应用（未写回批次）
+py -3 .../normalize_charset.py --result <translation.json> --fixes-out _tmp/data/charset-fixes.json
+py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --fixes _tmp/data/charset-fixes.json
+
+# 已写回内容的修正走跨批 patch（`--fixes` + `--translated-xml` + `--patch-out`）
+```
+
+边界：长度不等的转换（罕见）不自动替换、列 manual review 输出；不修改任何输入文件，只写 `--fixes-out` 指定的路径。
 
 ## 安全边界
 

@@ -21,6 +21,7 @@ APPLY = HERE / "apply_fixes.py"
 TERM_DIGEST = HERE / "term_digest.py"
 PROBE = HERE / "hallucination_probe.py"
 READOUT = HERE / "longtext_readout.py"
+NORMALIZE = HERE / "normalize_charset.py"
 
 
 def build_xml(rows) -> str:
@@ -531,6 +532,36 @@ def main() -> int:
                 failures.append(f"多次替换未串联（后次冲掉前次）: {got!r}")
             if cd.get("0", {}).get("expected_dest") != "甲项乙项丙项。":
                 failures.append(f"串联后 expected_dest 应仍取 canonical 现值: {cd.get('0', {}).get('expected_dest')!r}")
+
+        # ---------- normalize_charset ----------
+        norm_result = tmp / "norm_result.json"
+        norm_result.write_text(json.dumps({
+            "schema_version": 1,
+            "translations": [
+                {"translation_unit_id": "u:0", "xml_index": 10, "source": "x",
+                 "translation": "「意志屈服」的终末一字。", "status": "TRANSLATED", "confidence": "HIGH", "notes": ""},
+                {"translation_unit_id": "u:1", "xml_index": 11, "source": "y",
+                 "translation": "这是什么正理。", "status": "TRANSLATED", "confidence": "HIGH", "notes": ""},
+                {"translation_unit_id": "u:2", "xml_index": 12, "source": "z",
+                 "translation": "干净简体。", "status": "TRANSLATED", "confidence": "HIGH", "notes": ""},
+            ],
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        res = run(NORMALIZE, "--result", str(norm_result))
+        if res.returncode != 1:
+            failures.append(f"normalize 有差异时 exit 1 期望，实际 rc={res.returncode}")
+        if "差异 1 处" not in res.stdout:
+            failures.append(f"normalize 差异计数异常: {res.stdout[:200]}")
+
+        nfixes = tmp / "norm_fixes.json"
+        res = run(NORMALIZE, "--result", str(norm_result), "--fixes-out", str(nfixes))
+        if res.returncode != 1:
+            failures.append(f"normalize fixes 模式 rc={res.returncode} 期望 1")
+        nd = json.loads(nfixes.read_text(encoding="utf-8"))
+        if nd.get("10", {}).get("new") != "“意志屈服”的终末一字。":
+            failures.append(f"normalize fixes 新值错误: {nd.get('10')}")
+        if "11" in nd or "12" in nd:
+            failures.append(f"normalize 不应把无误条目写入 fixes（含 R11 误报）: {list(nd)}")
 
         if failures:
             for failure in failures:
