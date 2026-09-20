@@ -7172,6 +7172,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Arch-Curate",
+      "forbidden": [
+        "大法皇"
+      ],
+      "target": "教士长",
+      "reason": "官方词典：Arch-Curate Vyrthur→教士长维苏尔（Dawnguard）；TheKalpicAnomaly 实测错形「大法皇」（211）",
+      "category": "lore-name"
+    },
+    {
       "english": "Argonian",
       "forbidden": [
         "亚龙人",
@@ -7542,7 +7551,9 @@
       "forbidden": [
         "德克西翁",
         "德希安",
-        "德西昂"
+        "德西昂",
+        "德克西昂",
+        "德西翁"
       ],
       "target": "戴希翁",
       "reason": "官方词典：Dexion Evicus→戴希翁·艾维库斯（Dawnguard）；TheKalpicAnomaly 实测错形",
@@ -7785,7 +7796,9 @@
       "english": "Gelebor",
       "forbidden": [
         "格勒博尔",
-        "盖勒博尔"
+        "盖勒博尔",
+        "盖勒博",
+        "盖勒伯"
       ],
       "target": "盖勒布",
       "reason": "官方词典：Knight-Paladin Gelebor→圣骑士盖勒布（Dawnguard）；TheKalpicAnomaly 实测错形",
@@ -7980,6 +7993,15 @@
       ],
       "target": "帝国图书馆",
       "reason": "官方词典：帝国图书馆机构（meresis DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Isran",
+      "forbidden": [
+        "伊斯冉"
+      ],
+      "target": "伊士冉",
+      "reason": "官方词典：Isran→伊士冉、Speak to Isran→与伊士冉交谈（Dawnguard）；TheKalpicAnomaly 实测错形「伊斯冉」（219）",
       "category": "lore-name"
     },
     {
@@ -8315,6 +8337,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Moth Priest",
+      "forbidden": [
+        "圣蛾祭司"
+      ],
+      "target": "蛾祭司",
+      "reason": "官方词典：Moth Priest→蛾祭司（Dawnguard 实证，无「圣」字）；TheKalpicAnomaly 实测错形「圣蛾祭司」（216）",
+      "category": "lore-name"
+    },
+    {
       "english": "Mudcrab",
       "forbidden": [
         "泥蟹"
@@ -8441,6 +8472,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Paragon",
+      "forbidden": [
+        "典范"
+      ],
+      "target": "圣石",
+      "reason": "官方词典：Emerald Paragon→绿宝石圣石、Paragon Socket→圣石基座（Dawnguard）；TheKalpicAnomaly 实测错形「典范」（210）",
+      "category": "lore-name"
+    },
+    {
       "english": "pope / papacy",
       "forbidden": [
         "教皇"
@@ -8449,6 +8489,15 @@
       "reason": "现实宗教禁令；建议改写：TES 无教皇；大祭司 Archpriest 等",
       "category": "anachronism-religion",
       "unconditional": true
+    },
+    {
+      "english": "Prelate",
+      "forbidden": [
+        "教长"
+      ],
+      "target": "高级教士",
+      "reason": "官方词典：Prelate Nirilor→高级教士奈瑞勒、Prelate Athring→高级教士亚斯林（Dawnguard）；TheKalpicAnomaly 实测错形「教长」（209）",
+      "category": "lore-name"
     },
     {
       "english": "priest (Catholic)",
@@ -8596,6 +8645,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Salonia",
+      "forbidden": [
+        "萨罗尼亚"
+      ],
+      "target": "莎洛妮雅",
+      "reason": "官方词典：Salonia→莎洛妮雅、Salonia Caelia→莎洛妮雅·凯利雅（Dawnguard）；TheKalpicAnomaly 实测错形「萨罗尼亚」（216）",
+      "category": "lore-name"
+    },
+    {
       "english": "Satan / devil (real-world)",
       "forbidden": [
         "撒旦"
@@ -8704,6 +8762,24 @@
       ],
       "target": "索瑟海姆",
       "reason": "官方词典：龙裔 DLC 岛名；索瑟姆为高频错译（MVF1 round3，49 条源命中全错）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Sorine",
+      "forbidden": [
+        "索丽恩"
+      ],
+      "target": "索琳",
+      "reason": "官方词典：Sorine→索琳、Sorine Jurard→索琳·菊拉德（Dawnguard）；TheKalpicAnomaly 实测错形「索丽恩」（215）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Soul Husk",
+      "forbidden": [
+        "灵魂石壳"
+      ],
+      "target": "灵魂荚",
+      "reason": "官方词典：soul husks→灵魂荚、Soul Husk Extract→灵魂荚提取物（Dawnguard）；TheKalpicAnomaly 实测错形「灵魂石壳」（212）",
       "category": "lore-name"
     },
     {
@@ -8931,6 +9007,16 @@
       ],
       "target": "瓦罗纳",
       "reason": "官方词典：Varona→瓦罗纳、Varona Nelas→瓦罗纳·尼拉斯（Dragonborn）；TheKalpicAnomaly 实测错形（181/194），清零后入库防复发",
+      "category": "lore-name"
+    },
+    {
+      "english": "Vaermina",
+      "forbidden": [
+        "瓦米纳",
+        "瓦尔迷娜"
+      ],
+      "target": "瓦尔迷纳",
+      "reason": "官方词典：Vaermina's Torpor→瓦尔迷纳之眠、Vaermina Robes→瓦尔迷纳长袍；TheKalpicAnomaly 实测错形「瓦米纳」（992/996）与「瓦尔迷娜」（808/900）",
       "category": "lore-name"
     },
     {
