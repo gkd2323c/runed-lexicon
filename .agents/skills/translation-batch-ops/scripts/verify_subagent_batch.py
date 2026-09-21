@@ -37,6 +37,8 @@ VALIDATE = os.path.normpath(os.path.join(
     HERE, '..', '..', 'translation-executor', 'scripts', 'translation_result.py'))
 GATE = os.path.normpath(os.path.join(
     HERE, '..', '..', 'translation-quality-gate', 'scripts', 'quality_gate.py'))
+SEMGATE = os.path.normpath(os.path.join(
+    HERE, '..', '..', 'translation-quality-gate', 'scripts', 'semantic_gate.py'))
 
 STATUSES = {'TRANSLATED', 'KEEP', 'REVIEW'}
 CONFIDENCES = {'HIGH', 'MEDIUM', 'LOW'}
@@ -75,6 +77,9 @@ def main():
     ap.add_argument('--keep-list', default=None)
     ap.add_argument('--report', default=None)
     ap.add_argument('--repair', action='store_true')
+    ap.add_argument('--no-semantic', dest='semantic', action='store_false',
+                    help='关闭 TypeSafe 语义门（默认开；需 --xml/--contract/--result 齐备，'
+                         '无 TYPESAFE_API_KEY 时自动 SKIP 不阻塞）')
     a = ap.parse_args()
 
     fails, warnings = [], []
@@ -180,6 +185,33 @@ def main():
                          % (gv.get('verdict'), gv.get('fail_count'), gv.get('warning_count')))
             except Exception:
                 fail(fails, a.batch, 'GATE', tail[-200:])
+        # D. TypeSafe 语义门（机械 gate 之后的语义层；无 key 自动 SKIP）
+        if a.semantic and a.contract and a.xml:
+            r = subprocess.run([sys.executable, SEMGATE, '--result', result,
+                                '--xml', a.xml, '--contract', a.contract,
+                                '--batch', a.batch],
+                               capture_output=True, text=True)
+            try:
+                sv = json.loads((r.stdout or '').strip().splitlines()[0])
+                out['semantic_gate'] = {'rc': r.returncode, 'verdict': sv.get('verdict'),
+                                        'units': sv.get('units_checked'),
+                                        'fails': sv.get('fail_count'),
+                                        'warnings': sv.get('warning_count')}
+                sw_lines = [l.strip() for l in (r.stdout or '').splitlines()
+                            if l.strip().startswith(('WARN', 'FAIL'))]
+                for sl in sw_lines:
+                    warnings.append({'where': a.batch, 'code': 'SEMGATE', 'detail': sl[:220]})
+                out['semantic_gate']['warn_lines'] = sw_lines[:30]
+                if sv.get('verdict') == 'FAIL':
+                    fail(fails, a.batch, 'SEMGATE',
+                         'verdict=FAIL fails=%s（见 %s-semgate-report.json）'
+                         % (sv.get('fail_count'), a.batch))
+                elif sv.get('verdict') == 'SKIP':
+                    warnings.append({'where': a.batch, 'code': 'SEMGATE_SKIP',
+                                     'detail': 'TYPESAFE_API_KEY 未设置，语义门跳过'})
+            except Exception:
+                warnings.append({'where': a.batch, 'code': 'SEMGATE_PARSE',
+                                 'detail': (r.stdout + r.stderr)[-200:]})
         return out
 
     gate_out = {}

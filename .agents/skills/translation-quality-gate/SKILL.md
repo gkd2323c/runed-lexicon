@@ -1,9 +1,9 @@
 ---
 name: translation-quality-gate
-description: Deterministic, read-only pre-writeback quality gate for Skyrim mod translation batches. Verifies that completed translation-result JSON satisfies a compiled Translation Contract (term bindings, KEEP list, protected placeholders, simplified-Chinese charset) before the xTranslator XML writer runs. Use whenever a completed translation batch must be validated before XML writeback, when terminology regressions like Argonian/Blades/sweetroll need mechanical enforcement, or when a contract/regression change must be checked against the incident-derived synthetic regression corpus. Gate only checks declared unit bindings and never re-derives entity identity, and it never modifies translations.
+description: Deterministic, read-only pre-writeback quality gate for Skyrim mod translation batches. Verifies that completed translation-result JSON satisfies a compiled Translation Contract (term bindings, KEEP list, protected placeholders, simplified-Chinese charset) before the xTranslator XML writer runs, plus a TypeSafe semantic gate (semantic_gate.py) for context-sensitive term applicability, semantic mistranslation, and register judgments the mechanical layer cannot make. Use whenever a completed translation batch must be validated before XML writeback, when terminology regressions like Argonian/Blades/sweetroll need mechanical enforcement, or when a contract/regression change must be checked against the incident-derived synthetic regression corpus. Gate only checks declared unit bindings and never re-derives entity identity, and it never modifies translations.
 compatibility: Python 3.10+; standard library only. CHAR001 simplified-Chinese detection uses a vendored zh-cn conversion table (scripts/zh_cn_conv.json) — no third-party dependency, deterministic across environments. The tracked Translation Contract interface is documented in references/contract-schema.md.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 > 性能基线（见 `skyrim-tool-dev-rules` §2）：
@@ -279,6 +279,42 @@ All cases must pass before the gate may be considered safe. The gate path in
 `selftest_corpus.py` calls the real gate functions (check_unit,
 standalone_forbidden_issues) so selftest and gate cannot drift; current total
 69 cases (v0.2.0).
+
+## Semantic gate（`scripts/semantic_gate.py`，v0.3.0）
+
+机械层（quality_gate.py）只管字面匹配：禁形、必备目标、占位符、字符集。它判不了
+语境适用性（alias 条目该语境是否成立）、语义错译、语域硬伤。语义层由 TypeSafe
+System One 模型承担这三类判断，两层互补：机械层仍全权负责字面检查，语义门不重复。
+
+**判定契约**（阈值常量在脚本内，改动需记录实测理由）：
+
+| 级别 | 条件 | 去向 |
+| --- | --- | --- |
+| FAIL | term_violation ≥ 0.5 或 semantic_error ≥ 0.5 | 阻断写回 |
+| WARN 升级 | 0.3 ≤ 上述两项 < 0.5 | 人工复核队列 |
+| WARN 软提示 | issue_type=register 且置信 ≥ 0.5 | 仅供参考，不拦 |
+
+阈值依据：禁用词级违反实测召回 19/19（0.5 门限）；high 级漏判的实测分布 0.23~0.49
+落入升级带，由人工兜底，符合成本不对称原则（漏标进人眼，多标无害）。
+
+**语境适用性**：注入契约条目时连 `note` 一并注入，模型先判断 alias 注明的适用语境
+是否成立，不成立则该条目不适用。alias 条目的 REQUIRED 级绑定由此在语义层生效，
+机械层对它们仍只做 R19 锚点禁形拦截。
+
+**凭据边界**：`TYPESAFE_API_KEY` 只走环境变量，不落盘、不入任务卡。无 key 时输出
+`verdict=SKIP`、rc=0，不阻塞验收主线。
+
+**用法**：
+
+```text
+python .agents/skills/translation-quality-gate/scripts/semantic_gate.py \
+  --result <translation.json> --xml <source.xml> --contract <compiled.json> \
+  [--batch <BID>] [--report <report.json>]
+```
+
+`verify_subagent_batch.py` 默认挂接语义门（`--no-semantic` 关闭）；其 verdict/warnings
+并入验收报告的 `gate.semantic_gate` 段。result 支持 dict 平铺与 `translations[]`
+两种形态，条目自带 source 时优先使用，缺失才回查 --xml。
 
 ## Safety boundaries
 
