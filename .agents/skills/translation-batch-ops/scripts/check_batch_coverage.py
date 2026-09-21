@@ -28,6 +28,8 @@ def classify(batch, batches_dir, canonical=None):
     has_tr = os.path.isfile(os.path.join(d, 'translation.json'))
     has_map = os.path.isfile(os.path.join(d, 'map.json'))
     has_ctx = os.path.isfile(os.path.join(d, 'context.json'))
+    map_path = os.path.join(d, 'map.json')
+    map_mtime = os.path.getmtime(map_path) if has_map else None
     total = len(batch.get('idx') or [])
     filled = 0
     entries = []
@@ -76,6 +78,7 @@ def classify(batch, batches_dir, canonical=None):
         'total': total,
         'unwritten': unwritten,
         'unwritten_idx': unwritten_idx,
+        'map_mtime': map_mtime,
     }
 
 

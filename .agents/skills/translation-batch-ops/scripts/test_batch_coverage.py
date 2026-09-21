@@ -61,5 +61,83 @@ class UnwrittenDetectionTest(unittest.TestCase):
         self.assertEqual(r["unwritten"], 0)
 
 
+class MapMtimeTest(unittest.TestCase):
+    """classify 返回 map_mtime，供上游区分在途 / 滞留。"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = self.tmp.name
+        self.bid = "B-MTIME"
+        bdir = os.path.join(self.dir, self.bid)
+        os.makedirs(bdir)
+        with open(os.path.join(bdir, "map.json"), "w", encoding="utf-8") as f:
+            json.dump({"0": {"translation": "x", "status": "TRANSLATED"}}, f)
+
+    def test_map_mtime_returned(self):
+        r = C.classify(_batch(self.bid, [0]), self.dir)
+        self.assertIsNotNone(r["map_mtime"])
+
+    def test_absent_map_mtime_none(self):
+        r = C.classify(_batch("B-NONE", [0]), self.dir)
+        self.assertIsNone(r["map_mtime"])
+
+
+class StallSplitTest(unittest.TestCase):
+    """batch_summary：在途=正常中间态；仅超时未消费的才计滞留（提示性，非行动信号）。"""
+
+    def setUp(self):
+        import progress_snapshot as P
+        self.P = P
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = self.tmp.name
+
+    def _mk(self, bid, age_seconds):
+        bdir = os.path.join(self.dir, bid)
+        os.makedirs(bdir)
+        mp = os.path.join(bdir, "map.json")
+        with open(mp, "w", encoding="utf-8") as f:
+            json.dump({"0": {"translation": "x", "status": "TRANSLATED"}}, f)
+        t = 1_700_000_000 - age_seconds
+        os.utime(mp, (t, t))
+
+    def _summary(self, bid, now=1_700_000_000, stall_minutes=180):
+        plan = {"batches": [_batch(bid, [0])]}
+        return self.P.batch_summary(plan, self.dir, None,
+                                    stall_minutes=stall_minutes, now=now)
+
+    def test_fresh_map_is_in_flight_not_stalled(self):
+        self._mk("B-NEW", age_seconds=600)  # 10 分钟
+        s = self._summary("B-NEW")
+        self.assertEqual(s["translated"], 1)
+        self.assertEqual(s["stalled"], 0)
+
+    def test_old_map_is_stalled(self):
+        self._mk("B-OLD", age_seconds=4 * 3600)  # 4 小时
+        s = self._summary("B-OLD")
+        self.assertEqual(s["translated"], 1)
+        self.assertEqual(s["stalled"], 1)
+        self.assertEqual(s["stalled_batches"][0]["id"], "B-OLD")
+        self.assertGreaterEqual(s["stalled_batches"][0]["age_minutes"], 240)
+
+    def test_threshold_respected(self):
+        self._mk("B-4H", age_seconds=4 * 3600)
+        s = self._summary("B-4H", stall_minutes=1000)
+        self.assertEqual(s["stalled"], 0)
+
+    def test_consumed_batch_not_counted(self):
+        bid = "B-OK"
+        bdir = os.path.join(self.dir, bid)
+        os.makedirs(bdir)
+        with open(os.path.join(bdir, "translation.json"), "w", encoding="utf-8") as f:
+            json.dump({"translations": [
+                {"xml_index": 0, "translation": "已译", "status": "TRANSLATED"}]}, f,
+                ensure_ascii=False)
+        s = self._summary(bid)
+        self.assertEqual(s["verified"], 1)
+        self.assertEqual(s["stalled"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

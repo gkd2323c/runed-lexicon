@@ -1,9 +1,9 @@
 ---
 name: term-contract-compiler
-description: Deterministically compile Markdown terminology tables (MOD DICTIONARY.md, optionally GLOSSARY.md) into the machine-readable `terms` section of a Translation Contract consumed by translation-quality-gate. Use whenever a DICTIONARY.md / GLOSSARY.md decision must become executable term definitions with forbidden variants and risk flags, when building the gate input for a MOD, or when a terminology decision changed and the compiled contract must be regenerated. The compiler never infers unit bindings (those are semantic, produced by the analysis Agent) and never auto-binds ambiguous terms; terms with alias/knowledge-boundary risk default to FORBIDDEN_ONLY.
+description: Deterministically compile Markdown terminology tables (MOD DICTIONARY.md, optionally GLOSSARY.md) into the machine-readable `terms` section of a Translation Contract consumed by translation-quality-gate, with a mechanical terminology lint (quote pairing / direction slips / invisible chars / width mixing / traditional chars) enforced before every compile. Use whenever a DICTIONARY.md / GLOSSARY.md / terms.json decision must become executable term definitions with forbidden variants and risk flags, when building the gate input for a MOD, when a terminology decision changed and the compiled contract must be regenerated, or when terminology data needs a mechanical character-level health check (lint_terms.py). The compiler never infers unit bindings (those are semantic, produced by the analysis Agent) and never auto-binds ambiguous terms; terms with alias/knowledge-boundary risk default to FORBIDDEN_ONLY. 触发词：词表 lint、引号配对、禁词库检查、编译前检查。
 compatibility: Python 3.10+. Standard library only. Consumes Markdown tables in the project's DICTIONARY.md format (English | 中文 | 状态 | 来源 | 备注).
 metadata:
-  version: "0.2.1"
+  version: "0.3.0"
 ---
 
 # Term-Contract Compiler
@@ -109,6 +109,37 @@ Optional `--conf <file>.json` supplies per-term overrides:
 - Never emit REQUIRED for an ambiguous English form without explicit confirmation (the structured JSON path honors an explicit `enforcement` declaration instead).
 - Never edit DICTIONARY.md / terms.json / global-forbidden-words.json from this tool; it is read-only over its inputs.
 - Recompile after source changes; do not hand-edit the compiled JSON as canonical.
+
+## 词表机械 lint（编译前强制，`lint_terms.py`）
+
+LLM 管语义（「约根该怎么译」），脚本管机械（「引号有没有长歪」）。编译前自动对词表做确定性体检，FAIL 即拒绝编译（`--no-lint` 逃生）：
+
+```text
+py -3 .agents/skills/term-contract-compiler/scripts/lint_terms.py \
+  --terms mods/<plugin>/terms.json --bans global-forbidden-words.json [--json <report>] [--quiet]
+```
+
+检查项（FAIL = 确定性错误硬拦；WARN = 可疑不拦，人工看）：
+
+| 级别 | 检查 | 代码 |
+| --- | --- | --- |
+| FAIL | 引号/括号栈式配对（未闭合/多余/错序）：`“”‘’（）【】《》〔〕［］｛｝「」『』〈〉` | QUOTE_UNPAIRED / QUOTE_ORDER |
+| FAIL | 目标形（zh/target）含直角引号「」（译文层 CHAR001 已禁，词表源头同步拦） | CORNER_QUOTE |
+| FAIL | 半角双引号 `"` 紧邻中文 | ASCII_QUOTE_CJK |
+| FAIL | 不可见/控制字符（零宽空格/连接符、BOM、软连字符、C0/C1） | INVISIBLE / CONTROL_CHAR |
+| FAIL | 目标形含繁体/异体字（opencc 或 zhconv 可用时；无依赖则跳过） | TRADITIONAL |
+| FAIL | english 重复；forbidden 空项或自禁（与目标形相同） | DUP_ENGLISH / FORBIDDEN_SELF / FORBIDDEN_EMPTY |
+| WARN | 半角单引号 `'` 紧邻中文（音译撇号可能合法，如 杰'扎格） | ASCII_APOSTROPHE_CJK |
+| WARN | 全半角标点混用（中文邻半角 `,.;:!?` 或半角括号） | HALFWIDTH_PUNCT / HALFWIDTH_PAREN |
+| WARN | zh/target 含拉丁字母；说明字段繁体；forbidden 繁体条目 | LATIN_IN_ZH / TRADITIONAL |
+
+设计说明：
+
+- 目标形（zh / target）必须纯简体：译文匹配锚，字符形态与译文严格一致才能正确拦截；繁体/直角引号在此字段是 FAIL。
+- note 字段里「」为术语标记惯例，出现不报；配对错误照报（哨兵式校验）。
+- forbidden 列表里的繁体条目（如「黛爾芬」）是刻意防护形，CHAR001 已拦繁体译文故冗余但无害 → WARN 不拦。
+- 编辑词表后跑一次 standalone lint 看明细；编译路径只在 FAIL 时打印明细，warn 只计数。
+- 历史事故：`“唤风者“约根`（词条 zh 值里两个左引号）导致 TERM001 循环误报，人眼排查两轮才发现 → 本工具化。
 
 ## Global ban list (project-wide TERM004)
 

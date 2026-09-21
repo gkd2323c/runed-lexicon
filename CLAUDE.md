@@ -47,6 +47,10 @@ python .agents/skills/xtranslator-xml-writer/scripts/test_keep_semantics.py
 # 新建 / 修改 Skill 后的最低验证
 node .agents/skills/skill-creator/scripts/check_env.mjs --capability quick-validate
 py -3 .agents/skills/skill-creator/scripts/quick_validate.py .agents/skills/<skill-name>
+
+# 词表机械 lint（引号配对/不可见字符/全半角/繁简；编译时自动执行，可独立跑）
+python .agents/skills/term-contract-compiler/scripts/lint_terms.py \
+  --terms mods/<plugin>/terms.json --bans global-forbidden-words.json
 ```
 
 **测试发现的坑**：CI 的 `unittest discover` 步骤会跳过不含字面量 `unittest` 的测试文件（怕 `exit 5: NO TESTS RAN`）。用 standalone 风格（自己写 `main()`）新写的 `test_*.py` 不会被 CI 执行——要么加 `unittest`，要么登记进 `tools/pre-push-check.py` 的 `STANDALONE_SCRIPTS` 与 `ci.yml`（两边必须同步改）。

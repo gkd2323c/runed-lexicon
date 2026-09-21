@@ -4,7 +4,9 @@
 
 角色：进度统计（只读，--record 时追加写固定日志）。合并两个视角：
   1. XML 视角：canonical 全库翻译数与分类分布（含未开工的类别）。
-  2. 流水线视角：批次计划的执行状态（已验收 / 待消费 / 已备料 / 未备料）。
+  2. 流水线视角：批次计划的执行状态（已验收 / 在途 / 已备料 / 未备料；
+     在途超时未消费的另计为滞留）。在途是正常中间态（子代理落盘后到交付之间），
+     不是欠账信号；唯一开工信号是交付送达。
 
 用法：
   py -3 progress_snapshot.py \
@@ -111,13 +113,23 @@ def load_canonical_map(path):
     return out
 
 
-def batch_summary(plan, batches_dir, canonical=None):
+def batch_summary(plan, batches_dir, canonical=None, stall_minutes=180, now=None):
+    """批次状态摘要。
+
+    state=TRANSLATED（map 已落盘、尚未 consume）在活跃流水线中是**正常在途**：
+    子代理落盘后到交付/验收之间必然出现，不是欠账、不是行动信号（唯一开工信号是
+    交付送达）。只有 map 长时间（stall_minutes，默认 180）未被消费的才另计为
+    「滞留」——那才值得看一眼是否交付丢失。
+    """
+    import time as _time
+    now = now if now is not None else _time.time()
     rows = [classify_batch(b, batches_dir, canonical) for b in plan.get('batches', [])]
     summary = {'total': len(rows), 'verified': 0, 'translated': 0,
                'prepped': 0, 'missing': 0}
     filled_total = 0
     unwritten_lines = 0
     unwritten_batches = []
+    stalled_batches = []
     for r in rows:
         state = r['state']
         if state == 'VERIFIED':
@@ -125,6 +137,12 @@ def batch_summary(plan, batches_dir, canonical=None):
             filled_total += max(r['filled'], 0)
         elif state == 'TRANSLATED':
             summary['translated'] += 1
+            mt = r.get('map_mtime')
+            if mt is not None and (now - mt) > stall_minutes * 60:
+                stalled_batches.append({
+                    'id': r['id'],
+                    'age_minutes': round((now - mt) / 60),
+                })
         elif state == 'PREPPED':
             summary['prepped'] += 1
         else:
@@ -139,6 +157,9 @@ def batch_summary(plan, batches_dir, canonical=None):
     summary['filled_lines'] = filled_total
     summary['unwritten_lines'] = unwritten_lines
     summary['unwritten_batches'] = sorted(unwritten_batches, key=lambda x: -x['unwritten'])
+    summary['stalled'] = len(stalled_batches)
+    summary['stalled_batches'] = sorted(stalled_batches, key=lambda x: -x['age_minutes'])
+    summary['stall_minutes'] = stall_minutes
     return summary
 
 
@@ -235,8 +256,14 @@ def print_snapshot(snap, prev):
     if batches:
         lines.append(f"批次: 已验收 {batches['verified']}/{batches['total']} "
                      f"({fmt_pct(batches['verified'], batches['total'])})"
-                     f" | 待消费 {batches['translated']} | 已备料 {batches['prepped']}"
+                     f" | 在途 {batches['translated']} | 已备料 {batches['prepped']}"
                      f" | 未备料 {batches['missing']}")
+        stalled = batches.get('stalled') or 0
+        if stalled:
+            ids = ', '.join(f"{b['id']}({b['age_minutes']}min)"
+                            for b in batches.get('stalled_batches') or [])
+            lines.append(f"  !! 滞留 {stalled} 批（在途超 {batches.get('stall_minutes')} 分钟未消费）: {ids}")
+            lines.append("     （滞留仅提示复核可能性；子代理已交卷的仍等交付送达，勿提前处理）")
         unwritten = batches.get('unwritten_lines') or 0
         if unwritten:
             lines.append(f"  !! 已验收但未写回: "

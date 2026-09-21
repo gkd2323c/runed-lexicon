@@ -79,7 +79,7 @@ def main():
     ap.add_argument('--repair', action='store_true')
     ap.add_argument('--no-semantic', dest='semantic', action='store_false',
                     help='关闭 TypeSafe 语义门（默认开；需 --xml/--contract/--result 齐备，'
-                         '无 TYPESAFE_API_KEY 时自动 SKIP 不阻塞）')
+                         '无 TYPESAFE_API_KEY 时报 UNCHECKED 不阻塞主线）')
     a = ap.parse_args()
 
     fails, warnings = [], []
@@ -185,7 +185,7 @@ def main():
                          % (gv.get('verdict'), gv.get('fail_count'), gv.get('warning_count')))
             except Exception:
                 fail(fails, a.batch, 'GATE', tail[-200:])
-        # D. TypeSafe 语义门（机械 gate 之后的语义层；无 key 自动 SKIP）
+        # D. TypeSafe 语义门（机械 gate 之后的语义层；无 key 时显式记 UNCHECKED）
         if a.semantic and a.contract and a.xml:
             r = subprocess.run([sys.executable, SEMGATE, '--result', result,
                                 '--xml', a.xml, '--contract', a.contract,
@@ -195,23 +195,37 @@ def main():
                 sv = json.loads((r.stdout or '').strip().splitlines()[0])
                 out['semantic_gate'] = {'rc': r.returncode, 'verdict': sv.get('verdict'),
                                         'units': sv.get('units_checked'),
+                                        'unjudged': sv.get('unjudged_count'),
                                         'fails': sv.get('fail_count'),
                                         'warnings': sv.get('warning_count')}
                 sw_lines = [l.strip() for l in (r.stdout or '').splitlines()
-                            if l.strip().startswith(('WARN', 'FAIL'))]
+                            if l.strip().startswith(('WARN', 'FAIL', 'UNJUDGED'))]
                 for sl in sw_lines:
                     warnings.append({'where': a.batch, 'code': 'SEMGATE', 'detail': sl[:220]})
                 out['semantic_gate']['warn_lines'] = sw_lines[:30]
-                if sv.get('verdict') == 'FAIL':
+                sv_verdict = sv.get('verdict')
+                if sv_verdict == 'FAIL':
                     fail(fails, a.batch, 'SEMGATE',
                          'verdict=FAIL fails=%s（见 %s-semgate-report.json）'
                          % (sv.get('fail_count'), a.batch))
-                elif sv.get('verdict') == 'SKIP':
-                    warnings.append({'where': a.batch, 'code': 'SEMGATE_SKIP',
-                                     'detail': 'TYPESAFE_API_KEY 未设置，语义门跳过'})
-            except Exception:
-                warnings.append({'where': a.batch, 'code': 'SEMGATE_PARSE',
-                                 'detail': (r.stdout + r.stderr)[-200:]})
+                elif sv_verdict == 'PARTIAL':
+                    # 有条目未判定：本批语义层未完成，不得当作通过。
+                    fail(fails, a.batch, 'SEMGATE_PARTIAL',
+                         '%s 条未判定（调用失败），本批语义层未完成（见 %s-semgate-report.json）'
+                         % (sv.get('unjudged_count'), a.batch))
+                elif sv_verdict == 'UNCHECKED':
+                    # 无 key：本批语义层未检查。不阻断主线，但状态显式入报告，
+                    # 不与「检查过且通过」混淆。
+                    out['semantic_gate']['checked'] = False
+                    warnings.append({'where': a.batch, 'code': 'SEMGATE_UNCHECKED',
+                                     'detail': 'TYPESAFE_API_KEY 未设置，本批语义层未检查'})
+                else:
+                    out['semantic_gate']['checked'] = True
+            except Exception as e:  # noqa: BLE001
+                # 解析失败 = 语义门结果未知，与「未检查」不同，不得静默放过。
+                fail(fails, a.batch, 'SEMGATE_UNKNOWN',
+                     '语义门输出无法解析（%s），本批语义层结果未知：%s'
+                     % (type(e).__name__, (r.stdout + r.stderr)[-200:]))
         return out
 
     gate_out = {}

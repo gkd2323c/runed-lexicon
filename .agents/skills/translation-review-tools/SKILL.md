@@ -1,9 +1,9 @@
 ---
 name: translation-review-tools
-description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a dispatch digest of per-idx terminology evidence (term_digest.py), search any word across a translated XML with REC/EDID/status and batch attribution (query.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run long-text anti-hallucination probes (hallucination_probe.py), and slice long-text source-vs-destination readouts for semantic review (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
+description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # Translation Review Tools
@@ -15,11 +15,33 @@ metadata:
 | `read_batch.py` | 读一个批次的源译对照（验收通读标配） | 各种 `readout_*.py` |
 | `term_digest.py` | 把批次 context.json 编译成一屏派单摘要（每 idx 的 MOD/官方术语命中 + 语境锚点） | 各种 `dump_*terms*.py` |
 | `query.py` | 全库搜词（源/译两侧）、idx 定位、批次归属 | 各种 `check_*.py` |
-| `apply_fixes.py` | 修正清单联动同步 map + result + canonical patch（支持跨批仅出 patch 模式） | 各种 `apply_fixes_*.py` / `fix_*.py` |
+| `make_fixes_from_report.py` | 审查报告 → 修正集（fix map）：schema 解析、expected_current 回填、驳回/特裁/同源副本对齐 | 各种 `make-review*-fixes.py` |
+| `apply_fixes.py` | 修正清单联动同步 map + result + canonical patch（支持跨批仅出 patch 模式、`--subs-file` 多组替换声明） | 各种 `apply_fixes_*.py` / `fix_*.py` |
 | `normalize_charset.py` | 非简体字符检测与规范化（CHAR001 同源表），输出 apply_fixes 兼容的修正清单 | 各种手工「」→“”替换脚本 |
 | `hallucination_probe.py` | 长文本抗幻觉机械探针（段落/长度比/数字语义/性别代词） | 各种 `probe*.py` |
 | `longtext_readout.py` | 生成长文本源译对照分片读本（供语义精读） | 各种 `readout*.py` / `slice_*.py` |
 | `adjudication_pack.py` | 裁决包生成（扫描候选 + XML/对话主题/terms 证据预切）与 verdict 机械校验、修正计划生成 | 各种 `build_*pack*.py` / 裁决对账脚本 |
+
+## make_fixes_from_report.py
+
+审查报告 → 修正集（fix map）一键生成，替代每轮核销都手写一遍的
+「读报告 → 读 canonical 取现值 → 拼 fix map」转录脚本：
+
+```text
+py -3 .../make_fixes_from_report.py \
+  --report .work/<plugin>/notes/review-INFO-XXX.json \
+  --xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
+  --out .work/<plugin>/maps/<plugin>-fix-map-review-XXX.json \
+  [--drop 4960,4981] [--override ov.json] [--align-dups] [--include 5107,5108]
+```
+
+- 兼容两种报告 schema：`findings[]`（新）与 `issues[]`（历史）；`xml_index`/`idx` 均可。
+- `expected_current` 从 canonical 当场读取（CAS 基准）；现值已等于裁决值的条目列为 no-op 剔除。
+- `--drop`：驳回项（如官方实证现状正确）；`--override`：`{idx: 新值}` 特裁（部分采纳/语境重造）。
+- `--align-dups`：把裁决值广播到全库同源句的所有副本（同源分裂统一）；不传时只检测并打印分歧清单供人工判断。
+- 只读生成，不写批次文件；输出直接喂 `apply_fixes.py --fixes`。
+
+核销标准链：`make_fixes_from_report.py`（生成）→ `apply_fixes.py --fixes ... --translated-xml ... --patch-out ...`（联动批次 + 出 patch）→ `xtranslator-xml-writer` 的 `write_translations.py --patch`（写回 canonical）。
 
 ## adjudication_pack.py
 
@@ -243,6 +265,25 @@ fixes JSON：
 **`new` 可选**：缺省时只改 status/notes/confidence（常见需求：把 REVIEW/KEEP 状态转成 TRANSLATED 而译文不动），避免为此手写一次性脚本。
 
 **`--find/--replace`（同型多行替换）**：不值得为 5 条同型修正写全量 new JSON 时用；从各 idx 现值做子串替换并生成 fixes，走同一条写盘链路。`--idx-list` 限定行；无可替换时 no-op 且 exit 0。多行文本用 `--find-file` / `--replace-file`（见下「跨批模式」）。
+
+**`--subs-file`（多组替换声明，替代手写 fix-*.py）**：一个批次涉及多组词对、或多批次各需替换时，用声明式 JSON 一次执行（之前每轮手写 `fix-XXX.py` 的主要原因）：
+
+```text
+py -3 .../apply_fixes.py --stem TheKalpicAnomaly --subs-file _tmp/data/subs.json
+```
+
+```json
+[
+  {"find": "鬼婆乌鸦", "replace": "乌鸦鬼婆", "batches": ["INFO-452", "INFO-453"]},
+  {"find": "路径", "replace": "路线", "batches": ["INFO-453"], "idx_list": "22337,22351"},
+  {"find": "旧形", "replace": "新形", "canonical": true, "idx_list": "816"}
+]
+```
+
+- 批内项（`batches`）读 map.json 当场生成 fix（含 CAS 基准）；**同批次多组替换自动叠加**（第二轮基于第一轮结果继续），`status`/`notes` 可选覆盖。
+- canonical 项（`canonical: true`）从译文 XML 读现值并生成 patch（需 `--translated-xml` / `--patch-out`），默认同步批次文件（`--no-sync-batches` 关闭）。
+- 多批次先全部 dry-run 校验、后统一写盘（近似整体原子）；任一错误则零写盘。
+- 不再需要为这类替换写 `fix-XXX.py` 脚本（历史遗留 220+ 份，教训已入库）。
 
 **跨批模式自动同步批次文件**：省略 `--batch` 时（跨批修正/patch 生成），默认把新值
 同步进批次文件（map.json / translation.json）——canonical 修正不回写批次会致审查视图

@@ -25,7 +25,7 @@
         "以太领域"
       ],
       "target": "光界",
-      "reason": "官方 Dawnguard/Dragonborn 实证（\"他们都在光界\"\"从光界吸取能量\"）；以太领域为旧社区形",
+      "reason": "官方 Dawnguard/Dragonborn 实证（“他们都在光界”“从光界吸取能量”）；以太领域为旧社区形",
       "category": "lore-name"
     },
     {
@@ -8566,7 +8566,7 @@
         "奈尼"
       ],
       "target": "奈恩",
-      "reason": "官方词典实证（月之洛克汗书\"坠落于奈恩\"、松加德\"回归奈恩\"）；尼恩为 Druadach 错译。奈尼是 Nirni 女神不同词不在此列",
+      "reason": "官方词典实证（月之洛克汗书“坠落于奈恩”、松加德“回归奈恩”）；尼恩为 Druadach 错译。奈尼是 Nirni 女神不同词不在此列",
       "category": "lore-name"
     },
     {
@@ -8673,7 +8673,7 @@
         "Qahnaarin"
       ],
       "target": "夸纳林",
-      "reason": "官方词典：Why do you call me \"Qahnaarin?\"→你为什么叫我“夸纳林”？（Dawnguard）；TheKalpicAnomaly 实测「保留原文不译」（207）",
+      "reason": "官方词典：Why do you call me “Qahnaarin?”→你为什么叫我“夸纳林”？（Dawnguard）；TheKalpicAnomaly 实测「保留原文不译」（207）",
       "category": "lore-name"
     },
     {
@@ -9675,10 +9675,11 @@
     {
       "english": "Ebony",
       "forbidden": [
-        "乌金"
+        "乌金",
+        "乌木"
       ],
       "target": "黑檀",
-      "reason": "官方词典：Ebony→黑檀、Ebony Ingot→黑檀锭（Skyrim）；TheKalpicAnomaly 实测错形「乌金锭」（358）",
+      "reason": "官方词典：Ebony→黑檀、Ebony Ingot→黑檀锭（Skyrim）；TheKalpicAnomaly 实测错形「乌金锭」（358）；实测错形「乌木」（复审 070-071）",
       "category": "lore-name"
     },
     {
@@ -9715,6 +9716,15 @@
       ],
       "target": "狼后",
       "reason": "官方词典：The Wolf Queen, v7→狼后·卷7、Biography of the Wolf Queen→狼后传（Skyrim）；TheKalpicAnomaly 实测错形「狼女王」（4946）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Ebonmere",
+      "forbidden": [
+        "乌木之池"
+      ],
+      "target": "黑檀池",
+      "reason": "官方词典：Ebonmere Lock→黑檀池锁（Skyrim）；实测错形「乌木之池」（816）",
       "category": "lore-name"
     }
   ],

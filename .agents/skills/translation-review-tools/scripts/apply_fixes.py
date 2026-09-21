@@ -26,6 +26,20 @@ Usage:
   py -3 apply_fixes.py --stem Artaeum --batch NI-CELL-002 --fixes fix.json \
       --translated-xml mods/Artaeum.esp/Artaeum_english_chinese_translated.xml \
       --patch-out .work/Artaeum/maps/Artaeum-fix-patch.json
+  # 多组替换声明（替代手写 fix-*.py）：批内 + 跨批混合，一次执行
+  py -3 apply_fixes.py --stem Artaeum --subs-file _tmp/data/subs.json
+
+subs-file 格式（数组，或 {"subs": [...]}）：
+  [
+    {"find": "鬼婆乌鸦", "replace": "乌鸦鬼婆", "batches": ["INFO-452", "INFO-453"]},
+    {"find": "路径", "replace": "路线", "batches": ["INFO-453"], "idx_list": "22337,22351"},
+    {"find": "旧形", "replace": "新形", "canonical": true, "idx_list": "816"}
+  ]
+
+  批内项（batches）读 map.json 当场生成 fix（含 CAS 基准）；同批次多组替换自动叠加
+  （第二轮基于第一轮结果继续），status/notes 可选覆盖。canonical 项从译文 XML 读
+  现值并生成 patch（需 --translated-xml / --patch-out），默认同步批次文件。
+  多批次先全部 dry-run 校验、后统一写盘（近似整体原子）。
 """
 from __future__ import annotations
 
@@ -121,11 +135,364 @@ def detect_waived_tokens(source: str, translation: str) -> list[str]:
     return waived
 
 
+def apply_to_batch(batch_dir: Path, fixes: dict[int, dict], dry_run: bool = False) -> dict:
+    """把 fixes 应用到 batch_dir 的 map.json + translation.json。
+
+    先全部校验、后统一写盘；任一校验失败则本批次不写任何文件。
+    dry_run=True 只校验不写（供多批次编排先整体 dry-run 再写）。
+    返回 {map_applied, map_skipped, result_applied, result_skipped,
+         has_map, has_result, errors, warnings}。
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    map_applied = map_skipped = 0
+    result_applied = result_skipped = 0
+
+    map_path = batch_dir / "map.json"
+    map_data = None
+    if map_path.is_file():
+        map_data = json.loads(map_path.read_text(encoding="utf-8"))
+        for idx, fix in sorted(fixes.items()):
+            key = str(idx)
+            if key not in map_data:
+                errors.append(f"map.json 中不存在 idx {idx}")
+                continue
+            action, new = plan_entry(map_data[key], fix, "map.json", idx)
+            if action.startswith("error"):
+                errors.append(action)
+                continue
+            extras = [f for f in EXTRA_FIELDS if f in fix]
+            if action == "skip":
+                if extras:
+                    for field in extras:
+                        map_data[key][field] = fix[field]
+                    map_applied += 1
+                else:
+                    map_skipped += 1
+                continue
+            entry = map_data[key]
+            if str(entry.get("status", "")).upper() == "KEEP" and "status" not in fix:
+                entry["status"] = "TRANSLATED"
+                warnings.append(f"map.json[{idx}]: KEEP 条目改译，status 自动转 TRANSLATED")
+            entry["translation"] = new
+            for field in EXTRA_FIELDS:
+                if field in fix:
+                    entry[field] = fix[field]
+            map_applied += 1
+
+    result_path = batch_dir / "translation.json"
+    result_data = None
+    if result_path.is_file():
+        result_data = json.loads(result_path.read_text(encoding="utf-8"))
+        units = {u.get("xml_index"): u for u in result_data.get("translations", [])}
+        for idx, fix in sorted(fixes.items()):
+            unit = units.get(idx)
+            if unit is None:
+                warnings.append(f"translation.json 无此 unit（跳过）: {idx}")
+                continue
+            action, new = plan_entry(unit, fix, "translation.json", idx)
+            if action.startswith("error"):
+                errors.append(action)
+                continue
+            extras = [f for f in EXTRA_FIELDS if f in fix]
+            if action == "skip":
+                if extras:
+                    for field in extras:
+                        unit[field] = fix[field]
+                    result_applied += 1
+                else:
+                    result_skipped += 1
+                continue
+            if unit.get("status", "").upper() == "KEEP" and "status" not in fix:
+                unit["status"] = "TRANSLATED"
+                warnings.append(f"translation.json[{idx}]: KEEP unit 改译，status 自动转 TRANSLATED")
+            unit["translation"] = new
+            if unit.get("status", "").upper() == "PENDING":
+                unit["status"] = "TRANSLATED"
+            for field in EXTRA_FIELDS:
+                if field in fix:
+                    unit[field] = fix[field]
+            result_applied += 1
+
+    if not dry_run and not errors:
+        if map_data is not None and map_applied:
+            map_path.write_text(json.dumps(map_data, ensure_ascii=False, indent=2) + "\n",
+                                encoding="utf-8")
+        if result_data is not None and result_applied:
+            result_path.write_text(json.dumps(result_data, ensure_ascii=False, indent=2) + "\n",
+                                   encoding="utf-8")
+    return {
+        "map_applied": map_applied, "map_skipped": map_skipped,
+        "result_applied": result_applied, "result_skipped": result_skipped,
+        "has_map": map_data is not None, "has_result": result_data is not None,
+        "errors": errors, "warnings": warnings,
+    }
+
+
+def build_patch_from_fixes(fixes: dict[int, dict], xml_path: Path) -> dict:
+    """从 fixes 构建 canonical patch（expected_dest 取 XML 当前 Dest 的 CAS 守卫）。
+
+    返回 {patch, skipped, errors, warnings}。
+    """
+    patch: dict[str, dict] = {}
+    patch_skipped = 0
+    errors: list[str] = []
+    warnings: list[str] = []
+    root = ET.parse(str(xml_path)).getroot()
+    nodes = list(root.iter("String"))
+    for idx, fix in sorted(fixes.items()):
+        if not (0 <= idx < len(nodes)):
+            errors.append(f"patch: idx 越界 {idx}")
+            continue
+        if "new" not in fix:
+            patch_skipped += 1
+            continue
+        current = nodes[idx].findtext("Dest") or ""
+        if current == fix["new"]:
+            patch_skipped += 1
+            continue
+        entry = {"expected_dest": current, "translation": fix["new"]}
+        if "waived_tokens" in fix:
+            entry["waived_tokens"] = fix["waived_tokens"]
+        else:
+            auto = detect_waived_tokens(nodes[idx].findtext("Source") or "", fix["new"])
+            if auto:
+                entry["waived_tokens"] = auto
+                warnings.append(f"patch[{idx}]: 自动豁免方括号标记 {auto}")
+        patch[str(idx)] = entry
+    return {"patch": patch, "skipped": patch_skipped, "errors": errors, "warnings": warnings}
+
+
+def write_patch_file(patch: dict, patch_path: Path, merge_existing: bool = True,
+                     skipped: int = 0) -> tuple[str, list[str]]:
+    """写 patch 文件（默认与已有合并）。返回 (desc, warnings)。"""
+    warnings: list[str] = []
+    existing: dict = {}
+    if patch_path.is_file() and merge_existing:
+        try:
+            existing = json.loads(patch_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            warnings.append(f"现有 patch 无法解析，忽略: {patch_path}")
+    merged = dict(existing)
+    overwritten = 0
+    for key, value in patch.items():
+        if key in merged:
+            overwritten += 1
+        merged[key] = value
+    patch_path.parent.mkdir(parents=True, exist_ok=True)
+    patch_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return (f"patch: +{len(patch)}（覆盖已有 {overwritten}）"
+            f"{f'，跳过已就位 {skipped}' if skipped else ''} -> {patch_path}", warnings)
+
+
+def sync_batches_to_fixes(fixes: dict[int, dict], stem: str, work_root: Path) -> tuple[str, bool, list[str]]:
+    """跨批修正的批次文件同步（canonical 是唯一真相源，批次文件是派生视图）。
+
+    返回 (desc, failed, warnings)。
+    """
+    warnings: list[str] = []
+    try:
+        bs = load_batch_sync()
+        updates = {}
+        for idx, fix in fixes.items():
+            if "new" in fix:
+                upd = {"translation": fix["new"]}
+                if "expected_current" in fix:
+                    upd["expected_current"] = fix["expected_current"]
+                updates[idx] = upd
+        batches_dir = work_root / stem / "batches"
+        if not updates or not batches_dir.is_dir():
+            return "", False, warnings
+        rep = bs.sync_updates(updates, batches_dir)
+        desc = (f"批次同步: 改动 {rep['applied']}，已就位 {rep['already']}，"
+                f"{len(rep['batches'])} 批"
+                + (f"，不在任何批次 {len(rep['missing'])}" if rep["missing"] else ""))
+        for w in rep["warnings"]:
+            warnings.append(w)
+        for m in rep["mismatch"][:10]:
+            warnings.append(
+                f"批次现值不符 [{m['batch']}] {m['idx']} ({m['where']}): "
+                f"{m['current'][:60]!r}（仍同步为 patch 值）")
+        failed = False
+        for e in rep["errors"]:
+            print(f"  ERROR 批次同步失败: {e}", file=sys.stderr)
+            failed = True
+        return desc, failed, warnings
+    except Exception as exc:  # noqa: BLE001 — 同步失败不应阻断 patch 成果，但必须可见
+        print(f"  ERROR 批次同步异常: {exc}", file=sys.stderr)
+        return "", True, warnings
+
+
+def run_subs(args, work_root: Path) -> int:
+    """--subs-file 模式：多组替换一次声明（多批次 × 多词对），替代手写 fix-*.py 脚本。"""
+    subs_path = resolve(args.subs_file)
+    if not subs_path.is_file():
+        print(f"error: --subs-file 不存在: {subs_path}", file=sys.stderr)
+        return 2
+    try:
+        subs_raw = json.loads(subs_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"error: --subs-file 解析失败: {exc}", file=sys.stderr)
+        return 2
+    subs = subs_raw.get("subs") if isinstance(subs_raw, dict) else subs_raw
+    if not isinstance(subs, list) or not subs:
+        print("error: --subs-file 应为非空数组（或 {\"subs\": [...]}）", file=sys.stderr)
+        return 2
+
+    batches_dir = work_root / args.stem / "batches"
+    per_batch: dict[str, dict[int, dict]] = {}
+    canon_fixes: dict[int, dict] = {}
+    views: dict[str, dict[str, str]] = {}
+    nodes = None
+    for k, sub in enumerate(subs):
+        if not isinstance(sub, dict) or not sub.get("find"):
+            print(f"error: subs[{k}] 缺 find", file=sys.stderr)
+            return 2
+        find = sub["find"]
+        replace = sub.get("replace", "")
+        idx_list = sub.get("idx_list")
+        status = sub.get("status")
+        notes = sub.get("notes")
+        if sub.get("canonical"):
+            if not args.translated_xml:
+                print(f"error: subs[{k}] canonical 项需要 --translated-xml", file=sys.stderr)
+                return 2
+            xml_path = resolve(args.translated_xml)
+            if not xml_path.is_file():
+                print(f"error: --translated-xml 不存在: {xml_path}", file=sys.stderr)
+                return 2
+            if nodes is None:
+                nodes = list(ET.parse(str(xml_path)).getroot().iter("String"))
+            subset = ({s for s in idx_list.replace(",", " ").split() if s}
+                      if idx_list else None)
+            hits = 0
+            for i, node in enumerate(nodes):
+                if subset is not None and str(i) not in subset:
+                    continue
+                prior = canon_fixes.get(i)
+                base = prior["new"] if prior else (node.findtext("Dest") or "")
+                if find in base and replace != base:
+                    fix = {"new": base.replace(find, replace)}
+                    if status:
+                        fix["status"] = status
+                    if notes:
+                        fix["notes"] = notes
+                    canon_fixes[i] = fix
+                    hits += 1
+            print(f"  canonical: '{find}' -> '{replace}' 命中 {hits} 条")
+        else:
+            batches = sub.get("batches") or ([args.batch] if args.batch else [])
+            if not batches:
+                print(f"error: subs[{k}] 需给 batches 数组（或 --batch）", file=sys.stderr)
+                return 2
+            subset = ({s for s in idx_list.replace(",", " ").split() if s}
+                      if idx_list else None)
+            for bname in batches:
+                bdir = batches_dir / bname
+                if not bdir.is_dir():
+                    print(f"error: 批次目录不存在: {bdir}", file=sys.stderr)
+                    return 2
+                mp_path = bdir / "map.json"
+                if not mp_path.is_file():
+                    print(f"error: map.json 不存在: {mp_path}", file=sys.stderr)
+                    return 2
+                # 虚拟视图：含本轮已生成但未落盘的替换，使同批次多组替换可叠加，
+                # 且 expected_current 保持为首个未应用变化前的值（CAS 基准）。
+                view = views.get(bname)
+                if view is None:
+                    mp = json.loads(mp_path.read_text(encoding="utf-8"))
+                    view = {k: (e.get("translation", "") if isinstance(e, dict) else str(e))
+                            for k, e in mp.items()}
+                    views[bname] = view
+                bucket = per_batch.get(bname, {})
+                hits = 0
+                for key, cur in list(view.items()):
+                    if subset is not None and str(key) not in subset:
+                        continue
+                    if find not in cur or replace == cur:
+                        continue
+                    new = cur.replace(find, replace)
+                    view[key] = new
+                    idx = int(key)
+                    if idx in bucket:
+                        bucket[idx]["new"] = new
+                        if status:
+                            bucket[idx]["status"] = status
+                        if notes:
+                            bucket[idx]["notes"] = notes
+                    else:
+                        fix = {"new": new, "expected_current": cur,
+                               "notes": f"subs: {find!r} -> {replace!r}"}
+                        if status:
+                            fix["status"] = status
+                        if notes:
+                            fix["notes"] = notes
+                        bucket[idx] = fix
+                    hits += 1
+                if hits:
+                    per_batch[bname] = bucket
+                    print(f"  {bname}: '{find}' -> '{replace}' 命中 {hits} 条")
+                else:
+                    print(f"  {bname}: '{find}' 无命中（no-op）")
+
+    if not per_batch and not canon_fixes:
+        print("no-op: 全部替换项均无命中")
+        return 0
+
+    # 先全部 dry-run 校验，后统一写盘（近似整体原子）
+    all_errors: list[str] = []
+    all_warnings: list[str] = []
+    for bname, fixes in sorted(per_batch.items()):
+        s = apply_to_batch(batches_dir / bname, fixes, dry_run=True)
+        all_errors += [f"[{bname}] {e}" for e in s["errors"]]
+    patch: dict[str, dict] = {}
+    patch_skipped = 0
+    patch_desc = ""
+    if canon_fixes:
+        if not args.patch_out or not args.translated_xml:
+            print("error: canonical 项需同时提供 --patch-out / --translated-xml", file=sys.stderr)
+            return 2
+        pr = build_patch_from_fixes(canon_fixes, resolve(args.translated_xml))
+        patch = pr["patch"]
+        patch_skipped = pr["skipped"]
+        all_errors += pr["errors"]
+        all_warnings += pr["warnings"]
+    if all_errors:
+        print("== 校验失败，未写任何文件 ==", file=sys.stderr)
+        for msg in all_errors:
+            print(f"  {msg}", file=sys.stderr)
+        return 2
+
+    print(f"== apply subs: {args.stem} ==")
+    for bname, fixes in sorted(per_batch.items()):
+        s = apply_to_batch(batches_dir / bname, fixes)
+        print(f"  {bname}: map 更新 {s['map_applied']}，translation 更新 {s['result_applied']}"
+              if s["has_map"] or s["has_result"] else f"  {bname}: （无批次文件）")
+        all_warnings += [f"[{bname}] {w}" for w in s["warnings"]]
+    if patch:
+        desc, ws = write_patch_file(patch, resolve(args.patch_out), merge_existing=not args.no_merge)
+        all_warnings += ws
+        print(f"  {desc}" + (f"，跳过已就位 {patch_skipped}" if patch_skipped else ""))
+    sync_failed = False
+    if canon_fixes and patch and not args.no_sync_batches:
+        desc, sync_failed, ws = sync_batches_to_fixes(canon_fixes, args.stem, work_root)
+        all_warnings += ws
+        if desc:
+            print(f"  {desc}")
+    for msg in all_warnings:
+        print(f"  WARN {msg}")
+    return 1 if sync_failed else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stem", required=True)
     parser.add_argument("--batch", help="批次目录名。省略时只生成 canonical patch，不同步 map/translation")
     parser.add_argument("--fixes", help="Fixes JSON path")
+    parser.add_argument("--subs-file",
+                        help="批量替换声明 JSON（数组或 {subs:[...]}）：每项 "
+                             "{find, replace, batches?/canonical?, idx_list?, status?, notes?}；"
+                             "多组替换一次声明，替代手写 fix-*.py 脚本")
     parser.add_argument("--find", help="Substring to replace across the batch's translations (with --replace)")
     parser.add_argument("--replace", default="", help="Replacement for --find")
     parser.add_argument("--find-file", help="从 UTF-8 文件读 --find（多行替换：诗节、段落重写）")
@@ -160,11 +527,16 @@ def main() -> int:
         args.replace = repl_path.read_text(encoding="utf-8").rstrip("\n")
 
     # 跨批修正模式：不给 --batch 时只产出 canonical patch（抗幻觉审查等跨批修订用）。
-    # 机制上 patch 生成本就不依赖 batch——它只读 canonical 并对 idx 做 CAS——
-    # 强行要求 batch 会迫使调用者把跨批修订拆成多次执行。
-    if not args.batch and not ((args.fixes or args.find is not None and args.replace != "") and args.translated_xml and args.patch_out):
-        print("error: 省略 --batch 时需提供 --fixes 或 --find/--replace，并同时给 --translated-xml / --patch-out", file=sys.stderr)
+    # subs-file 模式自带 batches/canonical 声明，不受本节约束。
+    if (not args.batch and not args.subs_file
+            and not ((args.fixes or args.find is not None and args.replace != "")
+                     and args.translated_xml and args.patch_out)):
+        print("error: 省略 --batch 时需提供 --fixes 或 --find/--replace，并同时给 --translated-xml / --patch-out",
+              file=sys.stderr)
         return 2
+
+    if args.subs_file:
+        return run_subs(args, resolve(args.work_root))
 
     batch_dir = None
     if args.batch:
@@ -173,8 +545,8 @@ def main() -> int:
             print(f"error: 批次目录不存在: {batch_dir}", file=sys.stderr)
             return 2
 
-    if not args.fixes and args.find is None:
-        print("error: 需要 --fixes 或 --find/--replace", file=sys.stderr)
+    if not args.fixes and args.find is None and not args.subs_file:
+        print("error: 需要 --fixes 或 --find/--replace 或 --subs-file", file=sys.stderr)
         return 2
 
     if args.find is not None:
@@ -257,75 +629,14 @@ def main() -> int:
     errors: list[str] = []
     warnings: list[str] = []
 
-    # ---- map.json ----
-    map_path = batch_dir / "map.json" if batch_dir else None
-    map_data = None
-    map_applied = map_skipped = 0
-    if map_path is not None and map_path.is_file():
-        map_data = json.loads(map_path.read_text(encoding="utf-8"))
-        for idx, fix in sorted(fixes.items()):
-            key = str(idx)
-            if key not in map_data:
-                errors.append(f"map.json 中不存在 idx {idx}")
-                continue
-            action, new = plan_entry(map_data[key], fix, "map.json", idx)
-            if action.startswith("error"):
-                errors.append(action)
-                continue
-            extras = [f for f in EXTRA_FIELDS if f in fix]
-            if action == "skip":
-                if extras:
-                    for field in extras:
-                        map_data[key][field] = fix[field]
-                    map_applied += 1
-                else:
-                    map_skipped += 1
-                continue
-            entry = map_data[key]
-            if str(entry.get("status", "")).upper() == "KEEP" and "status" not in fix:
-                entry["status"] = "TRANSLATED"
-                warnings.append(f"map.json[{idx}]: KEEP 条目改译，status 自动转 TRANSLATED")
-            entry["translation"] = new
-            for field in EXTRA_FIELDS:
-                if field in fix:
-                    entry[field] = fix[field]
-            map_applied += 1
-
-    # ---- translation.json ----
-    result_path = batch_dir / "translation.json" if batch_dir else None
-    result_data = None
-    result_applied = result_skipped = 0
-    if result_path is not None and result_path.is_file():
-        result_data = json.loads(result_path.read_text(encoding="utf-8"))
-        units = {u.get("xml_index"): u for u in result_data.get("translations", [])}
-        for idx, fix in sorted(fixes.items()):
-            unit = units.get(idx)
-            if unit is None:
-                warnings.append(f"translation.json 无此 unit（跳过）: {idx}")
-                continue
-            action, new = plan_entry(unit, fix, "translation.json", idx)
-            if action.startswith("error"):
-                errors.append(action)
-                continue
-            extras = [f for f in EXTRA_FIELDS if f in fix]
-            if action == "skip":
-                if extras:
-                    for field in extras:
-                        unit[field] = fix[field]
-                    result_applied += 1
-                else:
-                    result_skipped += 1
-                continue
-            if unit.get("status", "").upper() == "KEEP" and "status" not in fix:
-                unit["status"] = "TRANSLATED"
-                warnings.append(f"translation.json[{idx}]: KEEP unit 改译，status 自动转 TRANSLATED")
-            unit["translation"] = new
-            if unit.get("status", "").upper() == "PENDING":
-                unit["status"] = "TRANSLATED"
-            for field in EXTRA_FIELDS:
-                if field in fix:
-                    unit[field] = fix[field]
-            result_applied += 1
+    # 批次文件（map.json / translation.json）——先 dry-run 校验，后统一写盘。
+    # 逻辑在 apply_to_batch（供单批次与 subs 模式共用）。
+    batch_summary = None
+    if batch_dir is not None:
+        probe = apply_to_batch(batch_dir, fixes, dry_run=True)
+        errors += probe["errors"]
+        warnings += probe["warnings"]
+        batch_summary = probe
 
     # ---- patch ----
     patch: dict[str, dict] = {}
@@ -337,31 +648,11 @@ def main() -> int:
         if not xml_path.is_file():
             errors.append(f"--translated-xml 不存在: {xml_path}")
         else:
-            root = ET.parse(str(xml_path)).getroot()
-            nodes = list(root.iter("String"))
-            for idx, fix in sorted(fixes.items()):
-                if not (0 <= idx < len(nodes)):
-                    errors.append(f"patch: idx 越界 {idx}")
-                    continue
-                if "new" not in fix:
-                    # status/notes-only 修正不改变 Dest，无需 patch 条目。
-                    patch_skipped += 1
-                    continue
-                current = nodes[idx].findtext("Dest") or ""
-                if current == fix["new"]:
-                    patch_skipped += 1
-                    continue
-                entry = {"expected_dest": current, "translation": fix["new"]}
-                # 方括号内容中文化后需声明豁免，否则 writer 以占位符缺失拦截。
-                # 已显式声明的以调用方为准（允许覆盖自动计算结果）。
-                if "waived_tokens" in fix:
-                    entry["waived_tokens"] = fix["waived_tokens"]
-                else:
-                    auto = detect_waived_tokens(nodes[idx].findtext("Source") or "", fix["new"])
-                    if auto:
-                        entry["waived_tokens"] = auto
-                        warnings.append(f"patch[{idx}]: 自动豁免方括号标记 {auto}")
-                patch[str(idx)] = entry
+            pr = build_patch_from_fixes(fixes, xml_path)
+            patch = pr["patch"]
+            patch_skipped = pr["skipped"]
+            errors += pr["errors"]
+            warnings += pr["warnings"]
 
     if errors:
         print("== 校验失败，未写任何文件 ==", file=sys.stderr)
@@ -370,30 +661,24 @@ def main() -> int:
         return 2
 
     # ---- write ----
-    if map_data is not None and map_applied:
-        map_path.write_text(json.dumps(map_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    if result_data is not None and result_applied:
-        result_path.write_text(json.dumps(result_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    map_applied = map_skipped = result_applied = result_skipped = 0
+    if batch_summary is not None:
+        applied = apply_to_batch(batch_dir, fixes)
+        for e in applied["errors"]:
+            print(f"  ERROR 写盘失败: {e}", file=sys.stderr)
+        if applied["errors"]:
+            return 2
+        map_applied = applied["map_applied"]
+        map_skipped = applied["map_skipped"]
+        result_applied = applied["result_applied"]
+        result_skipped = applied["result_skipped"]
 
     patch_desc = ""
     if args.patch_out:
-        patch_path = resolve(args.patch_out)
-        existing: dict = {}
-        if patch_path.is_file() and not args.no_merge:
-            try:
-                existing = json.loads(patch_path.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
-                warnings.append(f"现有 patch 无法解析，忽略: {patch_path}")
-        merged = dict(existing)
-        overwritten = 0
-        for key, value in patch.items():
-            if key in merged:
-                overwritten += 1
-            merged[key] = value
-        patch_path.parent.mkdir(parents=True, exist_ok=True)
-        patch_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        patch_desc = (f"patch: +{len(patch)}（覆盖已有 {overwritten}）"
-                      f"{f'，跳过已就位 {patch_skipped}' if patch_skipped else ''} -> {patch_path}")
+        patch_desc, ws = write_patch_file(patch, resolve(args.patch_out),
+                                          merge_existing=not args.no_merge,
+                                          skipped=patch_skipped)
+        warnings += ws
 
     # ---- 跨批模式：批次文件同步（机制环节）----
     # canonical 是唯一真相源，批次文件是派生视图。跨批修正（审查/抗幻觉）生成 patch
@@ -402,40 +687,14 @@ def main() -> int:
     sync_failed = False
     sync_desc = ""
     if not args.batch and patch and not args.no_sync_batches:
-        try:
-            bs = load_batch_sync()
-            updates = {}
-            for idx, fix in fixes.items():
-                if "new" in fix:
-                    upd = {"translation": fix["new"]}
-                    if "expected_current" in fix:
-                        upd["expected_current"] = fix["expected_current"]
-                    updates[idx] = upd
-            batches_dir = resolve(args.work_root) / args.stem / "batches"
-            if updates and batches_dir.is_dir():
-                rep = bs.sync_updates(updates, batches_dir)
-                sync_desc = (f"批次同步: 改动 {rep['applied']}，已就位 {rep['already']}，"
-                             f"{len(rep['batches'])} 批"
-                             + (f"，不在任何批次 {len(rep['missing'])}" if rep["missing"] else "") )
-                for w in rep["warnings"]:
-                    warnings.append(w)
-                for m in rep["mismatch"][:10]:
-                    warnings.append(
-                        f"批次现值不符 [{m['batch']}] {m['idx']} ({m['where']}): "
-                        f"{m['current'][:60]!r}（仍同步为 patch 值）")
-                for e in rep["errors"]:
-                    print(f"  ERROR 批次同步失败: {e}", file=sys.stderr)
-                if rep["errors"]:
-                    sync_failed = True
-        except Exception as exc:  # noqa: BLE001 — 同步失败不应阻断 patch 成果，但必须可见
-            print(f"  ERROR 批次同步异常: {exc}", file=sys.stderr)
-            sync_failed = True
+        sync_desc, sync_failed, ws = sync_batches_to_fixes(fixes, args.stem, resolve(args.work_root))
+        warnings += ws
 
     print(f"== apply fixes: {args.stem} / {args.batch} ==")
     print(f"map.json: 更新 {map_applied}，跳过(已就位) {map_skipped}"
-          + ("（不存在）" if map_data is None else ""))
+          + ("（不存在）" if batch_summary is None or not batch_summary["has_map"] else ""))
     print(f"translation.json: 更新 {result_applied}，跳过 {result_skipped}"
-          + ("（不存在）" if result_data is None else ""))
+          + ("（不存在）" if batch_summary is None or not batch_summary["has_result"] else ""))
     if patch_desc:
         print(patch_desc)
     if sync_desc:

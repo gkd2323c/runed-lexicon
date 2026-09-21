@@ -9,15 +9,16 @@
   FAIL        term_violation >= HARD 或 semantic_error >= HARD
   WARN 升级   HARD > term_violation/semantic_error >= SOFT（进人工复核队列）
   WARN 软提示 issue_type=register 且置信 >= REGISTER_CONF（仅提示，不拦）
-  无 API key  verdict=SKIP，rc=0（不阻塞验收主线；stdout 打 SEMGATE_SKIPPED）
+  PARTIAL     有条目未能判定（调用失败/缺字段）——本批不得视为已过语义门
+  UNCHECKED   无 API key，本批语义层未检查（rc=0 不阻塞，但状态显式记录）
 
 用法：
   py semantic_gate.py --result <translation.json> --xml <source.xml>
       --contract <compiled.json> [--batch <BID>] [--report <report.json>]
 
 stdout 首行 JSON verdict（与 quality_gate.py 约定一致，供 verify 抓取）：
-  {"verdict": "PASS|FAIL|SKIP", "units_checked": N, "fail_count": F, "warning_count": W}
-退出码：PASS/SKIP 0，FAIL 1，用法错误 2。
+  {"verdict": "PASS|FAIL|PARTIAL|UNCHECKED", "units_checked": N, ...}
+退出码：PASS/UNCHECKED 0，FAIL/PARTIAL 1，用法错误 2。
 """
 import argparse
 import io
@@ -85,6 +86,13 @@ def make_payload(source_en, translation_zh, hits):
     contract_view = []
     for h in hits:
         entry = {'source': h['source'], 'required_zh': h['target']}
+        # 契约的匹配语义是 contains_phrase（译文包含该形式即合规），不是逐字相等。
+        # 不显式注入这条，模型会拿 required_zh 做逐字比对，把合规的全称/省称译法
+        # 判成 TERM_VIOLATION（实测：Whiterun→「白漫城」term=0.51~0.61 误判 FAIL；
+        # 注入本字段后同例降至 0.15~0.17）。
+        entry['match_semantics'] = (
+            'contains_phrase：译文只要包含 required_zh 的形式即合规，不要求逐字相等'
+            '（如 required_zh=「白漫」时，「白漫」「白漫城」均合规）。')
         if h['forbidden']:
             entry['forbidden_zh'] = h['forbidden']
         if h['note']:
@@ -104,7 +112,9 @@ def make_payload(source_en, translation_zh, hits):
                 'type': 'noul',
                 'instructions': (
                     '译文是否违反了术语契约？违反指：适用条目要求的专名未按 required_zh 翻译，'
-                    '或使用了 forbidden_zh 禁形。注意：条目的 usage_note 若注明了适用语境'
+                    '或使用了 forbidden_zh 禁形。注意 required_zh 是匹配形式而非逐字要求：'
+                    '按条目的 match_semantics（contains_phrase）判断，译文包含该形式即合规。'
+                    '条目的 usage_note 若注明了适用语境'
                     '（如 alias 风险、普通名词义不挂钩、依场景/族属而定），先判断该语境在源文中'
                     '是否成立；语境不成立则该条目不适用，不算违反。源文不涉及契约条目时判否。'
                 ),
@@ -156,20 +166,20 @@ def ask(api_key, payload):
             if attempt == RETRIES - 1:
                 raise
             time.sleep(2 * (attempt + 1))
-    return None
+    raise AssertionError('unreachable: retry loop must return or raise')
 
 
 def judge_unit(api_key, idx, source_en, translation_zh, hits):
     payload = make_payload(source_en, translation_zh, hits)
     resp = ask(api_key, payload)
     a = resp['answers']
-    qp = a['quality'].get('probabilities', {})
+    qp = a['quality']['probabilities']
     rec = {
         'idx': idx,
         'term': a['term_violation']['noul'],
         'semantic': a['semantic_error']['noul'],
-        'p_pass': float(qp.get('0', 0.0)),
-        'p_fail': float(qp.get('2', 0.0)),
+        'p_pass': float(qp['0']),
+        'p_fail': float(qp['2']),
         'issue_type': a['issue_type']['choice'],
         'issue_conf': a['issue_type'].get('confidence', 0.0),
         'contract_hits': [h['source'] for h in hits],
@@ -207,9 +217,10 @@ def main():
 
     api_key = os.environ.get('TYPESAFE_API_KEY', '').strip()
     if not api_key:
-        print(json.dumps({'verdict': 'SKIP', 'units_checked': 0,
+        print(json.dumps({'verdict': 'UNCHECKED', 'units_checked': 0,
                           'fail_count': 0, 'warning_count': 0}, ensure_ascii=False))
-        print('SEMGATE_SKIPPED: TYPESAFE_API_KEY 未设置，语义门跳过（不阻塞验收）')
+        print('SEMGATE_UNCHECKED: TYPESAFE_API_KEY 未设置，本批语义层未检查'
+              '（机械层结论不受影响，但不得当作已过语义门）')
         return 0
 
     result = json.load(open(a.result, encoding='utf-8'))
@@ -259,13 +270,19 @@ def main():
                     (fails if level == 'FAIL' else warnings).append(
                         {'where': k, 'code': code, 'detail': detail})
             except Exception as e:  # noqa: BLE001
-                errors.append(k)
-                warnings.append({'where': k, 'code': 'SEMGATE_ERROR',
-                                 'detail': '%s: %s（该条未判，进人工复核）' % (type(e).__name__, str(e)[:120])})
+                # 调用失败即本批未完整判定：记入 errors，最终 verdict 降为 PARTIAL。
+                # 不当作普通 warning——那会让「没查到」和「查过没问题」长得一样。
+                errors.append('%s(%s: %s)' % (k, type(e).__name__, str(e)[:80]))
 
     records.sort(key=lambda r: int(r['idx']))
-    verdict = 'FAIL' if fails else 'PASS'
+    if fails:
+        verdict = 'FAIL'
+    elif errors:
+        verdict = 'PARTIAL'
+    else:
+        verdict = 'PASS'
     print(json.dumps({'verdict': verdict, 'units_checked': len(records),
+                      'unjudged_count': len(errors),
                       'fail_count': len(fails), 'warning_count': len(warnings)},
                      ensure_ascii=False))
     for f in fails[:20]:
@@ -273,7 +290,8 @@ def main():
     for w in warnings[:30]:
         print('WARN', w['where'], w['code'], w['detail'][:160])
     if errors:
-        print('WARN', a.batch, 'SEMGATE_ERRORS', '%d 条调用失败未判: %s' % (len(errors), errors[:8]))
+        print('UNJUDGED %d 条未判定（调用失败，本批语义层未完成）: %s'
+              % (len(errors), errors[:8]))
 
     rep = a.report
     if not rep:
@@ -284,11 +302,12 @@ def main():
             plugin = plugin.rsplit('.', 1)[0]
         rep = os.path.join('.work', plugin, 'reports', '%s-semgate-report.json' % a.batch)
     json.dump({'batch': a.batch, 'verdict': verdict,
-               'units_checked': len(records), 'fails': fails, 'warnings': warnings,
+               'units_checked': len(records), 'unjudged': errors,
+               'fails': fails, 'warnings': warnings,
                'records': records},
               open(rep, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     print('semgate report -> %s' % rep)
-    return 1 if fails else 0
+    return 1 if (fails or errors) else 0
 
 
 if __name__ == '__main__':

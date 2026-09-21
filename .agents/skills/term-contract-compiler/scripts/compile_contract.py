@@ -629,7 +629,31 @@ def main():
                     help='双轨一致性检查：与 --dictionary 同用，编译 Markdown 表格后与指定\n'
                          'terms.json 做集合 diff（词条存在性 / target / forbidden / status），\n'
                          '不产出 contract（--output 不再必需）；无差异 exit 0，有差异 exit 1')
+    ap.add_argument('--no-lint', action='store_true',
+                    help='跳过编译前词表机械 lint（默认执行：引号配对/同向引号/不可见字符/\n'
+                         '全半角/繁简；FAIL 时拒绝编译）')
     args = ap.parse_args()
+
+    # 编译前词表机械 lint（确定性检查；见 lint_terms.py）
+    if not args.check_terms and not args.no_lint:
+        lint_targets = []
+        if args.terms:
+            lint_targets.append(('terms', args.terms))
+        if args.global_bans:
+            lint_targets.append(('bans', args.global_bans))
+        if lint_targets:
+            import lint_terms
+            fails, warns, _ = lint_terms.lint_targets(lint_targets, quiet=True)
+            if fails:
+                print('词表 lint FAIL：', file=sys.stderr)
+                for x in fails:
+                    print(f"  [{x['entry']}].{x['field']} {x['code']}: {x['detail']}",
+                          file=sys.stderr)
+                print(f"error: 词表 lint 未通过（{len(fails)} fail / {len(warns)} warn）；"
+                      f"修复 FAIL 后重试，确需跳过用 --no-lint", file=sys.stderr)
+                raise SystemExit(1)
+            print(f'词表 lint: 通过（{len(lint_targets)} 文件，{len(warns)} warn；'
+                  f'详情跑 lint_terms.py）')
 
     if args.check_terms:
         if not args.dictionary:

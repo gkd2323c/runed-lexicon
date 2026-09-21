@@ -7,12 +7,14 @@ metadata:
 ---
 
 > 性能基线（见 `skyrim-tool-dev-rules` §2）：
+>
 > - MVF1 规模（8555 单元 / 9402 节点，含 XML 预检 + auto-bind）：**0.89s**
 > - Druadach 规模（20634 单元 / 849 条全局禁词，auto-bind）：**4.1s**（2026-09-09 优化后；优化前 26.7s）
 >
 > 回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复。
 >
 > 已内建的三层预筛（改动匹配逻辑时不得回退）：
+>
 > 1. 正则缓存：`_compiled_literal` / `_compiled_word` / `_strip_html_tags_cached`（原实现对每个 unit × 每个 term 重新 `re.compile`，实测 2200 万次）
 > 2. 字面预筛：`find_source_hits` / `_iter_word_matches` 在进正则前先用 `in` 检查锚点
 > 3. ban 层预筛：`global_ban_issue` 先查 forbidden 是否出现在 dest，再调 `find_global_ban_hits`
@@ -61,18 +63,18 @@ python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
 
 ## Checks
 
-| Code | Meaning | Fails when |
-| --- | --- | --- |
-| TERM001 | required target missing | a binding with `required:true` has a dest that does not contain the target per `match` |
-| TERM002 | forbidden variant | dest contains a term's `forbidden` variant |
-| TERM003 | blocked-suffix variant | dest contains the target substring followed by a `blocked_suffix` (e.g. 阿尔贡尼亚人) |
-| TERM004 | 全局禁用词（项目级） | dest 含 global_bans 中某条 `forbidden` 形态，且 source 整词出现该条 `english` 锚点（对每个已翻译单元独立执行，无需 unit binding）；detail 携带 reason |
-| KEEP002 | 全局 KEEP 被翻译 | 一个 global_keep 英文值在 source 整词出现、dest 却 != 该值 |
-| KEEP001 | KEEP modified | a KEEP-list source value was translated |
-| PLACEHOLDER001 | protected token lost | a protected token present in source is absent/altered in dest（R16 联动 executor 的 `waived_tokens` 背书：Agent 已背书的方括号中文化不拦） |
-| CHAR001 | non-simplified chars | vendored zh-cn conversion table: flagged iff convert(dest,'zh-cn') != dest (reports concrete diff chars; filters out context-sensitivity false positives — see R11 fix, v0.1.4; table vendored in-repo since v0.1.6) |
-| TRUNC001 | truncated translation (WARNING) | 源文是完整长句（≥55 字符、不以省略号收尾），译文却以 ……/… 中断且短于源文 62%——疑似翻译时把后半句砍掉带过。**WARNING**：可能是真残缺，也可能是角色“欲言又止/毒舌省略”的合法风格，需 Agent 对照 source 人审消解，不阻断写回 |
-| XML001 | identity drift | xml_index block's Source/EDID/REC mismatch (pre-writeback, when `--xml` given) |
+| Code           | Meaning                         | Fails when                                                                                                                                                                                                                |
+| -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TERM001        | required target missing         | a binding with `required:true` has a dest that does not contain the target per `match`                                                                                                                                    |
+| TERM002        | forbidden variant               | dest contains a term's `forbidden` variant                                                                                                                                                                                |
+| TERM003        | blocked-suffix variant          | dest contains the target substring followed by a `blocked_suffix` (e.g. 阿尔贡尼亚人)                                                                                                                                     |
+| TERM004        | 全局禁用词（项目级）            | dest 含 global_bans 中某条 `forbidden` 形态，且 source 整词出现该条 `english` 锚点（对每个已翻译单元独立执行，无需 unit binding）；detail 携带 reason                                                                     |
+| KEEP002        | 全局 KEEP 被翻译                | 一个 global_keep 英文值在 source 整词出现、dest 却 != 该值                                                                                                                                                                |
+| KEEP001        | KEEP modified                   | a KEEP-list source value was translated                                                                                                                                                                                   |
+| PLACEHOLDER001 | protected token lost            | a protected token present in source is absent/altered in dest（R16 联动 executor 的 `waived_tokens` 背书：Agent 已背书的方括号中文化不拦）                                                                                |
+| CHAR001        | non-simplified chars            | vendored zh-cn conversion table: flagged iff convert(dest,'zh-cn') != dest (reports concrete diff chars; filters out context-sensitivity false positives — see R11 fix, v0.1.4; table vendored in-repo since v0.1.6)      |
+| TRUNC001       | truncated translation (WARNING) | 源文是完整长句（≥55 字符、不以省略号收尾），译文却以 ……/… 中断且短于源文 62%——疑似翻译时把后半句砍掉带过。**WARNING**：可能是真残缺，也可能是角色“欲言又止/毒舌省略”的合法风格，需 Agent 对照 source 人审消解，不阻断写回 |
+| XML001         | identity drift                  | xml_index block's Source/EDID/REC mismatch (pre-writeback, when `--xml` given)                                                                                                                                            |
 
 ## Usage
 
@@ -227,6 +229,7 @@ TRUNC001 检出“译文把后半句吞了”的候选：源文是完整长句�
 混在 207 条启发式命中里，noun-audit 查不出（它只查名词）。
 
 判定条件（全部满足才报）：
+
 - source 长度 ≥ 55（排除 Gah.../Neeth... 类短叹）；
 - source 不以省略号收尾（原文自带欲言又止则跳过）；
 - dest 非空、dest != source（排 KEEP/未译）；
@@ -288,11 +291,11 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 
 **判定契约**（阈值常量在脚本内，改动需记录实测理由）：
 
-| 级别 | 条件 | 去向 |
-| --- | --- | --- |
-| FAIL | term_violation ≥ 0.5 或 semantic_error ≥ 0.5 | 阻断写回 |
-| WARN 升级 | 0.3 ≤ 上述两项 < 0.5 | 人工复核队列 |
-| WARN 软提示 | issue_type=register 且置信 ≥ 0.5 | 仅供参考，不拦 |
+| 级别        | 条件                                         | 去向           |
+| ----------- | -------------------------------------------- | -------------- |
+| FAIL        | term_violation ≥ 0.5 或 semantic_error ≥ 0.5 | 阻断写回       |
+| WARN 升级   | 0.3 ≤ 上述两项 < 0.5                         | 人工复核队列   |
+| WARN 软提示 | issue_type=register 且置信 ≥ 0.5             | 仅供参考，不拦 |
 
 阈值依据：禁用词级违反实测召回 19/19（0.5 门限）；high 级漏判的实测分布 0.23~0.49
 落入升级带，由人工兜底，符合成本不对称原则（漏标进人眼，多标无害）。
@@ -301,8 +304,35 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 是否成立，不成立则该条目不适用。alias 条目的 REQUIRED 级绑定由此在语义层生效，
 机械层对它们仍只做 R19 锚点禁形拦截。
 
+**匹配语义（必注入）**：契约的 `match.kind` 是 `contains_phrase`——译文包含 required_zh
+形式即合规，不要求逐字相等。字段名 `required_zh` 本身易被读成逐字要求，故注入时
+必须同时给 `match_semantics` 说明。漏掉它会系统性误报：实测 `Whiterun`→「白漫城」
+（官方全称，机械层 PASS）被判 TERM_VIOLATION，term=0.49~0.61 跨过 HARD=0.5。
+
+| 注入方式             | term 三次实测      | 判定               |
+| -------------------- | ------------------ | ------------------ |
+| 只给 required_zh     | 0.51 / 0.49 / 0.51 | FAIL（贴边界抖动） |
+| 加 match_semantics   | 0.17 / 0.16 / 0.15 | ok                 |
+| 只改字段名 target_zh | 0.56 / 0.57 / 0.56 | FAIL（无关变量）   |
+
+修复后误报消除且不漏真违规（同一句）：正确全称 0.04 ok、正确省称 0.03 ok、
+未译 0.96 FAIL、错译「雪漫」0.41 FAIL、音译「怀特伦」0.95 FAIL。
+
+**四态判定（状态必须如实，不得降级为成功）**：
+
+| verdict | 含义 | rc | 后续 |
+| --- | --- | --- | --- |
+| `PASS` | 本批全部条目已判定且无 FAIL | 0 | 通过 |
+| `FAIL` | 存在硬拦截项 | 1 | 阻断写回 |
+| `PARTIAL` | 有条目未判定（调用失败）——本批语义层**未完成** | 1 | 未判定项交复核 |
+| `UNCHECKED` | 无 key，本批语义层**未检查** | 0 | 不阻主线，但不得当作已过语义门 |
+
+`PARTIAL` 与 `UNCHECKED` 是如实上报，不是缺陷：语义门不追求 100% 自动判定，
+未判定项交复核即可。网络抖动不做重试对抗（漏几个给复核，频繁轮询会给服务器压力）；
+关键是**不得把「没查到」记成「查过没问题」**。
+
 **凭据边界**：`TYPESAFE_API_KEY` 只走环境变量，不落盘、不入任务卡。无 key 时输出
-`verdict=SKIP`、rc=0，不阻塞验收主线。
+`verdict=UNCHECKED`、rc=0（不阻塞验收主线），verify 报告中该批 `checked=false`。
 
 **用法**：
 
@@ -315,6 +345,50 @@ python .agents/skills/translation-quality-gate/scripts/semantic_gate.py \
 `verify_subagent_batch.py` 默认挂接语义门（`--no-semantic` 关闭）；其 verdict/warnings
 并入验收报告的 `gate.semantic_gate` 段。result 支持 dict 平铺与 `translations[]`
 两种形态，条目自带 source 时优先使用，缺失才回查 --xml。
+
+## Semantic gate 基线（`scripts/semgate_baseline.py`，哨兵层）
+
+语义门判定来自概率模型，上游模型版本或阈值一改，判定行为可能静默位移；机械 gate
+有 corpus 回归兜底（gate 与 selftest 不可漂移），语义层此前没有对应机制。本脚本补
+这一层：**不判译文对错，只判同一输入的判定轨迹是否与上次一致**。
+
+三个动作：
+
+| 动作         | 输入                                         | 输出                                                                            |
+| ------------ | -------------------------------------------- | ------------------------------------------------------------------------------- |
+| `--build`    | semgate report + translation.json + contract | 基线 JSON（每条含 source/translation/完整判定向量/契约 hits/级别）              |
+| `--check`    | 基线 + contract                              | FLIP（跨级）/ DRIFT（超容差未跨级）/ OK 三类事件 + diff report                  |
+| `--repeat N` | 同上                                         | 每条重复跑 N 次记 spread；spread 超容差标记 `fragile`（该判定落在模型能力边界） |
+
+**归因闸门**：基线记录建库时的 `contract_sha256`。`--check` 时契约与基线不一致会
+在输出顶部打 `CONTRACT_CHANGED`，因为此时位移可能来自契约变更而非模型漂移——
+先用契约差异解释，再怀疑模型。
+
+**版本指针与哨兵的分工**：`MODEL = 'jev-latest'` 是服务标准指针，上游改进自动生效，
+无需追版本号。配套代价是判定行为可能随上游变化，所以用 `--check` 做定期哨兵：
+指针给灵活性，哨兵给可见性，两者配对使用。
+
+（`--check` 的 diff 报告里记录当次实测的判定向量；若要逐次对比版本行为，
+可在 `--note` 里自行标注。）
+
+**fragile 的生产用途**：重复跑自身抖动超容差的 case，说明模型对该判断本就没把握。
+生产判定若落在同类区域，应升级人工而非信任硬判。
+
+**用法**：
+
+```text
+# 建库
+python .agents/skills/translation-quality-gate/scripts/semgate_baseline.py --build \
+  --report <batch-semgate-report.json> --translations <batch/translation.json> \
+  --contract <compiled.json> --out <baseline.json> [--note "..."]
+
+# 比对（需 TYPESAFE_API_KEY）
+python .agents/skills/translation-quality-gate/scripts/semgate_baseline.py --check \
+  --baseline <baseline.json> --contract <compiled.json> \
+  [--tolerance 0.15] [--repeat 3] [--out <diff-report.json>]
+```
+
+退出码：0 全 OK，1 存在 FLIP/DRIFT，2 用法错误，3 无 API key。
 
 ## Safety boundaries
 

@@ -23,6 +23,7 @@ PROBE = HERE / "hallucination_probe.py"
 READOUT = HERE / "longtext_readout.py"
 NORMALIZE = HERE / "normalize_charset.py"
 VIEW = HERE / "make_review_view.py"
+FIXGEN = HERE / "make_fixes_from_report.py"
 
 
 def build_xml(rows) -> str:
@@ -653,6 +654,127 @@ def main() -> int:
                   "--canonical", str(view_xml), "--out", str(vres), "--allow-drift")
         if res.returncode != 0:
             failures.append(f"review_view --allow-drift 应放行: rc={res.returncode} {res.stderr[:150]}")
+
+        # ---------- make_fixes_from_report 报告→修正集 ----------
+        # 锁定：findings schema 解析、expected_current 从 canonical 读、
+        # --drop / --override、同源副本分歧检测与 --align-dups 广播。
+        fg_xml = tmp / "fg_english_chinese_translated.xml"
+        fg_xml.write_text(build_xml([
+            {"edid": "[A]", "rec": "INFO:NAM1", "source": "Alpha line", "dest": "甲行"},
+            {"edid": "[B]", "rec": "INFO:NAM1", "source": "Beta line", "dest": "乙行"},
+            {"edid": "[C]", "rec": "INFO:NAM1", "source": "Beta line", "dest": "乙行旧"},
+            {"edid": "[D]", "rec": "INFO:NAM1", "source": "Gamma line", "dest": "丙行"},
+        ]), encoding="utf-8")
+        fg_report = tmp / "fg-report.json"
+        fg_report.write_text(json.dumps({
+            "meta": {"batches": ["BZ"], "reviewed_at": "t", "unit_count": 3},
+            "findings": [
+                {"xml_index": 0, "source": "Alpha line", "current": "甲行",
+                 "proposed": "甲行新", "severity": "low", "reason": "t"},
+                {"xml_index": 1, "source": "Beta line", "current": "乙行",
+                 "proposed": "乙行新", "severity": "low", "reason": "t"},
+                {"xml_index": 3, "source": "Gamma line", "current": "丙行",
+                 "proposed": "丙行新", "severity": "low", "reason": "t"},
+            ],
+            "summary": {"findings_total": 3, "by_severity": {"high": 0, "medium": 0, "low": 3}},
+        }, ensure_ascii=False), encoding="utf-8")
+        fg_out = tmp / "fg-fix-map.json"
+        fg_ov = tmp / "fg-ov.json"
+        fg_ov.write_text(json.dumps({"3": "丙行特裁"}, ensure_ascii=False), encoding="utf-8")
+        res = run(FIXGEN, "--report", str(fg_report), "--xml", str(fg_xml),
+                  "--out", str(fg_out), "--drop", "0", "--override", str(fg_ov))
+        if res.returncode != 0:
+            failures.append(f"fixgen 应成功: rc={res.returncode} {res.stderr[:200]}")
+        else:
+            gen = json.loads(fg_out.read_text(encoding="utf-8"))
+            if "0" in gen:
+                failures.append("fixgen --drop 未剔除 idx 0")
+            if gen.get("3", {}).get("new") != "丙行特裁":
+                failures.append(f"fixgen --override 未生效: {gen.get('3')}")
+            if gen.get("1", {}).get("expected_current") != "乙行":
+                failures.append(f"fixgen expected_current 错误: {gen.get('1')}")
+            if "同源副本分歧" not in res.stdout:
+                failures.append(f"fixgen 应报告同源分歧: {res.stdout[:200]}")
+            if "2" in gen:
+                failures.append("fixgen 不带 --align-dups 不应扩展副本")
+
+        res = run(FIXGEN, "--report", str(fg_report), "--xml", str(fg_xml),
+                  "--out", str(fg_out), "--drop", "0", "--override", str(fg_ov),
+                  "--align-dups")
+        if res.returncode != 0:
+            failures.append(f"fixgen --align-dups 应成功: rc={res.returncode}")
+        else:
+            gen = json.loads(fg_out.read_text(encoding="utf-8"))
+            if gen.get("2", {}).get("new") != "乙行新":
+                failures.append(f"fixgen --align-dups 未广播到副本: {gen.get('2')}")
+            if gen.get("2", {}).get("expected_current") != "乙行旧":
+                failures.append(f"fixgen 副本 expected_current 错误: {gen.get('2')}")
+
+        # ---------- apply_fixes --subs-file 多组批量替换 ----------
+        # 锁定：多批次声明、同批次多组叠加（第二轮基于第一轮结果）、
+        # canonical 项出 patch、错误路径（批次目录不存在）。
+        sw = tmp / "sw"
+        sb1 = sw / "T" / "batches" / "BS1"
+        sb2 = sw / "T" / "batches" / "BS2"
+        sb1.mkdir(parents=True)
+        sb2.mkdir(parents=True)
+        (sb1 / "map.json").write_text(json.dumps({
+            "0": {"translation": "鬼婆乌鸦在那", "status": "TRANSLATED"},
+            "1": {"translation": "无异文", "status": "TRANSLATED"},
+        }, ensure_ascii=False), encoding="utf-8")
+        (sb2 / "map.json").write_text(json.dumps({
+            "0": {"translation": "鬼婆乌鸦在那", "status": "REVIEW"},
+        }, ensure_ascii=False), encoding="utf-8")
+        subs_file = tmp / "subs.json"
+        subs_file.write_text(json.dumps([
+            {"find": "鬼婆乌鸦", "replace": "乌鸦鬼婆", "batches": ["BS1", "BS2"]},
+            {"find": "在那", "replace": "在此", "batches": ["BS1", "BS2"],
+             "status": "TRANSLATED", "notes": "叠加轮"},
+        ], ensure_ascii=False), encoding="utf-8")
+        res = run(APPLY, "--stem", "T", "--work-root", str(sw),
+                  "--subs-file", str(subs_file))
+        if res.returncode != 0:
+            failures.append(f"subs-file 应成功: rc={res.returncode} {res.stderr[:200]}")
+        else:
+            m1 = json.loads((sb1 / "map.json").read_text(encoding="utf-8"))
+            m2 = json.loads((sb2 / "map.json").read_text(encoding="utf-8"))
+            if m1["0"]["translation"] != "乌鸦鬼婆在此":
+                failures.append(f"subs 叠加替换失败(BS1): {m1['0']['translation']!r}")
+            if m1["1"]["translation"] != "无异文":
+                failures.append(f"subs 误改未命中行(BS1): {m1['1']['translation']!r}")
+            if m2["0"]["translation"] != "乌鸦鬼婆在此":
+                failures.append(f"subs 叠加替换失败(BS2): {m2['0']['translation']!r}")
+            if m2["0"].get("status") != "TRANSLATED":
+                failures.append(f"subs status 覆盖失败(BS2): {m2['0'].get('status')!r}")
+
+        # canonical 项：从 XML 读现值 + 出 patch
+        subs_c = tmp / "subs-canonical.json"
+        subs_c.write_text(json.dumps([
+            {"find": "甲行", "replace": "甲行改", "canonical": True, "idx_list": "0"},
+        ], ensure_ascii=False), encoding="utf-8")
+        patch_c = tmp / "subs-canonical-patch.json"
+        res = run(APPLY, "--stem", "T", "--work-root", str(sw),
+                  "--subs-file", str(subs_c),
+                  "--translated-xml", str(fg_xml), "--patch-out", str(patch_c),
+                  "--no-sync-batches")
+        if res.returncode != 0:
+            failures.append(f"subs canonical 应成功: rc={res.returncode} {res.stderr[:200]}")
+        else:
+            pdata = json.loads(patch_c.read_text(encoding="utf-8"))
+            if pdata.get("0", {}).get("translation") != "甲行改":
+                failures.append(f"subs canonical patch 错误: {pdata.get('0')}")
+            if pdata.get("0", {}).get("expected_dest") != "甲行":
+                failures.append(f"subs canonical expected_dest 错误: {pdata.get('0')}")
+
+        # 错误路径：批次目录不存在
+        subs_bad = tmp / "subs-bad.json"
+        subs_bad.write_text(json.dumps([
+            {"find": "x", "replace": "y", "batches": ["NO-SUCH"]},
+        ], ensure_ascii=False), encoding="utf-8")
+        res = run(APPLY, "--stem", "T", "--work-root", str(sw),
+                  "--subs-file", str(subs_bad))
+        if res.returncode != 2 or "批次目录不存在" not in res.stderr:
+            failures.append(f"subs 错批次应 rc=2: rc={res.returncode} {res.stderr[:150]}")
 
         if failures:
             for failure in failures:
