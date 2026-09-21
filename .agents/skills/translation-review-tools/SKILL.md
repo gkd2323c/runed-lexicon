@@ -244,6 +244,11 @@ fixes JSON：
 
 **`--find/--replace`（同型多行替换）**：不值得为 5 条同型修正写全量 new JSON 时用；从各 idx 现值做子串替换并生成 fixes，走同一条写盘链路。`--idx-list` 限定行；无可替换时 no-op 且 exit 0。多行文本用 `--find-file` / `--replace-file`（见下「跨批模式」）。
 
+**跨批模式自动同步批次文件**：省略 `--batch` 时（跨批修正/patch 生成），默认把新值
+同步进批次文件（map.json / translation.json）——canonical 修正不回写批次会致审查视图
+从旧值生成、再 fill 时旧 map 覆盖修正。`--no-sync-batches` 可关闭。同步为“先全量计算、
+后统一写盘”，不会产生半成品。
+
 **CAS 双处校验（重要）**：expected_current 同时校验 `map.json` 与 `translation.json`，任何一个不匹配即中止且**两处都不写盘**。因此手工改过 map 数值后须同步 translation.json（正常流程由 `fill_translations.py` 保证两者一致）。
 
 ### 跨批模式（省略 `--batch`）
@@ -330,5 +335,6 @@ py -3 .agents/skills/translation-review-tools/scripts/test_review_tools.py
 ```
 
 `test_review_tools.py` 覆盖：read_batch 双数据源与状态过滤、query 四种模式、
-apply_fixes 的更新/校验中止/KEEP 转换/幂等/patch 生成、term_digest 的
-MOD/OFF/CTX 格式化与空命中标注、dup 阈值、`--out` 落盘。
+apply_fixes 的更新/校验中止/KEEP 转换/幂等/patch 生成/跨批自动同步（含 --no-sync-batches）、
+term_digest 的 MOD/OFF/CTX 格式化与空命中标注、dup 阈值、`--out` 落盘、
+make_review_view 一致性守卫（一致生成 / 漂移拒绝 / --allow-drift）。

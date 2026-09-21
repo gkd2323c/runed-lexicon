@@ -153,6 +153,45 @@ class ScanGapsTest(unittest.TestCase):
         rc = self._run("--write-plan")
         self.assertEqual(rc, 2, "must refuse to rewrite an active batch dir")
 
+    # ---- 机械匹配孤儿（已译未认领）----
+
+    def test_matched_orphan_detection(self):
+        untranslated, matched, total = G.load_all_rows(self.xml)
+        self.assertEqual(total, 7)
+        self.assertEqual([r["index"] for r in untranslated], [0, 2, 3, 4])
+        # idx1 (Beta line -> 译文乙) 已译且不在计划内：机械匹配孤儿
+        self.assertEqual([r["index"] for r in matched], [1])
+        planned, _ = G.load_planned([self.plan])
+        orphans = [r for r in matched if r["index"] not in planned]
+        self.assertEqual([r["index"] for r in orphans], [1])
+
+    def test_orphan_list_written(self):
+        out = Path(self.tmp.name) / "orphans.json"
+        rc = self._run("--orphan-list", str(out))
+        self.assertEqual(rc, 0)
+        data = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual([d["idx"] for d in data], [1])
+        self.assertEqual(data[0]["dest"], "译文乙")
+
+    def test_fail_on_orphans_and_verification(self):
+        # 未核验：卡点退出码 1
+        self.assertEqual(self._run("--fail-on-orphans"), 1)
+        # 核验清单（数组形态）扣除后归零
+        verified = Path(self.tmp.name) / "verified.json"
+        verified.write_text(json.dumps([1]), encoding="utf-8")
+        self.assertEqual(
+            self._run("--fail-on-orphans", "--verified-orphans", str(verified)), 0)
+        # {"verified": [...]} 对象形态同样接受
+        verified.write_text(json.dumps({"verified": [1]}), encoding="utf-8")
+        self.assertEqual(
+            self._run("--fail-on-orphans", "--verified-orphans", str(verified)), 0)
+
+    def test_load_verified_orphans_formats(self):
+        p = Path(self.tmp.name) / "v2.json"
+        p.write_text(json.dumps([5, {"idx": 7}]), encoding="utf-8")
+        self.assertEqual(G.load_verified_orphans(str(p)), {5, 7})
+        self.assertEqual(G.load_verified_orphans(None), set())
+
 
 if __name__ == "__main__":
     unittest.main()

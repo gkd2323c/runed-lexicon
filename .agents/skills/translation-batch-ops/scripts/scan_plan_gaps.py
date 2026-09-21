@@ -10,6 +10,11 @@
   只查计划内批次）看不到它们。
 本工具把「未译行集合」与「全部计划 idx 集合」对账，让遗漏在任意时点可见。
 
+同口径清点「机械匹配孤儿」：`Source != Dest`（导出期词典自动匹配产物，见 AGENTS.md §3.1）
+但不在任何计划内的行。这类行同时逃过未译扫描与批次验收两个口径，且机械门禁对匹配错配
+零命中（实测单 MOD 640 行、其中 63 处系统错配）；必须逐行核验后才计为已译，核验清单回喂
+--verified-orphans 后未核验余额必须为零。
+
 用法：
   # 只扫描（默认）：报缺口，按 REC 分组
   py -3 scan_plan_gaps.py --xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
@@ -22,13 +27,21 @@
   # 收敛声明卡点：缺口不为零时退出码 1
   py -3 scan_plan_gaps.py --xml <...> --plan <...> --fail-on-gaps
 
+  # 机械匹配孤儿清点与核验卡点
+  py -3 scan_plan_gaps.py --xml <...> --plan <...> --orphan-list _tmp/data/orphans.json
+  py -3 scan_plan_gaps.py --xml <...> --plan <...> \
+      --verified-orphans <核验清单.json> --fail-on-orphans
+
 约定：
 - 补遗批次 id 用 `GAP-<FAM>-NNN` 前缀：与主计划（INFO-/NI-）编号空间隔离，
   主计划重生成不会与补遗编号冲突。
 - 已存在的 <stem>-gaps-batches.json 会被自动纳入「已认领」集合（重复扫描显示
   剩余缺口）；--write-plan 遇到已存在计划时拒绝覆盖（--force 强写）。
 - 装批规则与 noninfo-batch-planner 一致：同源不拆、贪心装批、族内有序、批内 idx 升序。
-- 本工具只读 MOD XML；--write-plan 只写 .work/ 下的计划与批次索引。
+- 核验清单接受 JSON 数组（idx）或 {"verified": [idx...]}；核验过的孤儿从余额扣除，
+  --fail-on-orphans 卡「未核验余额为零」。
+- 本工具只读 MOD XML；--write-plan 只写 .work/ 下的计划与批次索引；--orphan-list 只写
+  调用方指定路径。
 
 输出角色登记：
 - 补遗计划 `.work/<stem>/context/<stem>-gaps-batches.json`（新角色）
@@ -62,21 +75,55 @@ def text_of(node: ET.Element | None) -> str:
     return node.text
 
 
-def load_untranslated(xml_path: Path) -> list[dict]:
-    """Un-translated rows: Source == Dest and Source non-empty."""
+def load_all_rows(xml_path: Path) -> tuple[list[dict], list[dict], int]:
+    """Scan once: (untranslated, matched, total_strings).
+
+    untranslated: Source == Dest（含 KEEP 形态），Source 非空白。
+    matched:      Source != Dest 且 Dest 非空白（导出期词典自动匹配产物或其修订）。
+    """
     try:
         root = ET.parse(xml_path).getroot()
     except ET.ParseError as exc:
         raise ValueError(f"Invalid XML in {xml_path}: {exc}") from exc
-    rows = []
+    untranslated: list[dict] = []
+    matched: list[dict] = []
+    total = 0
     for index, node in enumerate(root.iter("String")):
+        total += 1
         source = text_of(node.find("Source"))
         dest = text_of(node.find("Dest"))
-        if not source.strip() or source != dest:
-            continue
         rec = text_of(node.find("REC"))
-        rows.append({"index": index, "rec": rec, "source": source})
-    return rows
+        if not source.strip():
+            continue
+        if source != dest:
+            if dest.strip():
+                matched.append({"index": index, "rec": rec, "source": source, "dest": dest})
+        else:
+            untranslated.append({"index": index, "rec": rec, "source": source})
+    return untranslated, matched, total
+
+
+def load_untranslated(xml_path: Path) -> list[dict]:
+    """Un-translated rows: Source == Dest and Source non-empty."""
+    return load_all_rows(xml_path)[0]
+
+
+def load_verified_orphans(path_value: str | None) -> set[int]:
+    """读孤儿核验清单；JSON 数组（idx）或 {"verified": [...]}。未给返回空集。"""
+    if not path_value:
+        return set()
+    path = resolve_path(path_value)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        data = data.get("verified") or data.get("idx") or []
+    if not isinstance(data, list):
+        raise ValueError(f"核验清单应为数组: {path}")
+    out: set[int] = set()
+    for item in data:
+        if isinstance(item, dict):
+            item = item.get("idx")
+        out.add(int(item))
+    return out
 
 
 def load_planned(plan_paths: list[Path]) -> tuple[set[int], list[str]]:
@@ -223,6 +270,12 @@ def main() -> int:
     ap.add_argument("--json", action="store_true", help="输出 JSON 而非文本")
     ap.add_argument("--fail-on-gaps", action="store_true",
                     help="缺口>0 时以退出码 1 结束（收敛声明卡点用）")
+    ap.add_argument("--orphan-list", default=None,
+                    help="把「已译未认领（机械匹配孤儿）」全量清单写入此路径")
+    ap.add_argument("--verified-orphans", default=None,
+                    help="孤儿核验清单（JSON 数组或 {\"verified\": [...]}）；核验过的 idx 从余额扣除")
+    ap.add_argument("--fail-on-orphans", action="store_true",
+                    help="孤儿未核验余额>0 时以退出码 1 结束（收敛声明卡点用）")
     args = ap.parse_args()
 
     try:
@@ -259,13 +312,20 @@ def main() -> int:
                 plan_paths.append(gaps_plan_path)
 
         planned, plan_labels = load_planned(plan_paths)
-        untranslated = load_untranslated(xml_path)
+        untranslated, matched, total_strings = load_all_rows(xml_path)
         cov = [r for r in untranslated if r["index"] in planned]
         gaps = [r for r in untranslated if r["index"] not in planned]
+        orphans = [r for r in matched if r["index"] not in planned]
+        verified_orphans = load_verified_orphans(args.verified_orphans)
+        unverified_orphans = [r for r in orphans if r["index"] not in verified_orphans]
 
         by_rec: dict[str, list[dict]] = {}
         for row in gaps:
             by_rec.setdefault(row["rec"] or "(none)", []).append(row)
+
+        orphan_by_rec: dict[str, list[dict]] = {}
+        for row in orphans:
+            orphan_by_rec.setdefault(row["rec"] or "(none)", []).append(row)
 
         out = {
             "schema_version": 1,
@@ -273,11 +333,21 @@ def main() -> int:
             "stem": stem,
             "plans": plan_labels,
             "claimed_by_gaps_plan": claimed_by_gaps,
-            "total_strings": sum(1 for _ in ET.parse(str(xml_path)).getroot().iter("String")),
+            "total_strings": total_strings,
             "untranslated": len(untranslated),
             "covered": len(cov),
             "gap_rows": len(gaps),
             "gap_unique_sources": len({r["source"] for r in gaps}),
+            "matched_translated": len(matched),
+            "matched_orphans": len(orphans),
+            "orphan_unique_sources": len({r["source"] for r in orphans}),
+            "orphan_unverified": len(unverified_orphans),
+            "orphan_families": [
+                {"rec": rec, "rows": len(rows),
+                 "unique": len({r["source"] for r in rows}),
+                 "idx": [r["index"] for r in rows]}
+                for rec, rows in sorted(orphan_by_rec.items(), key=lambda kv: -len(kv[1]))
+            ],
             "families": [
                 {"rec": rec, "rows": len(rows),
                  "unique": len({r["source"] for r in rows}),
@@ -300,6 +370,14 @@ def main() -> int:
                  "sample": b["srcs"][0][:60]} for b in batches
             ]
 
+        if args.orphan_list and orphans:
+            orphan_path = resolve_path(args.orphan_list)
+            orphan_path.parent.mkdir(parents=True, exist_ok=True)
+            orphan_path.write_text(json.dumps(
+                [{"idx": r["index"], "rec": r["rec"], "source": r["source"], "dest": r["dest"]}
+                 for r in orphans], ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+            out["written_orphan_list"] = str(orphan_path)
+
         if args.json:
             print(json.dumps(out, ensure_ascii=False, indent=1))
         else:
@@ -312,15 +390,28 @@ def main() -> int:
                 sample = next((r["source"] for r in gaps if r["rec"] == fam["rec"]), "")
                 print(f"  {fam['rec']:12s} {fam['rows']:4d} rows / {fam['unique']:4d} unique"
                       f"  e.g. [{fam['idx'][0]}] {sample[:60]}")
+            print(f"matched: {out['matched_translated']} translated rows | ORPHANS: "
+                  f"{out['matched_orphans']} rows / {out['orphan_unique_sources']} unique"
+                  + (f" | 未核验: {out['orphan_unverified']}"
+                     if (args.verified_orphans or args.fail_on_orphans) else ""))
+            for fam in out["orphan_families"]:
+                sample = next((r["source"] for r in orphans
+                               if (r["rec"] or "(none)") == fam["rec"]), "")
+                print(f"  {fam['rec']:12s} {fam['rows']:4d} rows / {fam['unique']:4d} unique"
+                      f"  e.g. [{fam['idx'][0]}] {sample[:60]}")
             if out.get("written_plan"):
                 print()
                 print(f"gaps plan -> {out['written_plan']}")
                 for b in out["written_batches"]:
                     print(f"  {b['id']}: {b['unique']} unique / {b['rows']} rows | {b['sample']}")
+            if out.get("written_orphan_list"):
+                print(f"orphan list -> {out['written_orphan_list']}")
             if not gaps:
                 print("no gaps: every untranslated row is claimed by a plan")
 
         if args.fail_on_gaps and gaps:
+            return 1
+        if args.fail_on_orphans and unverified_orphans:
             return 1
         return 0
     except (OSError, ValueError, json.JSONDecodeError) as exc:

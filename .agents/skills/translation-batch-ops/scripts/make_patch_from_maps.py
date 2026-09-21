@@ -25,12 +25,22 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
+HERE = Path(__file__).resolve().parent
+
+
+def _load_batch_sync():
+    """同目录动态加载 batch_sync（不依赖 sys.path；与 apply_fixes 同模式）。"""
+    spec = importlib.util.spec_from_file_location("_batch_sync", HERE / "batch_sync.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def load_json(path: Path):
@@ -52,6 +62,16 @@ def main(argv: list[str] | None = None) -> int:
         "--out",
         default=None,
         help="输出 patch 路径；默认 <canonical 同级的 maps 目录>/<mod>-fix-patch.json",
+    )
+    ap.add_argument(
+        "--no-sync-batches",
+        action="store_true",
+        help="默认把 patch 值同步进批次文件（map/translation）；本开关关闭该同步",
+    )
+    ap.add_argument(
+        "--work-root",
+        default=".work",
+        help="批次文件所在的 .work 根（同步用；相对路径按项目根解析）",
     )
     args = ap.parse_args(argv)
 
@@ -115,7 +135,40 @@ def main(argv: list[str] | None = None) -> int:
     out.write_text(json.dumps(patch, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"wrote {len(patch)} patch entries -> {out}")
-    return 0
+
+    # ---- 批次文件同步（机制环节）----
+    # canonical 修正必须回写批次文件，否则审查视图从旧值生成、后续 fill 以旧 map 覆盖。
+    sync_failed = False
+    if not args.no_sync_batches:
+        stem_for_sync = mod_stem or canonical.name[: -len("_english_chinese_translated.xml")]
+        work_root = Path(args.work_root)
+        if not work_root.is_absolute():
+            work_root = PROJECT_ROOT / work_root
+        batches_dir = work_root / stem_for_sync / "batches"
+        if batches_dir.is_dir():
+            try:
+                bs = _load_batch_sync()
+                updates = {
+                    key: {"translation": val["translation"], "expected_current": val["expected_dest"]}
+                    for key, val in patch.items()
+                }
+                rep = bs.sync_updates(updates, batches_dir)
+                print(f"批次同步: 改动 {rep['applied']}，已就位 {rep['already']}，{len(rep['batches'])} 批"
+                      + (f"，不在任何批次 {len(rep['missing'])}" if rep["missing"] else ""))
+                for w in rep["warnings"]:
+                    print(f"  WARN {w}")
+                for m in rep["mismatch"][:10]:
+                    print(f"  WARN 批次现值不符 [{m['batch']}] {m['idx']} ({m['where']}): "
+                          f"{m['current'][:60]!r}（仍同步为 patch 值）")
+                for e in rep["errors"]:
+                    print(f"  ERROR 批次同步失败: {e}", file=sys.stderr)
+                if rep["errors"]:
+                    sync_failed = True
+            except Exception as exc:  # noqa: BLE001
+                print(f"  ERROR 批次同步异常: {exc}", file=sys.stderr)
+                sync_failed = True
+
+    return 1 if sync_failed else 0
 
 
 if __name__ == "__main__":

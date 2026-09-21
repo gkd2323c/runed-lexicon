@@ -30,6 +30,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 import sys
@@ -37,6 +38,18 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
+HERE = Path(__file__).resolve().parent
+SKILLS = HERE.parent.parent
+
+
+def load_batch_sync():
+    """动态加载 translation-batch-ops 的 batch_sync 模块（跨 skill 复用，同
+    consume_batch 加载 translation_result 的模式）。"""
+    bs_path = SKILLS / "translation-batch-ops" / "scripts" / "batch_sync.py"
+    spec = importlib.util.spec_from_file_location("_batch_sync", bs_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def resolve(value: str) -> Path:
@@ -122,6 +135,8 @@ def main() -> int:
     parser.add_argument("--translated-xml", help="Canonical XML for patch generation")
     parser.add_argument("--patch-out", help="Patch JSON output path")
     parser.add_argument("--no-merge", action="store_true", help="Do not merge with an existing patch file")
+    parser.add_argument("--no-sync-batches", action="store_true",
+                        help="跨批模式默认把 patch 值同步进批次文件（map/translation）；本开关关闭该同步")
     args = parser.parse_args()
 
     # 多行替换：命令行不适合传含换行的段落（诗节重写、段落改写），从文件读最稳。
@@ -380,6 +395,42 @@ def main() -> int:
         patch_desc = (f"patch: +{len(patch)}（覆盖已有 {overwritten}）"
                       f"{f'，跳过已就位 {patch_skipped}' if patch_skipped else ''} -> {patch_path}")
 
+    # ---- 跨批模式：批次文件同步（机制环节）----
+    # canonical 是唯一真相源，批次文件是派生视图。跨批修正（审查/抗幻觉）生成 patch
+    # 后若不回写批次文件，审查视图将从旧值生成、后续 fill 以旧 map 覆盖修正。同步
+    # 把这一步做成修正链的原子环节，而不是依赖事后扫描发现（batch_sync.py check）。
+    sync_failed = False
+    sync_desc = ""
+    if not args.batch and patch and not args.no_sync_batches:
+        try:
+            bs = load_batch_sync()
+            updates = {}
+            for idx, fix in fixes.items():
+                if "new" in fix:
+                    upd = {"translation": fix["new"]}
+                    if "expected_current" in fix:
+                        upd["expected_current"] = fix["expected_current"]
+                    updates[idx] = upd
+            batches_dir = resolve(args.work_root) / args.stem / "batches"
+            if updates and batches_dir.is_dir():
+                rep = bs.sync_updates(updates, batches_dir)
+                sync_desc = (f"批次同步: 改动 {rep['applied']}，已就位 {rep['already']}，"
+                             f"{len(rep['batches'])} 批"
+                             + (f"，不在任何批次 {len(rep['missing'])}" if rep["missing"] else "") )
+                for w in rep["warnings"]:
+                    warnings.append(w)
+                for m in rep["mismatch"][:10]:
+                    warnings.append(
+                        f"批次现值不符 [{m['batch']}] {m['idx']} ({m['where']}): "
+                        f"{m['current'][:60]!r}（仍同步为 patch 值）")
+                for e in rep["errors"]:
+                    print(f"  ERROR 批次同步失败: {e}", file=sys.stderr)
+                if rep["errors"]:
+                    sync_failed = True
+        except Exception as exc:  # noqa: BLE001 — 同步失败不应阻断 patch 成果，但必须可见
+            print(f"  ERROR 批次同步异常: {exc}", file=sys.stderr)
+            sync_failed = True
+
     print(f"== apply fixes: {args.stem} / {args.batch} ==")
     print(f"map.json: 更新 {map_applied}，跳过(已就位) {map_skipped}"
           + ("（不存在）" if map_data is None else ""))
@@ -387,9 +438,11 @@ def main() -> int:
           + ("（不存在）" if result_data is None else ""))
     if patch_desc:
         print(patch_desc)
+    if sync_desc:
+        print(sync_desc)
     for msg in warnings:
         print(f"  WARN {msg}")
-    return 0
+    return 1 if sync_failed else 0
 
 
 if __name__ == "__main__":

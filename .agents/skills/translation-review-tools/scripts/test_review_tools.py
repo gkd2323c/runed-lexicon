@@ -22,6 +22,7 @@ TERM_DIGEST = HERE / "term_digest.py"
 PROBE = HERE / "hallucination_probe.py"
 READOUT = HERE / "longtext_readout.py"
 NORMALIZE = HERE / "normalize_charset.py"
+VIEW = HERE / "make_review_view.py"
 
 
 def build_xml(rows) -> str:
@@ -562,6 +563,96 @@ def main() -> int:
             failures.append(f"normalize fixes 新值错误: {nd.get('10')}")
         if "11" in nd or "12" in nd:
             failures.append(f"normalize 不应把无误条目写入 fixes（含 R11 误报）: {list(nd)}")
+
+        # ---------- apply_fixes 跨批模式：自动同步批次文件（机制环节）----------
+        # 历史事故：跨批修正（审查/抗幻觉）只生成 canonical patch 而不回写批次文件，
+        # 导致旧视图重报已修问题、再 fill 时用旧 map 覆盖修正。机制：跨批模式默认把
+        # patch 值同步进批次文件；--no-sync-batches 可显式关闭。
+        sync_map_path = batch_dir / "map.json"
+        sync_res_path = batch_dir / "translation.json"
+        m9 = json.loads(sync_map_path.read_text(encoding="utf-8"))
+        m9["1"]["translation"] = "斯罗尔森林"
+        sync_map_path.write_text(json.dumps(m9, ensure_ascii=False, indent=2), encoding="utf-8")
+        t9 = json.loads(sync_res_path.read_text(encoding="utf-8"))
+        for u in t9["translations"]:
+            if u["xml_index"] == 1:
+                u["translation"] = "斯罗尔森林"
+        sync_res_path.write_text(json.dumps(t9, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        fixes_x = tmp / "fix-cross.json"
+        fixes_x.write_text(json.dumps({
+            "1": {"new": "斯罗尔密林", "expected_current": "斯罗尔森林"},
+        }, ensure_ascii=False), encoding="utf-8")
+        patch_x = tmp / "cross_patch.json"
+        res = run(APPLY, "--stem", "T", "--work-root", str(work),
+                  "--fixes", str(fixes_x),
+                  "--translated-xml", str(xml_path), "--patch-out", str(patch_x))
+        if res.returncode != 0 or "批次同步" not in res.stdout:
+            failures.append(f"跨批模式未执行批次同步: rc={res.returncode} out={res.stdout[:200]}")
+        else:
+            mx = json.loads(sync_map_path.read_text(encoding="utf-8"))
+            if mx["1"]["translation"] != "斯罗尔密林":
+                failures.append(f"跨批同步未更新 map: {mx['1']['translation']!r}")
+            tx = json.loads(sync_res_path.read_text(encoding="utf-8"))
+            u1 = next(u for u in tx["translations"] if u["xml_index"] == 1)
+            if u1["translation"] != "斯罗尔密林":
+                failures.append(f"跨批同步未更新 translation: {u1['translation']!r}")
+
+        # --no-sync-batches：关闭同步，批次文件保持原值
+        m10 = json.loads(sync_map_path.read_text(encoding="utf-8"))
+        m10["1"]["translation"] = "斯罗尔森林"
+        sync_map_path.write_text(json.dumps(m10, ensure_ascii=False, indent=2), encoding="utf-8")
+        t10 = json.loads(sync_res_path.read_text(encoding="utf-8"))
+        for u in t10["translations"]:
+            if u["xml_index"] == 1:
+                u["translation"] = "斯罗尔森林"
+        sync_res_path.write_text(json.dumps(t10, ensure_ascii=False, indent=2), encoding="utf-8")
+        fixes_x2 = tmp / "fix-cross2.json"
+        fixes_x2.write_text(json.dumps({
+            "1": {"new": "斯罗尔密林", "expected_current": "斯罗尔森林"},
+        }, ensure_ascii=False), encoding="utf-8")
+        patch_x2 = tmp / "cross_patch2.json"
+        res = run(APPLY, "--stem", "T", "--work-root", str(work), "--no-sync-batches",
+                  "--fixes", str(fixes_x2),
+                  "--translated-xml", str(xml_path), "--patch-out", str(patch_x2))
+        mx2 = json.loads(sync_map_path.read_text(encoding="utf-8"))
+        if res.returncode != 0 or mx2["1"]["translation"] != "斯罗尔森林":
+            failures.append(f"--no-sync-batches 未生效: {mx2['1']['translation']!r}")
+
+        # ---------- make_review_view 一致性守卫 ----------
+        # 视图值必须与 canonical 一致；不一致时默认拒绝生成（防旧视图重报已修问题）。
+        view_work = tmp / "vw"
+        vbatch = view_work / "T" / "batches" / "BV"
+        vbatch.mkdir(parents=True)
+        view_xml = tmp / "vw_english_chinese_translated.xml"
+        view_xml.write_text(build_xml([
+            {"edid": "[A]", "rec": "INFO:NAM1", "source": "Alpha line", "dest": "甲行"},
+        ]), encoding="utf-8")
+        vres = tmp / "vw-views"
+        (vbatch / "translation.json").write_text(json.dumps({
+            "schema_version": 1,
+            "translations": [
+                {"translation_unit_id": "u:0", "xml_index": 0, "source": "Alpha line",
+                 "translation": "甲行", "status": "TRANSLATED"},
+            ],
+        }, ensure_ascii=False), encoding="utf-8")
+        res = run(VIEW, "BV", "--work", str(view_work), "--mod", "T",
+                  "--canonical", str(view_xml), "--out", str(vres))
+        if res.returncode != 0 or not (vres / "review-view-BV.json").is_file():
+            failures.append(f"review_view 一致时应生成: rc={res.returncode} {res.stderr[:150]}")
+
+        drifted = json.loads((vbatch / "translation.json").read_text(encoding="utf-8"))
+        drifted["translations"][0]["translation"] = "旧行"
+        (vbatch / "translation.json").write_text(json.dumps(drifted, ensure_ascii=False),
+                                                  encoding="utf-8")
+        res = run(VIEW, "BV", "--work", str(view_work), "--mod", "T",
+                  "--canonical", str(view_xml), "--out", str(vres))
+        if res.returncode != 1 or "拒绝生成" not in res.stderr:
+            failures.append(f"review_view 漂移时应拒绝: rc={res.returncode} {res.stderr[:200]}")
+        res = run(VIEW, "BV", "--work", str(view_work), "--mod", "T",
+                  "--canonical", str(view_xml), "--out", str(vres), "--allow-drift")
+        if res.returncode != 0:
+            failures.append(f"review_view --allow-drift 应放行: rc={res.returncode} {res.stderr[:150]}")
 
         if failures:
             for failure in failures:

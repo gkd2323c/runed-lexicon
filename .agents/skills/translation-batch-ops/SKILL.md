@@ -1,9 +1,9 @@
 ---
 name: translation-batch-ops
-description: runed-lexicon 批次流水线的状态、覆盖、验收与进度工具集。覆盖批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次 context 单批重建（rebuild_context）。Use when 验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、XML 写回（归 xtranslator-xml-writer）、契约编译（归 term-contract-compiler）。
+description: runed-lexicon 批次流水线的状态、覆盖、验收、对账重建与进度工具集。覆盖批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次文件对账与重建（batch_sync）、批次 context 单批重建（rebuild_context）。Use when 验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、处理批次文件与 canonical 的漂移或缺失（判向/拉平/补全，不逐条修补）、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、XML 写回（归 xtranslator-xml-writer）、契约编译（归 term-contract-compiler）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Translation Batch Ops
@@ -14,11 +14,12 @@ metadata:
 | ------------------------ | ---------------------------------- | ----------------------------------------------------------------- |
 | 这批产出合格吗？         | `scripts/verify_subagent_batch.py` | 验收报告 `.work/<plugin>/reports/<BID>-verify-report.json`        |
 | 批次推进到哪了？         | `scripts/check_batch_coverage.py`  | 每批状态（VERIFIED / TRANSLATED / PREPPED / MISSING）+ 未写回告警 |
-| 还有未译行没有归属吗？   | `scripts/scan_plan_gaps.py`        | 缺口清单 + 可选补遗批次（GAP- 前缀）                              |
+| 还有未译行没有归属吗？   | `scripts/scan_plan_gaps.py`        | 缺口清单 + 补遗批次（GAP- 前缀）+ 机械匹配孤儿清点与核验卡点       |
 | 整体进度如何？           | `scripts/progress_snapshot.py`     | 快照日志 `.work/<plugin>/reports/<plugin>-progress-log.json`      |
 | 批次太大怎么派？         | `scripts/shard_batch.py`           | 按字符权重的 index 分片与 map 合并                                |
 | 子代理交付怎么消费？     | `scripts/consume_batch.py`         | map 归位 → 展平 → immutable 同步 → fill → verify 一键链           |
 | context 备料坏了怎么修？ | `scripts/rebuild_context.py`       | 单批模式重建 context + 骨架重生成（保留已有译文）                 |
+| 批次文件与 canonical 漂移/缺失？ | `scripts/batch_sync.py`         | `check` 只读对账（含方向判定）/ `apply` 拉平 / `rebuild` 补全缺失    |
 
 ## 0. 标准续推循环（SOP）
 
@@ -77,7 +78,17 @@ py -3 .agents/skills/translation-batch-ops/scripts/check_batch_coverage.py \
 
 ## 3. 计划覆盖缺口扫描（`scan_plan_gaps.py`）
 
-报出「未译（Source==Dest 且含非空白内容）且不在任何批次计划内」的行。它是与前两个工具互补的第三个盲区：`check_batch_coverage` 只看计划内批次，批次计划只认领「生成时收集到的行」，两条流水线（INFO 计划只收 linked NAM1、非 INFO 计划排除 INFO 前缀）之间可能存在从未被任何计划收走的行（玩家对话与非链接 INFO 行是常见形态）。这类行不被常规覆盖率工具看见，不专门扫描就会一直停留在未译集合里。用法：
+报出「未译（Source==Dest 且含非空白内容）且不在任何批次计划内」的行。它是与前两个工具互补的第三个盲区：`check_batch_coverage` 只看计划内批次，批次计划只认领「生成时收集到的行」，两条流水线（INFO 计划只收 linked NAM1、非 INFO 计划排除 INFO 前缀）之间可能存在从未被任何计划收走的行（玩家对话与非链接 INFO 行是常见形态）。这类行不被常规覆盖率工具看见，不专门扫描就会一直停留在未译集合里。
+
+**机械匹配孤儿清点**：同口径报出「已译（`Source != Dest`）但不在任何计划内」的行。这类行是导出期词典自动匹配产物（AGENTS.md §3.1），同时逃过未译扫描与批次验收两个口径；机械门禁对其错配零命中（实测：46 处 `No.`→「是的。」全部通过 gate；单 MOD 640 行孤儿中 63 处系统错配）。清点与核验卡点：
+
+```text
+--orphan-list <path>        全量孤儿清单（idx/rec/source/dest）
+--verified-orphans <path>   核验清单（JSON 数组或 {"verified": [...]}）；核验过的 idx 从余额扣除
+--fail-on-orphans           孤儿未核验余额>0 时退出码 1（收敛声明卡点）
+```
+
+核验方式：对话链（INFO 的 prompt→response 配对）或 REC 族逐行核；修正走 patch 链；核验清单落 MOD `notes/`。用法：
 
 ```text
 py -3 .agents/skills/translation-batch-ops/scripts/scan_plan_gaps.py \
@@ -86,7 +97,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/scan_plan_gaps.py \
   --plan .work/<plugin>/context/<plugin>-noninfo-batches.json
 ```
 
-**检查点（硬规则）**：① 批次计划生成/更新后当场跑一次——覆盖率必须 100%，发现缺口立即处置；② 每轮收口与 progress_snapshot 一并跑；③ 任何收敛声明前跑 `--fail-on-gaps`（缺口>0 退出码 1），不得带缺口声明收敛。
+**检查点（硬规则）**：① 批次计划生成/更新后当场跑一次——覆盖率必须 100%，发现缺口立即处置；② 每轮收口与 progress_snapshot 一并跑；③ 任何收敛声明前跑 `--fail-on-gaps`（缺口>0 退出码 1）与 `--fail-on-orphans`（孤儿未核验余额>0 退出码 1），不得带缺口或未核验孤儿声明收敛。
 
 **处置（`--write-plan`）**：把缺口切成补遗批次（`GAP-<族>-NNN` 前缀，与主计划编号空间隔离；同源不拆、贪心装批、默认 60 unique / 150 rows 每批），写 `.work/<plugin>/context/<plugin>-gaps-batches.json` 与每批 `batches/<GAP-batch>/index.txt`，之后随正常流水线备料/派单/验收。已存在的 gaps 计划自动计入「已认领」（重扫显示剩余缺口，天然幂等）；`--write-plan` 遇已存在计划默认拒绝（`--force` 强写）；批次目录已有 map.json 时拒绝改写索引。输出角色登记：`<plugin>-gaps-batches.json`（补遗计划）。
 
@@ -109,6 +120,8 @@ py -3 .agents/skills/translation-batch-ops/scripts/progress_snapshot.py \
 `--plan` 可重复：主计划与补遗计划（存在时）一并传入合并统计——只传主计划会使缺口批写回的译文不进流水线口径，战役交叉校验持续报「口径不一致」（差值恰为缺口批行数）。
 
 四段输出：① 全库已译/总数与分类分布（INFO/DIAL/QUST/NPC_/BOOK/其他——让未开工类别可见）；② INFO 战役口径（canonical 与流水线双口径交叉校验，不一致时显式告警）；③ 批次状态（已验收/待消费/已备料/未备料），并在存在「已验收但未写回」时追加告警行（需带 `--xml`）；④ 较上次快照增量。性能基线：约 1.5 万条（4.6MB）规模的全量统计 **~0.8s**。
+
+**口径交叉校验的语义（②）**：pipeline 只计批次侧 `status==TRANSLATED` 的行。批次侧残存 REVIEW 条目（值已定稿并写回 canonical、仅状态未转正）会使 pipeline 少于 canonical、持续报「不一致」。差异处置：求差（canonical INFO 已译集 − 源预译集 − 各批 translation.json 的 TRANSLATED 并集）→ 核对差异行批次值==canonical 值 → 将仍挂 REVIEW 的条目在 map.json 与 translation.json 中一并转正。2026-09-21 TheKalpicAnomaly 按此清 23 条后双口径一致。
 
 输出角色：进度日志 `.work/<plugin>/reports/<plugin>-progress-log.json`（追加式；与上一条内容一致时自动跳过；`--record` 才写盘，默认只读）。
 
@@ -164,6 +177,8 @@ py -3 .agents/skills/translation-batch-ops/scripts/consume_batch.py \
 前置条件：批次目录已有 `context.json` 与 `translation.json`（备料产物）；context 必须
 单批结构（见 5b）。退出码：0 PASS / 1 链中失败 / 2 用法错误。
 
+**非 INFO 批次须显式 `--plan`**：计划自动探测只认 `GAP-` 前缀（→ gaps 计划）与默认 info 计划；`NI-*` 等非 INFO 批次必须传 `--plan .work/<plugin>/context/<plugin>-noninfo-batches.json`，否则 verify 报 `unknown batch`。拆半批次先 `shard_batch.py merge` 归并 `map.json` 再消费。
+
 ## 5b. context 单批重建（`rebuild_context.py`）
 
 修复备料 context 的多批结构缺陷：`build_translation_context.py` 若以 `--batch-size 1`
@@ -180,7 +195,43 @@ translation.json 骨架；③ 已有译文（TRANSLATED 且非空）按 xml_inde
 immutable 字段一律以新 context 重算。mods 目录名与 stem 不一致（`.esp` 后缀）
 自动探测；`--xml` / `--mod-terms` 可显式覆盖。
 
-## 6. 由修正 map 生成 canonical patch（`make_patch_from_maps.py`）
+## 6. 批次文件对账与重建（`batch_sync.py`）
+
+canonical 是唯一真相源，批次文件（map.json / translation.json）是它的派生视图——可从 canonical 重建，不承载独立信息。**处置原则：一律机器重建（重新生成），不逐条手工修补、不逐案调查历史成因。**
+
+```text
+# 只读对账（报 A: map vs canonical / B: translation vs canonical / C: 批内）
+py -3 batch_sync.py check --stem <plugin> [--xml <translated.xml>] [--limit 40]
+
+# 拉平（canonical 或 patch → 批次文件）
+py -3 batch_sync.py apply --stem <plugin> [--patch <fix-patch.json>] [--dry-run]
+
+# 补全缺失（map.json 缺文件/缺行键；只增不改）
+py -3 batch_sync.py rebuild --stem <plugin> [--batch BID] [--dry-run]
+```
+
+**处置对照（check 结果 → 动作）**：
+
+| 对账结果 | 动作 |
+| --- | --- |
+| A/B 漂移，批次值命中共修正集（maps/） | 修正未写回：`make_patch_from_maps` + `write_translations --patch`（勿拉平） |
+| A/B 漂移，canonical 新 | `apply` 拉平 |
+| C 批内 map vs translation 不一致 | 重链该批：`consume_batch`（map 为批次内真相源） |
+| map.json 缺文件 / 缺行键 | `rebuild` 补全（只增不改）→ `consume_batch` 重链 |
+| translation.json 缺行 / 缺文件 | `consume_batch` 重链（immutable 字段须经 fill 重算，禁止手写） |
+
+**方向判定**：`check` 会扫 `.work/<stem>/maps/` 下的修正集；漂移 idx 命中修正集时
+判为「修正未写回 canonical」（处置：`make_patch_from_maps` + 写回），否则判为
+「批次落后」（处置：`apply` 拉平）。判错方向就是数据丢失：拉平会冲掉未写回的修正。
+
+**重建语义（`rebuild`）**：map.json 缺失时从 canonical 重建（仅 canonical 已译行，status=TRANSLATED）；文件存在但缺行键时只补缺失键，**绝不覆盖既有值**（值漂移属 `apply` 职责）。translation.json 不在此重建（immutable 字段必须经 fill 链路重算）；命令会检测 translation.json 缺行/缺失并列出需重链的批次。验证（2026-09-21，TheKalpicAnomaly）：补全 13 批缺失 map（INFO-001/174~177 + NI-* 8 批）、8 批 NI 重链回填，零漂移保持。
+
+**自动环节**：跨批修正（`apply_fixes` 无 `--batch`、`make_patch_from_maps`）默认把
+patch 值同步进批次文件，不需要事后手工跑。`--no-sync-batches` 可显式关闭。
+`make_review_view.py` 生成视图前做一致性守卫：批次与 canonical 不一致时拒绝生成
+（`--allow-drift` 跳过）。
+
+## 6b. 由修正 map 生成 canonical patch（`make_patch_from_maps.py`）
 
 对**已写回 canonical** 的条目做审查修正时，不能用 result 模式重放：增量模式的 `original_dest` 软保护会报 `original_dest mismatch` 并整批拒写。必须改用 `--patch`，其 `expected_dest` 取 canonical 的当前 Dest。
 
@@ -215,10 +266,12 @@ py -3 .../make_patch_from_maps.py --canonical <translated.xml> --out <patch.json
 
 ```text
 cd .agents/skills/translation-batch-ops/scripts
-py -3 -m unittest test_batch_coverage test_scan_plan_gaps
+py -3 -m unittest test_batch_coverage test_scan_plan_gaps test_batch_sync
 ```
 
-测试覆盖：覆盖率分类的未写回检测（含 KEEP 行不计）、缺口扫描的未认领行检测（含空白行排除）、补遗批次装批（同源不拆）、gaps 计划幂等与保护、活跃批次目录拒写。
+测试覆盖：覆盖率分类的未写回检测（含 KEEP 行不计）、缺口扫描的未认领行检测（含空白行排除）、补遗批次装批（同源不拆）、gaps 计划幂等与保护、活跃批次目录拒写、机械匹配孤儿的检测/清单落盘/核验清单两种形态扣除/--fail-on-orphans 卡点；
+batch_sync 的双文件同步/已就位/缺失/mismatch 仍同步/dry-run、CLI check 方向判定、
+make_patch_from_maps 的同步链、rebuild 的缺文件重建/补键（只增不改）/dry-run/--batch 过滤/缺 index 跳过/重链提示（覆盖判定）。
 
 新命令（consume_batch / rebuild_context / shard merge maps 兼容）的验证方式：
 对任一已消费批次做幂等复跑（应 PASS 且译文保留数不变），例如：
