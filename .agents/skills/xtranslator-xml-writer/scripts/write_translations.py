@@ -30,6 +30,44 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 UTF8_BOM = b"\xef\xbb\xbf"
 
+
+def stem_from_xml_arg() -> str | None:
+    argv = sys.argv[1:]
+    for i, a in enumerate(argv):
+        if a == "--xml" and i + 1 < len(argv):
+            name = Path(argv[i + 1]).name
+            for suf in ("_english_chinese_translated.xml", "_english_chinese.xml"):
+                if name.endswith(suf):
+                    return name[: -len(suf)]
+    return None
+
+
+def guard_pipeline_lock(stem: str | None) -> int:
+    """round_pipeline 持锁期间拒绝外部并发写 canonical（0 放行 / 2 拒绝）。
+
+    锁文件 .work/<stem>/reports/pipeline.lock 由 translation-batch-ops 的
+    round_pipeline.py 创建；其子进程经 env RUNED_PIPELINE_TOKEN 继承 token 放行，
+    独立启动的命令（无 token）一律拒绝——防并行写回互相覆盖。
+    """
+    if not stem:
+        return 0
+    lockp = Path(".work") / stem / "reports" / "pipeline.lock"
+    if not lockp.is_file():
+        return 0
+    try:
+        info = json.loads(lockp.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        info = {}
+    if os.environ.get("RUNED_PIPELINE_TOKEN") == info.get("token"):
+        return 0
+    print(
+        f"error: pipeline.lock 存在（pid={info.get('pid')} phase={info.get('phase')} "
+        f"started={info.get('started')}），拒绝并发执行以避免覆盖；"
+        f"等 round_pipeline 完成后重试，或确认进程已死后删除 {lockp}",
+        file=sys.stderr,
+    )
+    return 2
+
 STRING_BLOCK_RE = re.compile(r"<String\b[^>]*>.*?</String>", re.DOTALL)
 DEST_RE = re.compile(r"<Dest>(.*?)</Dest>", re.DOTALL)
 
@@ -455,6 +493,9 @@ def write_report(path: Path, report: dict[str, Any], force: bool) -> None:
 
 
 def main() -> int:
+    g = guard_pipeline_lock(stem_from_xml_arg())
+    if g:
+        return g
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--xml", required=True,

@@ -80,6 +80,9 @@ def main():
     ap.add_argument('--no-semantic', dest='semantic', action='store_false',
                     help='关闭 TypeSafe 语义门（默认开；需 --xml/--contract/--result 齐备，'
                          '无 TYPESAFE_API_KEY 时报 UNCHECKED 不阻塞主线）')
+    ap.add_argument('--waivers', default=None,
+                    help='语义门豁免文件路径（缺省由 semantic_gate 自动探测 '
+                         '.work/<plugin>/contracts/semgate-waivers.json）')
     a = ap.parse_args()
 
     fails, warnings = [], []
@@ -187,10 +190,11 @@ def main():
                 fail(fails, a.batch, 'GATE', tail[-200:])
         # D. TypeSafe 语义门（机械 gate 之后的语义层；无 key 时显式记 UNCHECKED）
         if a.semantic and a.contract and a.xml:
-            r = subprocess.run([sys.executable, SEMGATE, '--result', result,
-                                '--xml', a.xml, '--contract', a.contract,
-                                '--batch', a.batch],
-                               capture_output=True, text=True)
+            cmd = [sys.executable, SEMGATE, '--result', result,
+                   '--xml', a.xml, '--contract', a.contract, '--batch', a.batch]
+            if a.waivers:
+                cmd += ['--waivers', a.waivers]
+            r = subprocess.run(cmd, capture_output=True, text=True)
             try:
                 sv = json.loads((r.stdout or '').strip().splitlines()[0])
                 out['semantic_gate'] = {'rc': r.returncode, 'verdict': sv.get('verdict'),

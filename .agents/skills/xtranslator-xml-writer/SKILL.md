@@ -3,7 +3,7 @@ name: xtranslator-xml-writer
 description: Safely apply validated Skyrim mod translation-result JSON files or minimal atomic patches to xTranslator XML by changing only intended destination text and verifying source version, XML identity, protected tokens, duplicate units, and post-write structure. Use whenever completed translation batches need to become an xTranslator-importable XML file, or when a small revision (a handful of strings) must be applied to an existing translated XML without rebuilding full batch context. This skill writes a new XML by default and must not freely reserialize the source document.
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects translation-result JSON produced by translation-executor, or a flat atomic patch JSON.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 > 性能基线（见 `skyrim-tool-dev-rules` §2；MVF1 规模 8528 替换 / 9402 节点 / 7 结果文件）：0.43s。回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复；已知反面模式是循环内反复重建整份文档字符串。
@@ -279,6 +279,8 @@ The generated XML is a new file by default. With `--report`, the script writes J
 The report is evidence of deterministic writeback only. It does not mean the Chinese has been human-approved or game-tested.
 
 ## Safety boundaries
+
+- **pipeline.lock 并发守卫（2026-09-22）**：写目标的 stem 对应 `.work/<stem>/reports/pipeline.lock` 存在且环境变量 `RUNED_PIPELINE_TOKEN` 与锁内 token 不匹配时，本脚本直接拒绝执行（rc=2）——`translation-batch-ops` 的 `round_pipeline.py` 收口期间，外部任何独立写回命令一律拒之，防并行写互相覆盖（历史上并行写曾回滚一批 44 行）。pipeline 自身的子进程经 env 继承 token 放行；无锁时行为不变。stale 锁需手动确认进程已死后删除锁文件。
 
 - Never alter `<Source>`, `<EDID>`, `<REC>`, `<Params>`, String order, or unrelated `<Dest>` values.
 - Never make semantic translation decisions in this skill.

@@ -50,6 +50,15 @@
       "unconditional": true
     },
     {
+      "english": "All-Maker",
+      "forbidden": [
+        "造物者"
+      ],
+      "target": "造物主",
+      "reason": "官方词典（Dragonborn）：All-Maker→造物主、Children of the All-Maker→造物主的孩子们；TheKalpicAnomaly 实测错形「造物者」（349）",
+      "category": "lore-name"
+    },
+    {
       "english": "Allah / God (Islam)",
       "forbidden": [
         "真主",
@@ -7152,6 +7161,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Anga's Mill",
+      "forbidden": [
+        "安加磨坊"
+      ],
+      "target": "安佳木材厂",
+      "reason": "官方词典：Anga's Mill→安佳木材厂、Key to Anga's Mill Common House→安佳木材厂平房钥匙（Skyrim）；TheKalpicAnomaly 实测错形「安加磨坊」（345）",
+      "category": "lore-name"
+    },
+    {
       "english": "angel (real-world)",
       "forbidden": [
         "天使"
@@ -7202,6 +7220,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Asgeir",
+      "forbidden": [
+        "阿斯盖尔"
+      ],
+      "target": "艾斯盖尔",
+      "reason": "官方词典：Asgeir Snow-Shod→艾斯盖尔·雪蹄、Asgeir's Wedding Band→艾斯盖尔的婚戒（Skyrim）；TheKalpicAnomaly 实测错形「阿斯盖尔」（342）",
+      "category": "lore-name"
+    },
+    {
       "english": "Ash Yam",
       "forbidden": [
         "灰薯"
@@ -7247,6 +7274,24 @@
       "category": "lore-name"
     },
     {
+      "english": "Balagog",
+      "forbidden": [
+        "巴拉格"
+      ],
+      "target": "巴拉果戈",
+      "reason": "官方词典：Balagog→巴拉果戈、Balagog gro-Nolob→巴拉果戈·格洛-诺洛波（Skyrim）；TheKalpicAnomaly 实测错形「巴拉格」（343）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Baldor",
+      "forbidden": [
+        "博尔多"
+      ],
+      "target": "鲍德尔",
+      "reason": "官方词典：Baldor Iron-Shaper→“塑铁者”鲍德尔（Dragonborn）；TheKalpicAnomaly 实测错形「博尔多」（356）",
+      "category": "lore-name"
+    },
+    {
       "english": "Balgruuf",
       "forbidden": [
         "巴尔格鲁夫",
@@ -7254,6 +7299,15 @@
       ],
       "target": "巴尔古夫",
       "reason": "官方词典：白漫领主（社区巴尔格鲁夫为错译）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Bard's Leap",
+      "forbidden": [
+        "吟游诗人飞跃"
+      ],
+      "target": "诗人之跃",
+      "reason": "官方词典：Bard's Leap Summit→诗人之跃峰顶（Skyrim）；TheKalpicAnomaly 实测错形「吟游诗人飞跃」（245）",
       "category": "lore-name"
     },
     {
@@ -7307,6 +7361,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Bloodscythe",
+      "forbidden": [
+        "血饮"
+      ],
+      "target": "血镰",
+      "reason": "官方词典：Bloodscythe→血镰（Dragonborn）；TheKalpicAnomaly 实测错形「血饮」（369）",
+      "category": "lore-name"
+    },
+    {
       "english": "bonemold",
       "forbidden": [
         "骨螺"
@@ -7348,6 +7411,16 @@
       "category": "lore-name"
     },
     {
+      "english": "Bromjunaar",
+      "forbidden": [
+        "布罗姆尤纳尔",
+        "布罗姆朱纳尔"
+      ],
+      "target": "布罗姆琼那",
+      "reason": "官方词典：Bromjunaar's Mystery→布罗姆琼那之秘（Skyrim）；TheKalpicAnomaly 实测错形「布罗姆尤纳尔」（231）「布罗姆朱纳尔」（242）",
+      "category": "lore-name"
+    },
+    {
       "english": "Buddha / Bodhisattva",
       "forbidden": [
         "佛陀",
@@ -7378,6 +7451,15 @@
       ],
       "target": "犬根",
       "reason": "官方词典：犬根（meresis DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Casimir",
+      "forbidden": [
+        "卡西米尔"
+      ],
+      "target": "凯西米尔",
+      "reason": "官方词典：Brother Casimir→凯西米尔兄弟（Skyrim）；TheKalpicAnomaly 实测错形「卡西米尔」（24579）",
       "category": "lore-name"
     },
     {
@@ -7447,6 +7529,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Crabber's Shanty",
+      "forbidden": [
+        "捕蟹人棚屋"
+      ],
+      "target": "捕蟹人的棚屋",
+      "reason": "官方词典：Crabber's Shanty→捕蟹人的棚屋（Skyrim）；TheKalpicAnomaly 实测错形缺「的」（242）",
+      "category": "lore-name"
+    },
+    {
       "english": "Cyrodiil",
       "forbidden": [
         "西罗帝尔"
@@ -7480,10 +7571,12 @@
         "魔族君王",
         "魔神",
         "迪德拉亲王",
-        "迪德拉王子"
+        "迪德拉王子",
+        "迪格拉君主",
+        "迪德拉君主"
       ],
       "target": "迪德拉君王",
-      "reason": "官方词典：迪德拉君王（Prince of Oblivion 亦作湮灭君王；社区通行魔神/魔族王子为高频错译）",
+      "reason": "官方词典：迪德拉君王（Prince of Oblivion 亦作湮灭君王；社区通行魔神/魔族王子为高频错译）；实测「迪格拉君主」（915/917，2026-09-21 回正）「迪德拉君主」",
       "category": "lore-name"
     },
     {
@@ -7554,6 +7647,15 @@
       ],
       "target": "戴尔文·马洛里",
       "reason": "官方词典：盗贼公会（dg04 v2 修正德尔文）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Deor",
+      "forbidden": [
+        "迪奥尔"
+      ],
+      "target": "迪乌尔",
+      "reason": "官方词典：Deor Woodcutter→樵夫迪乌尔（Dragonborn）；TheKalpicAnomaly 实测错形「迪奥尔」（356）",
       "category": "lore-name"
     },
     {
@@ -7669,6 +7771,34 @@
       "category": "lore-name"
     },
     {
+      "english": "Ebonmere",
+      "forbidden": [
+        "乌木之池"
+      ],
+      "target": "黑檀池",
+      "reason": "官方词典：Ebonmere Lock→黑檀池锁（Skyrim）；实测错形「乌木之池」（816）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Ebony",
+      "forbidden": [
+        "乌金",
+        "乌木"
+      ],
+      "target": "黑檀",
+      "reason": "官方词典：Ebony→黑檀、Ebony Ingot→黑檀锭（Skyrim）；TheKalpicAnomaly 实测错形「乌金锭」（358）；实测错形「乌木」（复审 070-071）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Ennodius",
+      "forbidden": [
+        "埃诺迪乌斯"
+      ],
+      "target": "恩诺迪尤斯",
+      "reason": "官方词典：Ennodius Papius→恩诺迪尤斯·帕尤斯、Ennodius→恩诺迪尤斯（Skyrim）；TheKalpicAnomaly 实测错形「埃诺迪乌斯」（345）",
+      "category": "lore-name"
+    },
+    {
       "english": "Epistolary Acumen",
       "forbidden": [
         "书信敏悟"
@@ -7707,6 +7837,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Fallowstone",
+      "forbidden": [
+        "荒石"
+      ],
+      "target": "休石",
+      "reason": "官方词典：Fallowstone Cave→休石洞穴（Skyrim）；TheKalpicAnomaly 实测错形「荒石」（230）",
+      "category": "lore-name"
+    },
+    {
       "english": "Falmer",
       "forbidden": [
         "雪精灵"
@@ -7719,12 +7858,30 @@
       "category": "lore-name"
     },
     {
-      "english": "Fallowstone",
+      "english": "Fanari",
       "forbidden": [
-        "荒石"
+        "法娜瑞"
       ],
-      "target": "休石",
-      "reason": "官方词典：Fallowstone Cave→休石洞穴（Skyrim）；TheKalpicAnomaly 实测错形「荒石」（230）",
+      "target": "法娜丽",
+      "reason": "官方词典：Fanari Strong-Voice→“强音”法娜丽（Dragonborn）；TheKalpicAnomaly 实测错形「法娜瑞」（356）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Festus",
+      "forbidden": [
+        "费斯图斯"
+      ],
+      "target": "菲斯图斯",
+      "reason": "官方词典：Festus Krex→菲斯图斯·克莱克斯（Skyrim）；TheKalpicAnomaly 实测错形「费斯图斯」（343）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Filament and Filigree",
+      "forbidden": [
+        "丝线与金饰"
+      ],
+      "target": "金丝银线",
+      "reason": "官方词典：Black Book: Filament and Filigree→黑暗经书：金丝银线（Dragonborn）；TheKalpicAnomaly 实测错形「丝线与金饰」（24319）",
       "category": "lore-name"
     },
     {
@@ -7835,24 +7992,6 @@
       "category": "lore-name"
     },
     {
-      "english": "Gjukar's Monument",
-      "forbidden": [
-        "久卡"
-      ],
-      "target": "古卡尔",
-      "reason": "官方词典：Gjukar's Monument→古卡尔的纪念碑、Gjukar→古卡尔（Skyrim）；TheKalpicAnomaly 实测错形「久卡」（241）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Bard's Leap",
-      "forbidden": [
-        "吟游诗人飞跃"
-      ],
-      "target": "诗人之跃",
-      "reason": "官方词典：Bard's Leap Summit→诗人之跃峰顶（Skyrim）；TheKalpicAnomaly 实测错形「吟游诗人飞跃」（245）",
-      "category": "lore-name"
-    },
-    {
       "english": "Gildergreen",
       "forbidden": [
         "金绿树"
@@ -7862,12 +8001,30 @@
       "category": "lore-name"
     },
     {
+      "english": "Gjukar's Monument",
+      "forbidden": [
+        "久卡"
+      ],
+      "target": "古卡尔",
+      "reason": "官方词典：Gjukar's Monument→古卡尔的纪念碑、Gjukar→古卡尔（Skyrim）；TheKalpicAnomaly 实测错形「久卡」（241）",
+      "category": "lore-name"
+    },
+    {
       "english": "Gloombound",
       "forbidden": [
         "幽暗界矿场"
       ],
       "target": "昏暗边界",
       "reason": "官方词典：Gloombound Mine→昏暗边界矿场（Skyrim）；TheKalpicAnomaly 实测错形「幽暗界矿场」（235）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Glover",
+      "forbidden": [
+        "格洛弗"
+      ],
+      "target": "葛洛文",
+      "reason": "官方词典：Glover Mallory→葛洛文·马洛里（Dragonborn）；TheKalpicAnomaly 实测错形「格洛弗」（356）",
       "category": "lore-name"
     },
     {
@@ -7896,6 +8053,16 @@
       ],
       "target": "黄金龙爪",
       "reason": "官方词典：黄金龙爪（dg04/MVF1 修正金爪）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Goldenglow",
+      "forbidden": [
+        "金辉庄园",
+        "金色庄园"
+      ],
+      "target": "金色光辉",
+      "reason": "官方词典：Goldenglow→金色光辉、Goldenglow Bill of Sale→金色光辉庄园卖契（Skyrim）；TheKalpicAnomaly 实测错形「金辉庄园」（436/4547/15837）、「金色庄园」（33392）",
       "category": "lore-name"
     },
     {
@@ -7936,13 +8103,21 @@
       "category": "lore-name"
     },
     {
-      "english": "Halfmoon Mill",
+      "english": "Greywater Gorge",
       "forbidden": [
-        "半月锯坊",
-        "半月木锯坊"
+        "灰水石窟"
       ],
-      "target": "半月磨坊",
-      "reason": "无官方见证；TheKalpicAnomaly 实测错形防漂移（241/243 两 EDID 同指一地）",
+      "target": "灰水峡谷",
+      "reason": "官方词典：Greywater Gorge→灰水峡谷（Skyrim）；TheKalpicAnomaly 实测错形「灰水石窟」（243）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Gunmar",
+      "forbidden": [
+        "甘玛尔"
+      ],
+      "target": "甘马尔",
+      "reason": "官方词典（Dawnguard）：Gunmar→甘马尔；TheKalpicAnomaly 实测错形「甘玛尔」（316）",
       "category": "lore-name"
     },
     {
@@ -7964,6 +8139,16 @@
       "category": "lore-name"
     },
     {
+      "english": "Halfmoon Mill",
+      "forbidden": [
+        "半月锯坊",
+        "半月木锯坊"
+      ],
+      "target": "半月磨坊",
+      "reason": "无官方见证；TheKalpicAnomaly 实测错形防漂移（241/243 两 EDID 同指一地）",
+      "category": "lore-name"
+    },
+    {
       "english": "Hall of the Dead",
       "forbidden": [
         "亡者大厅"
@@ -7979,6 +8164,25 @@
       ],
       "target": "警戒者之厅",
       "reason": "官方词典：Hall of the Vigilants→警戒者之厅（Dawnguard）；TheKalpicAnomaly 实测错形「警戒者大厅」（221）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Harkon",
+      "forbidden": [
+        "哈尔康"
+      ],
+      "target": "哈孔",
+      "reason": "官方词典（Dawnguard）：Harkon→哈孔；TheKalpicAnomaly 实测错形「哈尔康」（314）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Harmugstahl",
+      "forbidden": [
+        "哈蒙斯托尔",
+        "哈姆格斯托"
+      ],
+      "target": "汉蒙斯托尔",
+      "reason": "官方词典：Harmugstahl→汉蒙斯托尔（Skyrim）；TheKalpicAnomaly 实测漏名（245，已补）",
       "category": "lore-name"
     },
     {
@@ -8031,6 +8235,16 @@
       ],
       "target": "赫麦尤斯·莫拉",
       "reason": "官方词典：知识与命运魔神；一次审计实测 4 种错音译（MVF1 round3，33 条中 30 条错）",
+      "category": "lore-name"
+    },
+    {
+      "english": "The Hidden Twilight",
+      "forbidden": [
+        "隐秘黄昏",
+        "隐秘的暮光"
+      ],
+      "target": "隐匿暮光",
+      "reason": "官方词典：Black Book: The Hidden Twilight→黑暗经书：隐匿暮光（Dragonborn）；TheKalpicAnomaly 实测错形「隐秘黄昏」「隐秘的暮光」（24493/24323）",
       "category": "lore-name"
     },
     {
@@ -8151,6 +8365,24 @@
       "category": "lore-name"
     },
     {
+      "english": "Jurgen Windcaller",
+      "forbidden": [
+        "呼风者"
+      ],
+      "target": "“唤风者”约根",
+      "reason": "官方词典实证：Horn of Jurgen Windcaller→“唤风者”约根的号角",
+      "category": "lore-name"
+    },
+    {
+      "english": "Jyggalag",
+      "forbidden": [
+        "杰格拉格"
+      ],
+      "target": "杰盖拉格",
+      "reason": "官方词典实证：Sword of Jyggalag→杰盖拉格之剑（ccBGSSSE025-AdvDSGS）",
+      "category": "lore-name"
+    },
+    {
       "english": "Khajiit",
       "forbidden": [
         "虎人"
@@ -8160,13 +8392,23 @@
       "category": "lore-name"
     },
     {
+      "english": "Orthus",
+      "forbidden": [
+        "奥瑟斯"
+      ],
+      "target": "奥苏斯",
+      "reason": "官方词典：Orthus Endario→奥苏斯·恩达里奥、别担心奥苏斯（Skyrim 三处）；奥瑟斯为 TheKalpicAnomaly 9234 实测异形（2026-09-22 回正）",
+      "category": "lore-name"
+    },
+    {
       "english": "Kodlak",
       "forbidden": [
         "克拉克",
-        "科德拉克"
+        "科德拉克",
+        "克德拉克"
       ],
       "target": "克拉科",
-      "reason": "官方词典：战友团首领；21 条候选高频错译（MVF1 round4）",
+      "reason": "官方词典：战友团首领；21 条候选高频错译（MVF1 round4）；克德拉克为 TheKalpicAnomaly 9266 实测异形（2026-09-22 回正）",
       "category": "lore-name"
     },
     {
@@ -8215,6 +8457,16 @@
       ],
       "target": "利雅文",
       "reason": "官方词典：希罗帝尔城市；黑木 Blackwood 是所在沼泽大区（meresis DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Liar's Retreat",
+      "forbidden": [
+        "骗子退路",
+        "谎言退路"
+      ],
+      "target": "骗子的藏身处",
+      "reason": "官方词典：Liar's Retreat→骗子的藏身处（Dawnguard）；TheKalpicAnomaly 实测漏名（245，已补）",
       "category": "lore-name"
     },
     {
@@ -8268,6 +8520,15 @@
       ],
       "target": "罗瑞尤斯",
       "reason": "官方词典：Vantus Loreius→万图斯·罗瑞尤斯（Skyrim）；TheKalpicAnomaly 实测错形",
+      "category": "lore-name"
+    },
+    {
+      "english": "Lost Valley Redoubt",
+      "forbidden": [
+        "失落山谷据点"
+      ],
+      "target": "失落溪谷据点",
+      "reason": "官方词典：Lost Valley Redoubt→失落溪谷据点（Skyrim）；TheKalpicAnomaly 实测漏名（245，已补）",
       "category": "lore-name"
     },
     {
@@ -8328,6 +8589,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Mallus",
+      "forbidden": [
+        "玛鲁斯"
+      ],
+      "target": "莫鲁斯",
+      "reason": "官方词典：Mallus Maccius→莫鲁斯·马修斯、Mallus→莫鲁斯（Skyrim）；TheKalpicAnomaly 实测错形「玛鲁斯」（440）",
+      "category": "lore-name"
+    },
+    {
       "english": "Mammoth Cheese Bowl",
       "forbidden": [
         "猛犸奶酪碗"
@@ -8365,21 +8635,21 @@
       "category": "lore-name"
     },
     {
-      "english": "Maurice",
-      "forbidden": [
-        "莫里斯"
-      ],
-      "target": "毛利斯",
-      "reason": "官方词典：Maurice Jondrelle→毛利斯·钱德利（Skyrim）；TheKalpicAnomaly 实测错形",
-      "category": "lore-name"
-    },
-    {
       "english": "Masser",
       "forbidden": [
         "玛瑟尔"
       ],
       "target": "马瑟尔",
       "reason": "官方词典：Ring of Masser→马瑟尔之戒（ccbgssse051）；TheKalpicAnomaly 实测错形「玛瑟尔」（240）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Maurice",
+      "forbidden": [
+        "莫里斯"
+      ],
+      "target": "毛利斯",
+      "reason": "官方词典：Maurice Jondrelle→毛利斯·钱德利（Skyrim）；TheKalpicAnomaly 实测错形",
       "category": "lore-name"
     },
     {
@@ -8449,6 +8719,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Morag Tong",
+      "forbidden": [
+        "莫拉格帮"
+      ],
+      "target": "莫拉格堂",
+      "reason": "官方词典实证：Morag Tong Assassin→莫拉格堂刺客；「帮」带江湖口语气，破语域",
+      "category": "lore-name"
+    },
+    {
       "english": "Morndas",
       "forbidden": [
         "莫恩达斯",
@@ -8488,10 +8767,21 @@
     {
       "english": "Moth Priest",
       "forbidden": [
-        "圣蛾祭司"
+        "圣蛾祭司",
+        "飞蛾祭司"
       ],
       "target": "蛾祭司",
-      "reason": "官方词典：Moth Priest→蛾祭司（Dawnguard 实证，无「圣」字）；TheKalpicAnomaly 实测错形「圣蛾祭司」（216）",
+      "reason": "官方词典：Moth Priest→蛾祭司（Dawnguard 实证，无「圣」字）；实测错形「圣蛾祭司」（216）、「飞蛾祭司」（26858）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Motierre",
+      "forbidden": [
+        "莫蒂埃尔",
+        "莫提埃尔"
+      ],
+      "target": "莫提雷",
+      "reason": "官方词典：Amaund Motierre→阿蒙德·莫提雷、Amaund Motierre's Sealed Letter→阿蒙德·莫提雷的盖章信（Skyrim）；TheKalpicAnomaly 实测错形「莫蒂埃尔」（341/342/343）",
       "category": "lore-name"
     },
     {
@@ -8506,10 +8796,11 @@
     {
       "english": "Mundus",
       "forbidden": [
-        "蒙达斯"
+        "蒙达斯",
+        "梦达斯"
       ],
       "target": "梦达思",
-      "reason": "官方词典：梦达思（meresis DICTIONARY 严禁清单）",
+      "reason": "官方词典：梦达思（meresis DICTIONARY 严禁清单）；梦达斯为错形（TheKalpicAnomaly 7981 实测，Skyrim 两处见证）",
       "category": "lore-name"
     },
     {
@@ -8557,6 +8848,24 @@
       ],
       "target": "尼查达克",
       "reason": "官方词典：Nchardak→尼查达克（Dragonborn）；实测错形「查达克」，清零后入库防复发（forbidden 为 target 子串，依赖 R12 覆盖豁免）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Nightwielder",
+      "forbidden": [
+        "夜驭者"
+      ],
+      "target": "暗夜掌控者",
+      "reason": "官方词典：Azra Nightwielder→“暗夜掌控者”阿兹拉（Dragonborn）；TheKalpicAnomaly 实测错形「夜驭者」（371）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Nilsine",
+      "forbidden": [
+        "尼尔辛"
+      ],
+      "target": "尼尔欣",
+      "reason": "官方词典：Nilsine→尼尔欣、Nilsine Shatter-Shield→尼尔欣·碎盾（Skyrim）；TheKalpicAnomaly 实测错形「尼尔辛」（341）",
       "category": "lore-name"
     },
     {
@@ -8630,6 +8939,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Peryite",
+      "forbidden": [
+        "佩伊特"
+      ],
+      "target": "魄伊特",
+      "reason": "官方词典：Aspect of Peryite→魄伊特的化身（Skyrim）；TheKalpicAnomaly 实测错形「佩伊特」（228）",
+      "category": "lore-name"
+    },
+    {
       "english": "pope / papacy",
       "forbidden": [
         "教皇"
@@ -8638,15 +8956,6 @@
       "reason": "现实宗教禁令；建议改写：TES 无教皇；大祭司 Archpriest 等",
       "category": "anachronism-religion",
       "unconditional": true
-    },
-    {
-      "english": "Peryite",
-      "forbidden": [
-        "佩伊特"
-      ],
-      "target": "魄伊特",
-      "reason": "官方词典：Aspect of Peryite→魄伊特的化身（Skyrim）；TheKalpicAnomaly 实测错形「佩伊特」（228）",
-      "category": "lore-name"
     },
     {
       "english": "Prelate",
@@ -8686,15 +8995,6 @@
       "category": "lore-name"
     },
     {
-      "english": "Rigel Strong-Arm",
-      "forbidden": [
-        "里格尔"
-      ],
-      "target": "“壮臂”利赫尔",
-      "reason": "官方词典：Rigel Strong-Arm→“壮臂”利赫尔（Skyrim）；TheKalpicAnomaly 实测错形「里格尔·强臂」（243）",
-      "category": "lore-name"
-    },
-    {
       "english": "Rain's Hand",
       "forbidden": [
         "雨手"
@@ -8724,6 +9024,15 @@
       ],
       "target": "鸦心",
       "reason": "Druadach 势力 the Ravenhearts 形容词/集合形 Ravenhearted 统一鸦心（canonical 11 处鸦心氏族）；鹰心为错（Raven=鸦非鹰），20402 曾误译已回正；TERM004 独立锚防回流",
+      "category": "lore-name"
+    },
+    {
+      "english": "Reaver",
+      "forbidden": [
+        "劫掠者"
+      ],
+      "target": "抢匪",
+      "reason": "官方词典（Dragonborn）：Reaver Lord→抢匪头目、Reaver Thug→抢匪恶棍；TheKalpicAnomaly 实测错形「劫掠者」（349）",
       "category": "lore-name"
     },
     {
@@ -8762,6 +9071,15 @@
       ],
       "target": "裂谷城卫兵",
       "reason": "官方词典：裂谷城卫兵（dg04 v3 废止守卫）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Rigel Strong-Arm",
+      "forbidden": [
+        "里格尔"
+      ],
+      "target": "“壮臂”利赫尔",
+      "reason": "官方词典：Rigel Strong-Arm→“壮臂”利赫尔（Skyrim）；TheKalpicAnomaly 实测错形「里格尔·强臂」（243）",
       "category": "lore-name"
     },
     {
@@ -8939,6 +9257,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Sithis",
+      "forbidden": [
+        "西瑟斯"
+      ],
+      "target": "西帝斯",
+      "reason": "官方词典实证：Sithis→西帝斯、Hail Sithis!→西帝斯万岁！；西瑟斯为社区误形",
+      "category": "lore-name"
+    },
+    {
       "english": "Skjor",
       "forbidden": [
         "斯约尔"
@@ -8987,6 +9314,15 @@
       "category": "lore-name"
     },
     {
+      "english": "Soulrender",
+      "forbidden": [
+        "碎魂"
+      ],
+      "target": "魂引",
+      "reason": "官方词典：Soulrender→魂引（Dragonborn）；TheKalpicAnomaly 实测错形「碎魂」（369）",
+      "category": "lore-name"
+    },
+    {
       "english": "Southfringe",
       "forbidden": [
         "南陲"
@@ -9024,6 +9360,15 @@
       ],
       "target": "孤立浅滩",
       "reason": "官方词典：阿尔贡连字名（dg04 v3 废止立于浅滩/立浅滩）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Storn",
+      "forbidden": [
+        "斯多恩"
+      ],
+      "target": "斯托恩",
+      "reason": "官方词典：Storn→斯托恩、Storn Crag-Strider→“跨崖者”斯托恩（Dragonborn）；TheKalpicAnomaly 实测错形「斯多恩」（349）",
       "category": "lore-name"
     },
     {
@@ -9074,35 +9419,6 @@
       "category": "lore-name"
     },
     {
-      "english": "Liar's Retreat",
-      "forbidden": [
-        "骗子退路",
-        "谎言退路"
-      ],
-      "target": "骗子的藏身处",
-      "reason": "官方词典：Liar's Retreat→骗子的藏身处（Dawnguard）；TheKalpicAnomaly 实测漏名（245，已补）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Lost Valley Redoubt",
-      "forbidden": [
-        "失落山谷据点"
-      ],
-      "target": "失落溪谷据点",
-      "reason": "官方词典：Lost Valley Redoubt→失落溪谷据点（Skyrim）；TheKalpicAnomaly 实测漏名（245，已补）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Harmugstahl",
-      "forbidden": [
-        "哈蒙斯托尔",
-        "哈姆格斯托"
-      ],
-      "target": "汉蒙斯托尔",
-      "reason": "官方词典：Harmugstahl→汉蒙斯托尔（Skyrim）；TheKalpicAnomaly 实测漏名（245，已补）",
-      "category": "lore-name"
-    },
-    {
       "english": "Sweetroll",
       "forbidden": [
         "甜甜圈"
@@ -9118,6 +9434,15 @@
       ],
       "target": "塔瓦斯",
       "reason": "官方词典：Talvas Fathryon→塔瓦斯·法斯瑞恩（Dragonborn）；TheKalpicAnomaly 实测错形（194）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Telvanni",
+      "forbidden": [
+        "泰尔瓦尼"
+      ],
+      "target": "泰瓦尼",
+      "reason": "官方词典：Telvanni Research→泰瓦尼研究、Telvanni Robes→泰瓦尼长袍（Dragonborn）；TheKalpicAnomaly 实测错形「泰尔瓦尼」（23999，2026-09-21 回正）",
       "category": "lore-name"
     },
     {
@@ -9187,6 +9512,15 @@
       "category": "lore-name"
     },
     {
+      "english": "The Wolf Queen",
+      "forbidden": [
+        "狼女王"
+      ],
+      "target": "狼后",
+      "reason": "官方词典：The Wolf Queen, v7→狼后·卷7、Biography of the Wolf Queen→狼后传（Skyrim）；TheKalpicAnomaly 实测错形「狼女王」（4946）",
+      "category": "lore-name"
+    },
+    {
       "english": "Thirsk",
       "forbidden": [
         "瑟斯克"
@@ -9234,6 +9568,24 @@
       "category": "lore-name"
     },
     {
+      "english": "Ulag",
+      "forbidden": [
+        "乌拉格"
+      ],
+      "target": "乌莱格",
+      "reason": "官方词典：Ulag→乌莱格（Skyrim）；TheKalpicAnomaly 实测错形「乌拉格」（224）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Ulfberth",
+      "forbidden": [
+        "乌尔夫伯斯"
+      ],
+      "target": "乌伏巴",
+      "reason": "官方词典：Ulfberth War-Bear→“战熊”乌伏巴、Ulfberth's House→乌伏巴家（Skyrim）；TheKalpicAnomaly 实测错形「乌尔夫伯斯」（250）",
+      "category": "lore-name"
+    },
+    {
       "english": "Ulfric",
       "forbidden": [
         "乌尔弗里克"
@@ -9249,24 +9601,6 @@
       ],
       "target": "未叙传说",
       "reason": "官方词典：Black Book: Untold Legends→黑暗经书：未叙传说（Dragonborn）；实测错形「不为人知的传说」",
-      "category": "lore-name"
-    },
-    {
-      "english": "Varona",
-      "forbidden": [
-        "瓦罗娜"
-      ],
-      "target": "瓦罗纳",
-      "reason": "官方词典：Varona→瓦罗纳、Varona Nelas→瓦罗纳·尼拉斯（Dragonborn）；TheKalpicAnomaly 实测错形（181/194），清零后入库防复发",
-      "category": "lore-name"
-    },
-    {
-      "english": "Ulag",
-      "forbidden": [
-        "乌拉格"
-      ],
-      "target": "乌莱格",
-      "reason": "官方词典：Ulag→乌莱格（Skyrim）；TheKalpicAnomaly 实测错形「乌拉格」（224）",
       "category": "lore-name"
     },
     {
@@ -9295,6 +9629,33 @@
       ],
       "target": "吸血鬼领主",
       "reason": "官方词典：吸血鬼领主（MVF1 round6 实测 大君 漏网；社区通行）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Vampirism",
+      "forbidden": [
+        "吸血鬼之身"
+      ],
+      "target": "吸血鬼化",
+      "reason": "官方词典：Vampirism→吸血鬼化（Dawnguard）；TheKalpicAnomaly 实测错形「吸血鬼之身」（8 行，2026-09-21 复扫回正）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Varnius",
+      "forbidden": [
+        "瓦尼厄斯"
+      ],
+      "target": "瓦纽斯",
+      "reason": "官方词典：Varnius→瓦纽斯、Varnius Junius→瓦纽斯·尤尼斯（Skyrim）；TheKalpicAnomaly 实测错形「瓦尼厄斯」（15805）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Varona",
+      "forbidden": [
+        "瓦罗娜"
+      ],
+      "target": "瓦罗纳",
+      "reason": "官方词典：Varona→瓦罗纳、Varona Nelas→瓦罗纳·尼拉斯（Dragonborn）；TheKalpicAnomaly 实测错形（181/194），清零后入库防复发",
       "category": "lore-name"
     },
     {
@@ -9361,6 +9722,15 @@
       "category": "lore-name"
     },
     {
+      "english": "White Ridge",
+      "forbidden": [
+        "白峰"
+      ],
+      "target": "白脊",
+      "reason": "官方词典：White Ridge Barrow→白脊古坟（proper-noun-index 清点）；TheKalpicAnomaly INFO-493 实测错形「白峰」（子代理自拟，验收回正）",
+      "category": "lore-name"
+    },
+    {
       "english": "Whiterun",
       "forbidden": [
         "雪漫"
@@ -9376,6 +9746,15 @@
       ],
       "target": "风舵城",
       "reason": "官方词典：东境首府（MVF1 DICTIONARY 严禁清单）",
+      "category": "lore-name"
+    },
+    {
+      "english": "Wolf Queen",
+      "forbidden": [
+        "狼心女王"
+      ],
+      "target": "狼后",
+      "reason": "官方词典：The Wolf Queen→狼后、Biography of the Wolf Queen→狼后传（Skyrim）；TheKalpicAnomaly 实测错形「狼心女王」（15816）",
       "category": "lore-name"
     },
     {
@@ -9400,15 +9779,6 @@
       "category": "lore-name"
     },
     {
-      "english": "Ulfberth",
-      "forbidden": [
-        "乌尔夫伯斯"
-      ],
-      "target": "乌伏巴",
-      "reason": "官方词典：Ulfberth War-Bear→“战熊”乌伏巴、Ulfberth's House→乌伏巴家（Skyrim）；TheKalpicAnomaly 实测错形「乌尔夫伯斯」（250）",
-      "category": "lore-name"
-    },
-    {
       "english": "Yatul",
       "forbidden": [
         "亚图尔"
@@ -9427,304 +9797,102 @@
       "category": "lore-name"
     },
     {
-      "english": "Sithis",
+      "english": "Numinex",
       "forbidden": [
-        "西瑟斯"
+        "努米纳克斯"
       ],
-      "target": "西帝斯",
-      "reason": "官方词典实证：Sithis→西帝斯、Hail Sithis!→西帝斯万岁！；西瑟斯为社区误形",
+      "target": "怒米奈科斯",
+      "reason": "官方词典：Numinex was the dragon's name→怒米奈科斯（Skyrim 三处见证）；努米纳克斯为自拟形（TheKalpicAnomaly 26393 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Jyggalag",
+      "english": "Heart of Lorkhan",
       "forbidden": [
-        "杰格拉格"
+        "洛克汗的心脏"
       ],
-      "target": "杰盖拉格",
-      "reason": "官方词典实证：Sword of Jyggalag→杰盖拉格之剑（ccBGSSSE025-AdvDSGS）",
+      "target": "洛克汗之心",
+      "reason": "官方词典：Heart of Lorkhan→洛克汗之心（Dragonborn/Skyrim 三处）；洛克汗的心脏为自拟形（TheKalpicAnomaly 8816 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Morag Tong",
+      "english": "Psijics",
       "forbidden": [
-        "莫拉格帮"
+        "普西奇"
       ],
-      "target": "莫拉格堂",
-      "reason": "官方词典实证：Morag Tong Assassin→莫拉格堂刺客；「帮」带江湖口语气，破语域",
+      "target": "赛伊克",
+      "reason": "官方词典：those Psijics→那些赛伊克（Skyrim）；普西奇为自拟音译（TheKalpicAnomaly 26598 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Jurgen Windcaller",
+      "english": "Five Tenets",
       "forbidden": [
-        "呼风者"
+        "五戒"
       ],
-      "target": "“唤风者”约根",
-      "reason": "官方词典实证：Horn of Jurgen Windcaller→“唤风者”约根的号角",
+      "target": "五大信条",
+      "reason": "官方词典：bound by Five Tenets→五大信条（Skyrim 两处）；五戒为自拟形（TheKalpicAnomaly 26621 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Crabber's Shanty",
+      "english": "Fellglow",
       "forbidden": [
-        "捕蟹人棚屋"
+        "堕落之光"
       ],
-      "target": "捕蟹人的棚屋",
-      "reason": "官方词典：Crabber's Shanty→捕蟹人的棚屋（Skyrim）；TheKalpicAnomaly 实测错形缺「的」（242）",
+      "target": "光落",
+      "reason": "官方词典：Fellglow Keep→光落堡垒（Dawnguard/Skyrim 四处）；堕落之光为字面拆译自拟形（TheKalpicAnomaly 26559 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Greywater Gorge",
+      "english": "Eyes of the Falmer",
       "forbidden": [
-        "灰水石窟"
+        "雪精灵之眼"
       ],
-      "target": "灰水峡谷",
-      "reason": "官方词典：Greywater Gorge→灰水峡谷（Skyrim）；TheKalpicAnomaly 实测错形「灰水石窟」（243）",
+      "target": "伐莫之眼",
+      "reason": "官方词典：going after the Eyes of the Falmer→伐莫之眼（Skyrim 三处）；雪精灵之眼为自拟形（TheKalpicAnomaly 26514 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Bromjunaar",
+      "english": "Synod",
       "forbidden": [
-        "布罗姆尤纳尔",
-        "布罗姆朱纳尔"
+        "辛诺德"
       ],
-      "target": "布罗姆琼那",
-      "reason": "官方词典：Bromjunaar's Mystery→布罗姆琼那之秘（Skyrim）；TheKalpicAnomaly 实测错形「布罗姆尤纳尔」（231）「布罗姆朱纳尔」（242）",
+      "target": "希诺",
+      "reason": "官方词典：Synod Researcher→希诺研究者、The Synod→希诺（Skyrim 三处）；辛诺德为自拟音译（TheKalpicAnomaly 26571 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Harkon",
+      "english": "Oculory",
       "forbidden": [
-        "哈尔康"
+        "奥库拉瑞"
       ],
-      "target": "哈孔",
-      "reason": "官方词典（Dawnguard）：Harkon→哈孔；TheKalpicAnomaly 实测错形「哈尔康」（314）",
+      "target": "汇光之睛",
+      "reason": "官方词典：the Oculory in Mzulft→姆祖伏特的汇光之睛（Skyrim 三处）；奥库拉瑞为自拟音译（TheKalpicAnomaly 26573 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Gunmar",
+      "english": "Rendar",
       "forbidden": [
-        "甘玛尔"
+        "伦达尔"
       ],
-      "target": "甘马尔",
-      "reason": "官方词典（Dawnguard）：Gunmar→甘马尔；TheKalpicAnomaly 实测错形「甘玛尔」（316）",
+      "target": "仁达尔",
+      "reason": "官方词典：Ambarys Rendar→安巴利·仁达尔（Skyrim）；伦达尔为自拟形（TheKalpicAnomaly 26166 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Goldenglow",
+      "english": "Mad God",
       "forbidden": [
-        "金辉庄园",
-        "金色庄园"
+        "疯狂之神"
       ],
-      "target": "金色光辉",
-      "reason": "官方词典：Goldenglow→金色光辉、Goldenglow Bill of Sale→金色光辉庄园卖契（Skyrim）；TheKalpicAnomaly 实测错形「金辉庄园」（436/4547/15837）、「金色庄园」（33392）",
+      "target": "疯神",
+      "reason": "官方词典：The Mad God, actually→疯神（Skyrim）；疯狂之神为自拟形（TheKalpicAnomaly 7954 实测）",
       "category": "lore-name"
     },
     {
-      "english": "Mallus",
+      "english": "ashlands",
       "forbidden": [
-        "玛鲁斯"
+        "灰烬地"
       ],
-      "target": "莫鲁斯",
-      "reason": "官方词典：Mallus Maccius→莫鲁斯·马修斯、Mallus→莫鲁斯（Skyrim）；TheKalpicAnomaly 实测错形「玛鲁斯」（440）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Wolf Queen",
-      "forbidden": [
-        "狼心女王"
-      ],
-      "target": "狼后",
-      "reason": "官方词典：The Wolf Queen→狼后、Biography of the Wolf Queen→狼后传（Skyrim）；TheKalpicAnomaly 实测错形「狼心女王」（15816）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Varnius",
-      "forbidden": [
-        "瓦尼厄斯"
-      ],
-      "target": "瓦纽斯",
-      "reason": "官方词典：Varnius→瓦纽斯、Varnius Junius→瓦纽斯·尤尼斯（Skyrim）；TheKalpicAnomaly 实测错形「瓦尼厄斯」（15805）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Nilsine",
-      "forbidden": [
-        "尼尔辛"
-      ],
-      "target": "尼尔欣",
-      "reason": "官方词典：Nilsine→尼尔欣、Nilsine Shatter-Shield→尼尔欣·碎盾（Skyrim）；TheKalpicAnomaly 实测错形「尼尔辛」（341）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Asgeir",
-      "forbidden": [
-        "阿斯盖尔"
-      ],
-      "target": "艾斯盖尔",
-      "reason": "官方词典：Asgeir Snow-Shod→艾斯盖尔·雪蹄、Asgeir's Wedding Band→艾斯盖尔的婚戒（Skyrim）；TheKalpicAnomaly 实测错形「阿斯盖尔」（342）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Motierre",
-      "forbidden": [
-        "莫蒂埃尔",
-        "莫提埃尔"
-      ],
-      "target": "莫提雷",
-      "reason": "官方词典：Amaund Motierre→阿蒙德·莫提雷、Amaund Motierre's Sealed Letter→阿蒙德·莫提雷的盖章信（Skyrim）；TheKalpicAnomaly 实测错形「莫蒂埃尔」（341/342/343）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Festus",
-      "forbidden": [
-        "费斯图斯"
-      ],
-      "target": "菲斯图斯",
-      "reason": "官方词典：Festus Krex→菲斯图斯·克莱克斯（Skyrim）；TheKalpicAnomaly 实测错形「费斯图斯」（343）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Balagog",
-      "forbidden": [
-        "巴拉格"
-      ],
-      "target": "巴拉果戈",
-      "reason": "官方词典：Balagog→巴拉果戈、Balagog gro-Nolob→巴拉果戈·格洛-诺洛波（Skyrim）；TheKalpicAnomaly 实测错形「巴拉格」（343）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Anga's Mill",
-      "forbidden": [
-        "安加磨坊"
-      ],
-      "target": "安佳木材厂",
-      "reason": "官方词典：Anga's Mill→安佳木材厂、Key to Anga's Mill Common House→安佳木材厂平房钥匙（Skyrim）；TheKalpicAnomaly 实测错形「安加磨坊」（345）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Ennodius",
-      "forbidden": [
-        "埃诺迪乌斯"
-      ],
-      "target": "恩诺迪尤斯",
-      "reason": "官方词典：Ennodius Papius→恩诺迪尤斯·帕尤斯、Ennodius→恩诺迪尤斯（Skyrim）；TheKalpicAnomaly 实测错形「埃诺迪乌斯」（345）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Storn",
-      "forbidden": [
-        "斯多恩"
-      ],
-      "target": "斯托恩",
-      "reason": "官方词典：Storn→斯托恩、Storn Crag-Strider→“跨崖者”斯托恩（Dragonborn）；TheKalpicAnomaly 实测错形「斯多恩」（349）",
-      "category": "lore-name"
-    },
-    {
-      "english": "All-Maker",
-      "forbidden": [
-        "造物者"
-      ],
-      "target": "造物主",
-      "reason": "官方词典（Dragonborn）：All-Maker→造物主、Children of the All-Maker→造物主的孩子们；TheKalpicAnomaly 实测错形「造物者」（349）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Reaver",
-      "forbidden": [
-        "劫掠者"
-      ],
-      "target": "抢匪",
-      "reason": "官方词典（Dragonborn）：Reaver Lord→抢匪头目、Reaver Thug→抢匪恶棍；TheKalpicAnomaly 实测错形「劫掠者」（349）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Baldor",
-      "forbidden": [
-        "博尔多"
-      ],
-      "target": "鲍德尔",
-      "reason": "官方词典：Baldor Iron-Shaper→“塑铁者”鲍德尔（Dragonborn）；TheKalpicAnomaly 实测错形「博尔多」（356）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Glover",
-      "forbidden": [
-        "格洛弗"
-      ],
-      "target": "葛洛文",
-      "reason": "官方词典：Glover Mallory→葛洛文·马洛里（Dragonborn）；TheKalpicAnomaly 实测错形「格洛弗」（356）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Deor",
-      "forbidden": [
-        "迪奥尔"
-      ],
-      "target": "迪乌尔",
-      "reason": "官方词典：Deor Woodcutter→樵夫迪乌尔（Dragonborn）；TheKalpicAnomaly 实测错形「迪奥尔」（356）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Fanari",
-      "forbidden": [
-        "法娜瑞"
-      ],
-      "target": "法娜丽",
-      "reason": "官方词典：Fanari Strong-Voice→“强音”法娜丽（Dragonborn）；TheKalpicAnomaly 实测错形「法娜瑞」（356）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Ebony",
-      "forbidden": [
-        "乌金",
-        "乌木"
-      ],
-      "target": "黑檀",
-      "reason": "官方词典：Ebony→黑檀、Ebony Ingot→黑檀锭（Skyrim）；TheKalpicAnomaly 实测错形「乌金锭」（358）；实测错形「乌木」（复审 070-071）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Nightwielder",
-      "forbidden": [
-        "夜驭者"
-      ],
-      "target": "暗夜掌控者",
-      "reason": "官方词典：Azra Nightwielder→“暗夜掌控者”阿兹拉（Dragonborn）；TheKalpicAnomaly 实测错形「夜驭者」（371）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Bloodscythe",
-      "forbidden": [
-        "血饮"
-      ],
-      "target": "血镰",
-      "reason": "官方词典：Bloodscythe→血镰（Dragonborn）；TheKalpicAnomaly 实测错形「血饮」（369）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Soulrender",
-      "forbidden": [
-        "碎魂"
-      ],
-      "target": "魂引",
-      "reason": "官方词典：Soulrender→魂引（Dragonborn）；TheKalpicAnomaly 实测错形「碎魂」（369）",
-      "category": "lore-name"
-    },
-    {
-      "english": "The Wolf Queen",
-      "forbidden": [
-        "狼女王"
-      ],
-      "target": "狼后",
-      "reason": "官方词典：The Wolf Queen, v7→狼后·卷7、Biography of the Wolf Queen→狼后传（Skyrim）；TheKalpicAnomaly 实测错形「狼女王」（4946）",
-      "category": "lore-name"
-    },
-    {
-      "english": "Ebonmere",
-      "forbidden": [
-        "乌木之池"
-      ],
-      "target": "黑檀池",
-      "reason": "官方词典：Ebonmere Lock→黑檀池锁（Skyrim）；实测错形「乌木之池」（816）",
+      "target": "灰烬之地",
+      "reason": "官方词典：ashlands of Vvardenfell→瓦登费尔的灰烬之地（Dragonborn）；官方两形为「灰烬之地」（全称）/「灰地」（简称），「灰烬地」为第三形（TheKalpicAnomaly 7980 实测）",
       "category": "lore-name"
     }
   ],

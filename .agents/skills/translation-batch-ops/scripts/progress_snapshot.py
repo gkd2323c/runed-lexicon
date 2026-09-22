@@ -28,6 +28,41 @@ import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
+
+def guard_pipeline_lock(xml_path: str | None) -> int:
+    """round_pipeline 持锁期间拒绝外部并发读写 canonical（0 放行 / 2 拒绝）。
+
+    锁文件 .work/<stem>/reports/pipeline.lock 由 round_pipeline.py 创建；其子进程经
+    env RUNED_PIPELINE_TOKEN 继承 token 放行，独立启动的命令（无 token）一律拒绝——
+    防快照/统计在写回进行中读到写前态。
+    """
+    if not xml_path:
+        return 0
+    name = os.path.basename(xml_path)
+    stem = None
+    for suf in ("_english_chinese_translated.xml", "_english_chinese.xml"):
+        if name.endswith(suf):
+            stem = name[: -len(suf)]
+            break
+    if not stem:
+        return 0
+    lockp = os.path.join(".work", stem, "reports", "pipeline.lock")
+    if not os.path.isfile(lockp):
+        return 0
+    try:
+        info = json.loads(open(lockp, encoding="utf-8").read())
+    except (json.JSONDecodeError, OSError):
+        info = {}
+    if os.environ.get("RUNED_PIPELINE_TOKEN") == info.get("token"):
+        return 0
+    print(
+        f"error: pipeline.lock 存在（pid={info.get('pid')} phase={info.get('phase')} "
+        f"started={info.get('started')}），拒绝并发执行以避免读到写前态；"
+        f"等 round_pipeline 完成后重试，或确认进程已死后删除 {lockp}",
+        file=sys.stderr,
+    )
+    return 2
+
 if hasattr(sys.stdout, 'buffer'):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
@@ -292,6 +327,10 @@ def main():
     ap.add_argument('--json', action='store_true', help='输出 JSON')
     ap.add_argument('--note', default='', help='快照备注（可选）')
     args = ap.parse_args()
+
+    g = guard_pipeline_lock(args.xml)
+    if g:
+        return g
 
     log_path = args.log
     if not log_path and args.plan:

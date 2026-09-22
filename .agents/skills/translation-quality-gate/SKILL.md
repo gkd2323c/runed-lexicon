@@ -300,6 +300,16 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 阈值依据：禁用词级违反实测召回 19/19（0.5 门限）；high 级漏判的实测分布 0.23~0.49
 落入升级带，由人工兜底，符合成本不对称原则（漏标进人眼，多标无害）。
 
+**判定指令（2026-09-22 扩充）**：`semantic_error` 的 instructions 显式声明以下不算
+语义错误——字面隐喻/语类双关/非常规动宾搭配的**忠实直译**（即使读来新奇）；
+合理显化扩充至被动句补施事、省略句补出与上文一致的回指、排比复现词的统一；
+并附判定方法指令（先逐个在源文定位关键成分的对应表达，弱化否定先还原逻辑，
+只有确实找不到对应才判是）。扩充动因：豁免清单暴露的系统性误报（忠实直译非常规
+结构被反复拦）。回放实测：26499 类硬拦消除（0.51~0.73 → 0.39），真错召回无损
+（旧译 26400=0.71、26501=0.50 仍 FAIL），分数普降；但显化类（26486/26193/26031）
+仍越线，且同一译文双跑可跨线抖动（0.60/0.49，判定非确定性），此二者继续由豁免
+通道人工裁决。`MOD_REGISTER` 同步声明角色的诙谐/调侃变体属正常语域。
+
 **语境适用性**：注入契约条目时连 `note` 一并注入，模型先判断 alias 注明的适用语境
 是否成立，不成立则该条目不适用。alias 条目的 REQUIRED 级绑定由此在语义层生效，
 机械层对它们仍只做 R19 锚点禁形拦截。
@@ -328,23 +338,57 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 | `UNCHECKED` | 无 key，本批语义层**未检查** | 0 | 不阻主线，但不得当作已过语义门 |
 
 `PARTIAL` 与 `UNCHECKED` 是如实上报，不是缺陷：语义门不追求 100% 自动判定，
-未判定项交复核即可。网络抖动不做重试对抗（漏几个给复核，频繁轮询会给服务器压力）；
-关键是**不得把「没查到」记成「查过没问题」**。
+未判定项交复核即可。网络抖动在**条目级**做有限退避重试（`ask()` 内 `RETRIES=3`，
+捕获族覆盖 URLError/Timeout/JSONDecodeError/ConnectionError/OSError——断连族
+RemoteDisconnected 不被 URLError 包装，漏捕时零重试直接穿透，实测导致每批稳定
+数条 UNJUDGED 卡死验收链；条目级重试远轻于整批全量重跑），重试后仍失败的条目
+如实记 PARTIAL 交复核；关键是**不得把「没查到」记成「查过没问题」**。
 
 **凭据边界**：`TYPESAFE_API_KEY` 只走环境变量，不落盘、不入任务卡。无 key 时输出
 `verdict=UNCHECKED`、rc=0（不阻塞验收主线），verify 报告中该批 `checked=false`。
+
+**豁免通道（人工复核裁决的落盘，v0.4.0）**：概率模型对部分句式存在稳定误报
+（实测 INFO-481 的 23580/23602 两轮改写分数钉在 0.57 不动，均为语境正确的边界
+句），逐句改写对抗没有收敛；整批 `--no-semantic` 又等于放弃其余条目的语义检查。
+豁免通道把人工裁决变成机器可读的状态：
+
+| 参数 | 语义 |
+| --- | --- |
+| `--waive "<idx>:<理由>"` | 登记豁免（可重复）。从 `--result` 取该 idx 当前译文算 sha256（前 16 位）落盘，登记后直接退出不调 API |
+| `--revoke "<idx>"` | 撤销豁免 |
+| `--waivers <path>` | 豁免文件路径；缺省自动探测 `.work/<plugin>/contracts/semgate-waivers.json` |
+
+判定语义（防豁免变成永久白名单）：
+
+- FAIL 项命中**有效豁免**（idx 存在且译文哈希与登记时一致）→ 降为 `WAIVED`，不拦截，
+  原始判定保留在 record `verdicts`（基线哨兵比对不受影响），豁免理由与登记时间留痕
+  入报告的 `waived` 数组和 stdout。
+- **译文一改，豁免自动失效**（`WAIVER_STALE`），该条重新被拦，需人工重裁。旧裁决
+  不会掩盖新编辑引入的新错误。
+- 豁免只作用于语义层 FAIL；机械 gate 的 TERM/KEEP 拦截不受豁免影响（字面违反走
+  词表裁决链修正，不走语义豁免）。
+
+登记时机：人工复核确认某条为误报之后（不是改写失败之前）；理由必填且须写清语境
+证据（指代链/双关拆解等），豁免文件是审计对象。
 
 **用法**：
 
 ```text
 python .agents/skills/translation-quality-gate/scripts/semantic_gate.py \
   --result <translation.json> --xml <source.xml> --contract <compiled.json> \
-  [--batch <BID>] [--report <report.json>]
+  [--batch <BID>] [--report <report.json>] \
+  [--waivers <path>] [--waive "<idx>:<理由>"] [--revoke "<idx>"]
 ```
 
 `verify_subagent_batch.py` 默认挂接语义门（`--no-semantic` 关闭）；其 verdict/warnings
 并入验收报告的 `gate.semantic_gate` 段。result 支持 dict 平铺与 `translations[]`
 两种形态，条目自带 source 时优先使用，缺失才回查 --xml。
+`verify_subagent_batch.py` 与 `consume_batch.py` 均有 `--waivers <path>` 透传；缺省
+沿用自动探测路径，同 MOD 内常规验收无需显式传参。
+
+**回归验证**：豁免通道的端到端桩测试脚本（合成 result + 桩 judge，两场景：命中降级
+/ 改译失效）保留在 `.agents/skills/translation-quality-gate/scripts/test_waiver_channel.py`，
+改语义门判定链后必跑。
 
 ## Semantic gate 基线（`scripts/semgate_baseline.py`，哨兵层）
 

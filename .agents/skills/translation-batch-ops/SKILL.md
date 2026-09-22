@@ -1,9 +1,9 @@
 ---
 name: translation-batch-ops
-description: runed-lexicon 批次流水线的状态、覆盖、验收、对账重建与进度工具集。覆盖批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次文件对账与重建（batch_sync）、批次 context 单批重建（rebuild_context）。Use when 验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、处理批次文件与 canonical 的漂移或缺失（判向/拉平/补全，不逐条修补）、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、XML 写回（归 xtranslator-xml-writer）、契约编译（归 term-contract-compiler）。
+description: runed-lexicon 批次流水线的状态、覆盖、验收、对账重建与进度工具集。覆盖一轮收口的唯一串行入口（round_pipeline：consume→charset→check→write→verify→snapshot 单进程顺序执行 + 独占锁防并行覆盖）、批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次文件对账与重建（batch_sync）、批次 context 单批重建（rebuild_context）。Use when 把验收批次收口至写回快照（一律走 round_pipeline）、验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、处理批次文件与 canonical 的漂移或缺失（判向/拉平/补全，不逐条修补）、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、契约编译（归 term-contract-compiler）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Translation Batch Ops
@@ -29,13 +29,13 @@ metadata:
 2. **备料·context + 骨架**：`py -3 .agents/skills/translation-batch-ops/scripts/rebuild_context.py --stem <stem> --batch <BID>` → 单批全量 context.json + translation.json 骨架（mods 目录名自动探测）。
 3. **备料·术语摘要**：`py -3 .agents/skills/translation-review-tools/scripts/term_digest.py --context .work/<stem>/batches/<BID>/context.json --out .work/<stem>/batches/<BID>/term-digest.txt`
 4. **派单**：子代理 **write** 权限，产出落 `batches/<BID>/map.json`；译者轮换（hanako 分身 / butter）；任务卡按 `subagent-ops` 模板（输入指向 index.txt 与 term-digest.txt，禁枚举术语）。
-5. **消费 + 验收**：`py -3 .agents/skills/translation-batch-ops/scripts/consume_batch.py --stem <stem> --batch <BID> --xml <source-xml> --contract <compiled.json>` → 归位→展平→immutable→fill→verify；退出码 0 = verify PASS。
-6. **写回**：`py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py --xml <canonical> --in-place --archive-to .work/<stem>/archive --source-xml <source-xml> --result .work/<stem>/batches/<BID>/translation.json --report .work/<stem>/reports/<stem>-writeback-report.json --force`
-7. **快照**：`progress_snapshot.py`（完整参数见 §4）加 `--record` 记录一条。
+5. **收口（唯一入口）**：`round_pipeline.py`（§5c）一条命令完成 consume→charset→check→write→verify→snapshot；语义 FAIL 时它停在写回前，裁决后重跑。
+
+> **硬规则（2026-09-22）：步 5 的收口链禁止拆成手动并行命令。** 手动编排曾六次产生覆盖时序（快照记入写前态 200/205/213/216/220、charset 读到 fill 前空文、统计读到写前态）；write_translations 与 progress_snapshot 内置 pipeline.lock 守卫，持锁期间外部命令直接拒绝。独立的多批 consume / apply_fixes 并行仍允许（不碰 canonical，见 skyrim-tool-dev-rules §2 第 4 条）。
 
 派单安全规范（体量上限、验收三查、送达纪律）以 `subagent-ops` / `hana-subagent-ops` 为准，本表不重复。
 
-**新会话接手指南**：读 `mods/<mod>/PROGRESS.md` 取「下一批编号」→ 按上表从步 1 开跑 → 每轮写回后步 7 记录快照。步 1~3 为幂等备料，可安全重跑。
+**新会话接手指南**：读 `mods/<mod>/PROGRESS.md` 取「下一批编号」→ 按上表从步 1 开跑 → 每轮收口走 `round_pipeline`（步 5）。步 1~3 为幂等备料，可安全重跑。
 
 **收尾交接要素**：任何停止点（停下汇报、等待用户、等待后台结果）之前，把 `PROGRESS.md`（下一批编号、待做、快照）与 `SOP.md`（命令序列）确认到「新会话可直接开工」；无变化时确认即过。验收细则见 `skyrim-doc-system` §11。
 
@@ -194,6 +194,34 @@ py -3 .agents/skills/translation-batch-ops/scripts/rebuild_context.py \
 translation.json 骨架；③ 已有译文（TRANSLATED 且非空）按 xml_index 保留，
 immutable 字段一律以新 context 重算。mods 目录名与 stem 不一致（`.esp` 后缀）
 自动探测；`--xml` / `--mod-terms` 可显式覆盖。
+
+## 5c. 一轮收口唯一入口（`round_pipeline.py`）
+
+把「consume→charset→check-only→写回→段核对→快照」整链收敛为**单进程严格顺序**执行，并持 `.work/<stem>/reports/pipeline.lock` 独占锁——从工具链层面拒绝并行（手动并行编排曾六次产生覆盖时序）：
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
+    --stem <plugin> --batches INFO-XXX INFO-YYY \
+    --xml mods/<mod>/<plugin>_english_chinese.xml \
+    --contract .work/<plugin>/contracts/<plugin>.compiled.json \
+    [--phases consume,charset,check,write,verify,snapshot] \
+    [--note "<快照备注>"] [--break-lock]
+```
+
+步骤（顺序固定，任一步失败即停、后续不执行，锁必然释放）：
+
+1. `consume`：逐批 consume_batch（语义/契约 FAIL 即停，打印 verify-report fails 明细交主会话裁决后重跑）；
+2. `charset`：逐批 normalize_charset 检查，有差异自动 apply + 重 consume（0 差异跳过）；
+3. `check`：writer `--check-only` 预检（跨批 duplicate / scope / KEEP 冲突）；
+4. `write`：逐批 writer `--in-place` 串行写回；
+5. `verify`：段核对（各批 idx 在 canonical 中 Source==Dest 计数必须为 0）；
+6. `snapshot`：progress_snapshot `--record`（同进程内写回落定后执行，hash 必然一致）。
+
+锁语义：acquire 用 O_EXCL 创建（token/pid/phase/started）；子进程经 env `RUNED_PIPELINE_TOKEN` 继承 token；**write_translations 与 progress_snapshot 内置同锁守卫**，外部无 token 的独立命令一律拒绝（rc=2）——手动快照/写回撞上 pipeline 直接报错，不再产生写前态。stale 锁（进程崩溃遗留）用 `--break-lock` 清除。`--phases` 可选子集（如裁决后只补 `charset,check,write,verify,snapshot`）。
+
+退出码：0 全链 PASS（尾行 `PIPELINE PASS canonical=<hash8>`）/ 1 某步失败 / 2 用法或锁冲突。
+
+验证（2026-09-22 首跑，TheKalpicAnomaly）：全链 13 步 PASS，92 行写回 hash 链 `325ad903→06f50eb5→2635ec7a`，段核对与快照第 225 条同进程落定对账一致；守卫四场景（独立拒 / token 放行 / 无锁放行）单测过。性能：含双 consume 约 40s（consume 为主，写回本体仍秒级）。
 
 ## 6. 批次文件对账与重建（`batch_sync.py`）
 

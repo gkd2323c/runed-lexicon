@@ -50,6 +50,8 @@ def main() -> int:
     ap.add_argument("--xml", required=True, help="源 xTranslator XML（verify 需要）")
     ap.add_argument("--contract", required=True, help="编译契约 JSON（verify gate 需要）")
     ap.add_argument("--work-root", default=".work")
+    ap.add_argument("--waivers", default=None,
+                    help="语义门豁免文件路径（透传 verify；缺省自动探测）")
     args = ap.parse_args()
 
     root = Path(args.work_root)
@@ -129,7 +131,8 @@ def main() -> int:
     r = subprocess.run(
         [sys.executable, str(VERIFY), "--plan", str(plan), "--batch", args.batch,
          "--map", str(fp), "--xml", args.xml, "--result", str(tp),
-         "--context", str(ctx_p), "--contract", args.contract],
+         "--context", str(ctx_p), "--contract", args.contract]
+        + (["--waivers", args.waivers] if args.waivers else []),
         capture_output=True, text=True, encoding="utf-8")
     out = (r.stdout or r.stderr).strip().splitlines()
     for line in out[-3:]:
