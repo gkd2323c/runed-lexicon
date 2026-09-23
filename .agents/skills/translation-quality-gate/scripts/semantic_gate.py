@@ -43,22 +43,50 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
-API_URL = 'https://api.typesafe.ai/v1/systemone'
-MODEL = 'jev-latest'
+API_URL = ''   # 由 semantic-gate.config.json 加载；不再硬编码
+MODEL = ''     # 同上
+
+CONFIG_PATH = os.environ.get(
+    'SEMANTIC_GATE_CONFIG',
+    os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                  '..', '..', '..', '..', 'semantic-gate.config.json')))
+
+
+def load_config():
+    """加载语义门连接与语境配置（项目根 semantic-gate.config.json）。
+
+    字段：api_url / model / api_key / mod_register（语域语境描述，
+    随项目与角色变化，不硬编码在工具内）。api_key 缺省时回退环境变量
+    TYPESAFE_API_KEY；配置文件缺失或字段为空即视为该项未配置。
+    """
+    cfg = {'api_url': '', 'model': '', 'api_key': '', 'mod_register': ''}
+    try:
+        with open(CONFIG_PATH, encoding='utf-8') as f:
+            file_cfg = json.load(f)
+        if isinstance(file_cfg, dict):
+            for k in cfg:
+                cfg[k] = str(file_cfg.get(k) or '').strip()
+    except FileNotFoundError:
+        pass
+    except (json.JSONDecodeError, ValueError, OSError) as e:
+        print('SEMGATE_CONFIG: 配置文件读取失败（%s）：%s' % (type(e).__name__, e),
+              file=sys.stderr)
+    if not cfg['api_key']:
+        cfg['api_key'] = os.environ.get('TYPESAFE_API_KEY', '').strip()
+    return cfg
+
+
+CONFIG = load_config()
+API_URL = CONFIG['api_url'] or API_URL
+MODEL = CONFIG['model'] or MODEL
 HARD = 0.5          # term/semantic 硬拦截阈值（禁用词级违反实测召回 19/19）
 SOFT = 0.3          # 升级队列下限（high 级漏判的实测分布 0.23~0.49 落入此带）
 REGISTER_CONF = 0.5  # register 软提示的归因置信下限
 WORKERS = 4
 RETRIES = 3
 
-MOD_REGISTER = (
-    '《上古卷轴5：天际》全语音随从 MOD 的日常对话台词（英译中）。'
-    '角色语域以克制、古旧的格言式为主，但对话中也存在该角色的诙谐、调侃、'
-    '自嘲变体，二者都在正常语域内。注意：这是对话台词，自然的口语化、短句、'
-    '句首语气词属于正常对话节奏，不算语域问题；只有明显现代感、网络化、'
-    '现实词汇或破坏奇幻语域的表达才算语域问题。'
-    '专名必须按术语契约翻译，不得自拟。'
-)
+MOD_REGISTER = CONFIG['mod_register'] or (
+    '英译中翻译质量审查（通用文本，无特定角色语域约束；专名按术语契约）。')
 
 WORD_RE_CACHE = {}
 
@@ -334,12 +362,19 @@ def main():
         print('waivers -> %s (%d 条)' % (waivers_path, len(waivers)))
         return 0
 
-    api_key = os.environ.get('TYPESAFE_API_KEY', '').strip()
+    api_key = CONFIG['api_key']
     if not api_key:
         print(json.dumps({'verdict': 'UNCHECKED', 'units_checked': 0,
                           'fail_count': 0, 'warning_count': 0}, ensure_ascii=False))
-        print('SEMGATE_UNCHECKED: TYPESAFE_API_KEY 未设置，本批语义层未检查'
-              '（机械层结论不受影响，但不得当作已过语义门）')
+        print('SEMGATE_UNCHECKED: api_key 未配置（semantic-gate.config.json 与 '
+              'TYPESAFE_API_KEY 环境变量均缺），本批语义层未检查'
+              '（参考层缺失不阻塞，机械层结论不受影响）')
+        return 0
+    if not API_URL or not MODEL:
+        print(json.dumps({'verdict': 'UNCHECKED', 'units_checked': 0,
+                          'fail_count': 0, 'warning_count': 0}, ensure_ascii=False))
+        print('SEMGATE_UNCHECKED: 语义门连接未配置（semantic-gate.config.json '
+              '缺 api_url/model），本批语义层未检查（参考层缺失不阻塞）')
         return 0
 
     terms = load_contract(a.contract)

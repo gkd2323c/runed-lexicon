@@ -328,14 +328,19 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 修复后误报消除且不漏真违规（同一句）：正确全称 0.04 ok、正确省称 0.03 ok、
 未译 0.96 FAIL、错译「雪漫」0.41 FAIL、音译「怀特伦」0.95 FAIL。
 
-**四态判定（状态必须如实，不得降级为成功）**：
+**四态判定（状态必须如实；2026-09-23 起整体为参考层）**：
 
 | verdict | 含义 | rc | 后续 |
 | --- | --- | --- | --- |
 | `PASS` | 本批全部条目已判定且无 FAIL | 0 | 通过 |
-| `FAIL` | 存在硬拦截项 | 1 | 阻断写回 |
-| `PARTIAL` | 有条目未判定（调用失败）——本批语义层**未完成** | 1 | 未判定项交复核 |
-| `UNCHECKED` | 无 key，本批语义层**未检查** | 0 | 不阻主线，但不得当作已过语义门 |
+| `FAIL` | 存在硬拦截项 | 1 | 参考信号：明细照出，verify 不传导阻塞 |
+| `PARTIAL` | 有条目未判定（调用失败）——本批语义层**未完成** | 1 | 参考信号：未判定项交复核，不阻塞 |
+| `UNCHECKED` | 无 key 或未配置连接，本批语义层**未检查** | 0 | 参考缺失，不阻主线，不得当作已过语义门 |
+
+**参考层定位（2026-09-23 用户裁决）**：语义门的 verdict、分数与 FAIL/UNJUDGED
+明细全部照出并入验收报告，但 `verify_subagent_batch` 对 `FAIL`/`PARTIAL`/
+`UNKNOWN` 一律只记参考 warning，**不再阻塞 consume/写回主线**；语义把关由
+主会话通读 + 独立审查线承担（机械层 gate 的 FAIL 仍是硬拦截，不受此影响）。
 
 `PARTIAL` 与 `UNCHECKED` 是如实上报，不是缺陷：语义门不追求 100% 自动判定，
 未判定项交复核即可。网络抖动在**条目级**做有限退避重试（`ask()` 内 `RETRIES=3`，
@@ -344,8 +349,25 @@ RemoteDisconnected 不被 URLError 包装，漏捕时零重试直接穿透，实
 数条 UNJUDGED 卡死验收链；条目级重试远轻于整批全量重跑），重试后仍失败的条目
 如实记 PARTIAL 交复核；关键是**不得把「没查到」记成「查过没问题」**。
 
-**凭据边界**：`TYPESAFE_API_KEY` 只走环境变量，不落盘、不入任务卡。无 key 时输出
-`verdict=UNCHECKED`、rc=0（不阻塞验收主线），verify 报告中该批 `checked=false`。
+**连接与凭据配置（`semantic-gate.config.json`，项目根）**：URL、模型与密钥统一
+由配置文件管理，不硬编码：
+
+```json
+{"api_url": "https://api.typesafe.ai/v1/systemone", "model": "jev-latest",
+ "api_key": "<secret>",
+ "mod_register": "<本项目/角色的语域语境描述（对话题材、正常语域边界、口语节奏判定规则、专名约束）>"}
+```
+
+- `mod_register` 是注入 payload 的语域语境（原硬编码于脚本的项目级提示词，
+  2026-09-23 抽出）：随项目与角色变化（如本仓库的西格瓦格言式语域约定），
+  不硬编码在工具内；缺失时回退通用中性句「英译中翻译质量审查（通用文本，
+  无特定角色语域约束；专名按术语契约）」。
+
+- 加载优先级：配置文件 > 环境变量（`api_key` 缺省回退 `TYPESAFE_API_KEY`；
+  配置文件路径可用 `SEMANTIC_GATE_CONFIG` 环境变量覆盖）。
+- 文件含活密钥，已加入 `.gitignore`，**永不提交**；任务卡仍不携带任何凭据。
+- 缺 `api_url`/`model`（或无配置且无 key）时输出 `verdict=UNCHECKED`、rc=0，
+  verify 报告中该批 `checked=false`——参考层缺失同样不阻主线。
 
 **豁免通道（人工复核裁决的落盘，v0.4.0）**：概率模型对部分句式存在稳定误报
 （实测 INFO-481 的 23580/23602 两轮改写分数钉在 0.57 不动，均为语境正确的边界
@@ -381,7 +403,8 @@ python .agents/skills/translation-quality-gate/scripts/semantic_gate.py \
 ```
 
 `verify_subagent_batch.py` 默认挂接语义门（`--no-semantic` 关闭）；其 verdict/warnings
-并入验收报告的 `gate.semantic_gate` 段。result 支持 dict 平铺与 `translations[]`
+并入验收报告的 `gate.semantic_gate` 段，且 FAIL/PARTIAL/UNKNOWN 只记参考 warning、
+不阻塞验收主线（参考层定位见上）。result 支持 dict 平铺与 `translations[]`
 两种形态，条目自带 source 时优先使用，缺失才回查 --xml。
 `verify_subagent_batch.py` 与 `consume_batch.py` 均有 `--waivers <path>` 透传；缺省
 沿用自动探测路径，同 MOD 内常规验收无需显式传参。

@@ -45,8 +45,8 @@ def parse_report(data) -> list[dict]:
     items: list[dict] = []
     if isinstance(data, dict):
         for f in data.get("findings") or []:
-            idx = f.get("xml_index")
-            proposed = f.get("proposed")
+            idx = f.get("xml_index", f.get("idx"))
+            proposed = f.get("proposed") or f.get("suggestion") or f.get("suggested")
             if idx is None or not proposed:
                 continue
             items.append({"idx": int(idx), "proposed": proposed,

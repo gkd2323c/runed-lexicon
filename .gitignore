@@ -68,3 +68,6 @@ tools/Mutagen/
 # 环境绑定操作文档，不随仓库发布。
 .claude/
 .agents/skills/hana-subagent-ops/
+
+# Semantic-gate connection config carries a live API key; never commit.
+semantic-gate.config.json

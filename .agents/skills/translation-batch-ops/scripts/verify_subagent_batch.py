@@ -78,8 +78,9 @@ def main():
     ap.add_argument('--report', default=None)
     ap.add_argument('--repair', action='store_true')
     ap.add_argument('--no-semantic', dest='semantic', action='store_false',
-                    help='关闭 TypeSafe 语义门（默认开；需 --xml/--contract/--result 齐备，'
-                         '无 TYPESAFE_API_KEY 时报 UNCHECKED 不阻塞主线）')
+                    help='关闭 TypeSafe 语义门（默认开；语义层为参考层——FAIL/PARTIAL/'
+                         'UNCHECKED 均只记 warning 不阻塞；连接与凭据见项目根 '
+                         'semantic-gate.config.json）')
     ap.add_argument('--waivers', default=None,
                     help='语义门豁免文件路径（缺省由 semantic_gate 自动探测 '
                          '.work/<plugin>/contracts/semgate-waivers.json）')
@@ -209,14 +210,16 @@ def main():
                 out['semantic_gate']['warn_lines'] = sw_lines[:30]
                 sv_verdict = sv.get('verdict')
                 if sv_verdict == 'FAIL':
-                    fail(fails, a.batch, 'SEMGATE',
-                         'verdict=FAIL fails=%s（见 %s-semgate-report.json）'
-                         % (sv.get('fail_count'), a.batch))
+                    # 语义门降为参考层（2026-09-23 用户裁决）：FAIL 明细照出，不阻塞主线；
+                    # 语义把关由主会话通读 + 审查线承担。
+                    warnings.append({'where': a.batch, 'code': 'SEMGATE',
+                                     'detail': '参考层 verdict=FAIL fails=%s（不阻塞；见 %s-semgate-report.json）'
+                                     % (sv.get('fail_count'), a.batch)})
                 elif sv_verdict == 'PARTIAL':
-                    # 有条目未判定：本批语义层未完成，不得当作通过。
-                    fail(fails, a.batch, 'SEMGATE_PARTIAL',
-                         '%s 条未判定（调用失败），本批语义层未完成（见 %s-semgate-report.json）'
-                         % (sv.get('unjudged_count'), a.batch))
+                    # 调用失败/未判定（如上游 API 403）：同样只记参考信号，不阻塞。
+                    warnings.append({'where': a.batch, 'code': 'SEMGATE_PARTIAL',
+                                     'detail': '参考层 %s 条未判定（调用失败，语义层未完成，不阻塞；见 %s-semgate-report.json）'
+                                     % (sv.get('unjudged_count'), a.batch)})
                 elif sv_verdict == 'UNCHECKED':
                     # 无 key：本批语义层未检查。不阻断主线，但状态显式入报告，
                     # 不与「检查过且通过」混淆。
@@ -226,10 +229,10 @@ def main():
                 else:
                     out['semantic_gate']['checked'] = True
             except Exception as e:  # noqa: BLE001
-                # 解析失败 = 语义门结果未知，与「未检查」不同，不得静默放过。
-                fail(fails, a.batch, 'SEMGATE_UNKNOWN',
-                     '语义门输出无法解析（%s），本批语义层结果未知：%s'
-                     % (type(e).__name__, (r.stdout + r.stderr)[-200:]))
+                # 解析失败 = 语义门结果未知：降为参考信号，不阻塞（明细照记）。
+                warnings.append({'where': a.batch, 'code': 'SEMGATE_UNKNOWN',
+                                 'detail': '参考层输出无法解析（%s），语义层结果未知（不阻塞）：%s'
+                                 % (type(e).__name__, (r.stdout + r.stderr)[-200:])})
         return out
 
     gate_out = {}
