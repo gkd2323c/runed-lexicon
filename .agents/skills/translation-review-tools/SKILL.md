@@ -262,7 +262,7 @@ fixes JSON：
 }
 ```
 
-**`new` 可选**：缺省时只改 status/notes/confidence（常见需求：把 REVIEW/KEEP 状态转成 TRANSLATED 而译文不动），避免为此手写一次性脚本。
+**`new` 可选**：缺省时只改 status/notes/confidence（常见需求：把 REVIEW/KEEP 状态转成 TRANSLATED 而译文不动），避免为此手写一次性脚本。**改译文的字段名恒为 `new`**：传 `translation` 会在入口直接报错拒绝（事故锚定：旧版静默丢弃该字段只更新 notes，patch 全部「已就位」0 生效，表面成功实际未改）。已写回批的修正收口优先走 `translation-batch-ops` 的 `close_round.py` 一条龙（自动 patch 写回 + readout 重生成 + 同源对账 + new 断言）。
 
 **`--find/--replace`（同型多行替换）**：不值得为 5 条同型修正写全量 new JSON 时用；从各 idx 现值做子串替换并生成 fixes，走同一条写盘链路。`--idx-list` 限定行；无可替换时 no-op 且 exit 0。多行文本用 `--find-file` / `--replace-file`（见下「跨批模式」）。
 

@@ -28,6 +28,8 @@ def classify(batch, batches_dir, canonical=None):
     has_tr = os.path.isfile(os.path.join(d, 'translation.json'))
     has_map = os.path.isfile(os.path.join(d, 'map.json'))
     has_ctx = os.path.isfile(os.path.join(d, 'context.json'))
+    has_idx = os.path.isfile(os.path.join(d, 'index.txt'))
+    has_digest = os.path.isfile(os.path.join(d, 'term-digest.md'))
     map_path = os.path.join(d, 'map.json')
     map_mtime = os.path.getmtime(map_path) if has_map else None
     total = len(batch.get('idx') or [])
@@ -66,8 +68,13 @@ def classify(batch, batches_dir, canonical=None):
         state = 'VERIFIED'
     elif has_map:
         state = 'TRANSLATED'
-    elif has_tr or has_ctx:
+    elif has_idx and has_ctx and has_digest:
         state = 'PREPPED'
+    elif has_tr or has_ctx or has_idx or has_digest:
+        # 事故锚定：旧判定只看 context.json 就算已备料，gaps 六批 term-digest
+        # 全缺却显示已备料，派单前才发现。三件套齐才可派单；部分齐单列 PARTIAL，
+        # 不再冒充已备料，也不兼作 MISSING（避免把补 digest 误报成从头备料）。
+        state = 'PARTIAL'
     else:
         state = 'MISSING'
     return {

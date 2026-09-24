@@ -91,6 +91,14 @@ def normalize_fixes(raw: dict) -> dict[int, dict]:
         if isinstance(value, str):
             fixes[idx] = {"new": value}
         elif isinstance(value, dict):
+            # 事故锚定：传 `translation` 而非 `new` 会被 plan_entry 静默忽略
+            # （new 缺省时保留现值），只更新 notes/status，patch 全部“已就位”0 生效，
+            # 表面成功实际未改——宁可炸在入口也不留假成功。
+            if "translation" in value and "new" not in value:
+                raise ValueError(
+                    f"fixes[{key}]: 改译文字段名是 `new`（或值直接传字符串），"
+                    f"检测到 `translation` 会被静默丢弃；请改为 {{\"new\": ...}} 或直接传目标字符串"
+                )
             if not any(k in value for k in EXTRA_FIELDS + ("new",)):
                 raise ValueError(f"fixes[{key}]: 对象形式至少需含 new/status/notes/confidence/waived_tokens 之一")
             fixes[idx] = dict(value)

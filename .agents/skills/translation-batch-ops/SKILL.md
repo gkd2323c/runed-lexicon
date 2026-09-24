@@ -64,7 +64,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/verify_subagent_batch.py \
 
 ## 2. 批次状态与覆盖核查（`check_batch_coverage.py`）
 
-对批次计划做全量状态扫描，输出每个批次的状态（VERIFIED 已验收 / TRANSLATED 已交卷待消费 / PREPPED 已备料待翻 / MISSING 未备料）与未完成清单：
+对批次计划做全量状态扫描，输出每个批次的状态（VERIFIED 已验收 / TRANSLATED 已交卷待消费 / PREPPED 已备料待翻 / **PARTIAL 部分备料，三件套不齐不可派单** / MISSING 未备料）与未完成清单。PREPPED 要求 `index.txt + context.json + term-digest.md` 三件套齐全；只齐部分归 PARTIAL 并在快照中单独警告——事故锚定：旧判定只看 context.json 就算已备料，gaps 六批 digest 全缺却显示已备料，派单前才发现：
 
 ```text
 py -3 .agents/skills/translation-batch-ops/scripts/check_batch_coverage.py \
@@ -222,6 +222,19 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
 退出码：0 全链 PASS（尾行 `PIPELINE PASS canonical=<hash8>`）/ 1 某步失败 / 2 用法或锁冲突。
 
 验证（2026-09-22 首跑，TheKalpicAnomaly）：全链 13 步 PASS，92 行写回 hash 链 `325ad903→06f50eb5→2635ec7a`，段核对与快照第 225 条同进程落定对账一致；守卫四场景（独立拒 / token 放行 / 无锁放行）单测过。性能：含双 consume 约 40s（consume 为主，写回本体仍秒级）。
+
+## 5d. 已写回批修正收口一条龙（`close_round.py`）
+
+已写回批的审查修正不能再走 5c 的 result 模式（`original_dest` 软保护会整批拒写），也不应手串 apply_fixes → patch → round → readout → 断言（手串曾踩：忘 regen readout 致审查读旧稿、verify 断言 token 手误假红、同源副本行漂移收口才发现）。`close_round.py` 一条命令完成：fixes 分组 → apply_fixes（生成 patch，校验先行）→ patch write（每批）→ round verify,snapshot → readout regen → **同源组对账（split>0 即失败）** → **new 断言自动生成（从 fixes 的 new 逐 idx 验证，消灭手写 token 手误）**。
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/close_round.py \
+  --stem <plugin> --batches <B1> [<B2> ...] --fixes <fixes.json> \
+  --xml mods/<plugin>/<plugin>_english_chinese.xml \
+  --contract .work/<plugin>/contracts/<plugin>.compiled.json --note "rNN审查N条全采"
+```
+
+fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；也接受裸 `{"<idx>": {...}}`（此时必须且只能配一个 --batch）。改译文字段名是 `new`（传 `translation` 会被 apply_fixes 入口直接拒绝）。安全边界：只接管已写回批修正；首次写回（consume→write result 链）仍走 5c；源 XML 只读，写回仅经 `--patch` 通道。同值修正（new=现译文）时空 patch 自动跳过 write，可作零风险自测。实测全链（含 3086 行同源对账）约 8s。
 
 ## 6. 批次文件对账与重建（`batch_sync.py`）
 

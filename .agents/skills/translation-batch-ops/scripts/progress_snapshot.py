@@ -160,7 +160,7 @@ def batch_summary(plan, batches_dir, canonical=None, stall_minutes=180, now=None
     now = now if now is not None else _time.time()
     rows = [classify_batch(b, batches_dir, canonical) for b in plan.get('batches', [])]
     summary = {'total': len(rows), 'verified': 0, 'translated': 0,
-               'prepped': 0, 'missing': 0}
+               'prepped': 0, 'partial': 0, 'missing': 0}
     filled_total = 0
     unwritten_lines = 0
     unwritten_batches = []
@@ -180,6 +180,9 @@ def batch_summary(plan, batches_dir, canonical=None, stall_minutes=180, now=None
                 })
         elif state == 'PREPPED':
             summary['prepped'] += 1
+        elif state == 'PARTIAL':
+            # 三件套不齐（如缺 term-digest），不可派单；区别于完全未备料
+            summary['partial'] += 1
         else:
             summary['missing'] += 1
         # VERIFIED only means the batch has filled translations; it can still be
@@ -293,6 +296,10 @@ def print_snapshot(snap, prev):
                      f"({fmt_pct(batches['verified'], batches['total'])})"
                      f" | 在途 {batches['translated']} | 已备料 {batches['prepped']}"
                      f" | 未备料 {batches['missing']}")
+        partial = batches.get('partial') or 0
+        if partial:
+            # 三件套不齐不可派单；独立成行避免改写主状态行的历史对比习惯
+            lines.append(f"批次备料警告: 部分备料(三件套不齐) {partial} 批——补齐前不可派单")
         stalled = batches.get('stalled') or 0
         if stalled:
             ids = ', '.join(f"{b['id']}({b['age_minutes']}min)"
