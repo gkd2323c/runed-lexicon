@@ -158,6 +158,8 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 
 - 修改中间结果 JSON 一律调用 `fill_translations.py`，查询分析优先调用现有封装工具。
 
+- runed-lexicon 收口链已工具链化：批次验收→写回→快照一律走 `.agents/skills/translation-batch-ops/scripts/round_pipeline.py`（单进程串行 + pipeline.lock 独占锁），禁止手动并行编排；write_translations 与 progress_snapshot 内置守卫，持锁期间外部命令直接拒绝（rc=2）。独立的多批 consume/apply_fixes 并行仍允许（不碰 canonical）。
+
 ## A. 规则技能与强制加载路由
 
 命中下表节点时，按 AGENTS.md 顶部总纲完整读取对应 `SKILL.md`（不凭摘要或记忆代行）：
