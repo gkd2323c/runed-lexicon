@@ -74,8 +74,9 @@ def same_source_split(xml: Path) -> list[tuple[str, dict[str, list[int]]]]:
     by_src: dict[str, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
     for i, s in enumerate(rows):
         src = s.findtext("Source") or ""
-        if src.strip():
-            by_src[src][s.findtext("Dest") or ""].append(i)
+        dest = s.findtext("Dest") or ""
+        if src.strip() and dest != src:
+            by_src[src][dest].append(i)
     return [(src, d) for src, d in by_src.items() if len(d) > 1]
 
 

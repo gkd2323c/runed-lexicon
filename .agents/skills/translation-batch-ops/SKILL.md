@@ -3,7 +3,7 @@ name: translation-batch-ops
 description: runed-lexicon 批次流水线的状态、覆盖、验收、对账重建与进度工具集。覆盖一轮收口的唯一串行入口（round_pipeline：consume→charset→check→write→verify→snapshot 单进程顺序执行 + 独占锁防并行覆盖）、批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次文件对账与重建（batch_sync）、批次 context 单批重建（rebuild_context）。Use when 把验收批次收口至写回快照（一律走 round_pipeline）、验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、处理批次文件与 canonical 的漂移或缺失（判向/拉平/补全，不逐条修补）、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、契约编译（归 term-contract-compiler）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.4.0"
+  version: "1.4.1"
 ---
 
 # Translation Batch Ops
@@ -234,7 +234,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/close_round.py \
   --contract .work/<plugin>/contracts/<plugin>.compiled.json --note "rNN审查N条全采"
 ```
 
-fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；也接受裸 `{"<idx>": {...}}`（此时必须且只能配一个 --batch）。改译文字段名是 `new`（传 `translation` 会被 apply_fixes 入口直接拒绝）。安全边界：只接管已写回批修正；首次写回（consume→write result 链）仍走 5c；源 XML 只读，写回仅经 `--patch` 通道。同值修正（new=现译文）时空 patch 自动跳过 write，可作零风险自测。实测全链（含 3086 行同源对账）约 8s。
+fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；也接受裸 `{"<idx>": {...}}`（此时必须且只能配一个 --batch）。改译文字段名是 `new`（传 `translation` 会被 apply_fixes 入口直接拒绝）。安全边界：只接管已写回批修正；首次写回（consume→write result 链）仍走 5c；源 XML 只读，写回仅经 `--patch` 通道。同值修正（new=现译文）时空 patch 自动跳过 write，可作零风险自测。同源组对账只比较已译形态（`Dest != Source`）；未来批次仍为 Source 的同源副本不算翻译分裂。实测全链（含 3086 行同源对账）约 8s。
 
 ## 6. 批次文件对账与重建（`batch_sync.py`）
 

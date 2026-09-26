@@ -6,6 +6,8 @@
 
 项目规则随翻译流程、脚本、数据结构、校验规则与协作方式的稳定而持续沉淀；一次性任务状态禁止写入本文件。
 
+开发者命令、CI 与 pre-push 校验、流水线架构、本地数据装配与新 clone 重建步骤见 `CLAUDE.md`；本文件不重复，只承载会话必读的约束、生命周期与路由。
+
 ## 1. 项目目标
 
 本项目借助 Agent / LLM 翻译《上古卷轴 V：天际》及其 MOD 文本。
@@ -62,6 +64,7 @@ Agent 在任何环节输出的文件，语义、角色、路径三者必须确�
 * **`_tmp` 净递减硬指标**：每次清理后 `_tmp/` 下文件总数（递归计数）必须低于清理前；禁止「清旧增新」式持平或增长，新增临时文件须由同轮删除量抵消；清理计数随轮次汇报。
 * **工作区文件纪律（mods/ 零杂物）**：出现在 `mods/` 工作区的新文件，只要没有必要用途就是违规。默认仅允许四文档/terms、源 XML、canonical 写回产物、原插件等契约内文件存在；文件系统实验、临时测试、调试残留一律 `_tmp/`（且异常路径用 try/finally 保证清理），绝不落地 `mods/`。
 * **Shell 与命令确定性**：执行操作前确认当前终端宿主，显式声明工作目录。禁止跨平台混用语法（如将转义后的 `$null` 误作空设备）。不使用 shell 重定向覆盖正式译文。
+* **凭据不入库、不入卡**：语义门连接配置 `semantic-gate.config.json`（项目根）含活密钥，已列入 `.gitignore`，**永不提交**、不写入示例或文档；任务卡与子代理提示不携带任何凭据。缺 key 时语义层按 §4 记 `UNCHECKED`，不阻塞主线，也不需要为此停工。
 * **异常处理**：命令报错先诊断修复（语法、路径、编码类问题自愈后继续，不打断流程）；只有门禁硬拦截、文档缺失或需要用户决策时才中断，按以下格式简洁报告现场与待决选项，不输出冗长的自责或模糊推测：
 
 ```text
@@ -84,21 +87,21 @@ Agent 在任何环节输出的文件，语义、角色、路径三者必须确�
 
 - **阶段 1：MOD 局部对齐与门禁核验**
 
-  进入目标 MOD 前，全量精读该 MOD 目录下的 `CONTEXT.md` 与 `DICTIONARY.md`。若任一文件缺失，自行补建；没有创建不启动翻译。接手已有 MOD 的推进或维护时，先读该 MOD 的 `SOP.md` 与 `PROGRESS.md` 恢复工作上下文，再动手。
+  进入目标 MOD 前，全量精读该 MOD 目录下的 `CONTEXT.md` 与 `DICTIONARY.md`。任一文件缺失时自行补建，但没有创建不启动翻译；补建必须**据实际材料而建**（源 XML 的 REC/EDID/对话结构、插件本体，必要时官方词典查证），不得用空模板充当门禁——材料不足以考证剧情事实或专名出处时停下向用户确认，不靠编造补全（与 `CLAUDE.md`、`mods/README.md` 的「不得静默创建空模板」同义）。接手已有 MOD 的推进或维护时，先读该 MOD 的 `SOP.md` 与 `PROGRESS.md` 恢复工作上下文，再动手。
 
 - **阶段 2：批次翻译与动态技能调度**
 
-  仅在实际进入特定批次的翻译或审校时，再强制读取 `skyrim-translation-craft`；在执行写回与校验前，再加载 `skyrim-xml-verification`。
+  仅在实际进入特定批次的翻译或审校时，再强制读取 `skyrim-translation-craft`；派单前读 `subagent-ops`（任务卡模板与模板红线、体量上限、送达纪律），进入批次循环前读 `translation-batch-ops` §0 标准续推循环；在执行写回与校验前，再加载 `skyrim-xml-verification`。
 
-### 2.3 局部特例豁免机制（白名单协议）
+### 2.3 全局禁用词没有 MOD 级白名单通道
 
-当 MOD 存在特殊设定（如特定角色因口音、认知偏差、戏谑双关故意使用民间叫法或错译形态）而必须突破全局禁用词时，必须走显式豁免通道：
+`global-forbidden-words.json` 的坏形态由门禁以 TERM004 全局拦截，**编译链与门禁代码中都不存在任何 MOD 级豁免/白名单解析通道**（事故形态：按「局部豁免协议」在 `DICTIONARY.md` 写特例译名，编译器不识别该语法、门禁照拦，规则死锁；`[OVERRIDE_GLOBAL_BAN: ...]` 声明从未被任何脚本消费）。MOD 确需偏离某条全局坏形态时，只有三条真实通路：
 
-1. 在该 MOD 的 `DICTIONARY.md` 中以固定语法声明：
+1. **改译文**：全局词库表达的是项目级裁决，MOD 内不得自行绕过（回到 §1.1 保真基准）。
+2. **修订项目级词条**：确认原裁决有误时改 `global-forbidden-words.json`（含 reason）并重编译该 MOD 契约；同形误报按该文件顶部约定立即撤除或收窄为更长短语并记入 `_retracted`。
+3. **下沉 MOD 术语条目**：错形恰好落在 target 出现区间内、被区间豁免（R12/R13）因而拦不住，或需 MOD 内额外拦截时，写入该 MOD `terms.json` 走 TERM002 通道，再重编译契约。
 
-  `[OVERRIDE_GLOBAL_BAN: <源词>] -> <特例译名> | 理由: <具体剧情或人物依据>`
-
-2. 编译器将豁免条目打包进局部契约白名单；质量门禁在执行 TERM004/KEEP002 时优先校验白名单，命中有效豁免则放行通过，避免陷入规则死锁。
+语义门豁免通道（`semantic_gate.py --waive`）只作用于语义层 FAIL，对机械 gate 的 TERM/KEEP 拦截无效，不得当作禁用词白名单使用。
 
 ### 规则扫描是闭集，启发式搜索是名词收敛的默认方法
 
@@ -132,7 +135,9 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 
 杜绝虚假完成，严格区分两种维度的验证状态：
 
-- **工程验证通过**：代表 XML 结构完好、节点数量一致、占位符完整、自动化质量门禁（TERM/KEEP 规则）PASS。
+- **工程验证通过**：代表 XML 结构完好、节点数量一致、占位符完整、自动化质量门禁 PASS。
+
+- **门禁分两层，不得混报**：机械层（`quality_gate.py`：TERM/KEEP/占位符/字符集）FAIL 是硬拦截、阻断写回；语义层（`semantic_gate.py`，由 `verify_subagent_batch` 默认挂接）是**参考层**——`FAIL`/`PARTIAL` 明细照出但不阻塞主线，语义把关由主会话通读与独立审查线承担。其中 `UNCHECKED`（无 `TYPESAFE_API_KEY` 或无 `semantic-gate.config.json`）表示本批语义层**未检查**，报告以 `checked=false` 显式标记，**不得当作已过语义门**；核心是不得把「没查到」记成「查过没问题」（执行层：机械，`verify` 报告 `gate.semantic_gate` 段可查）。
 
 - **语义翻译正确**：代表符合人物语域、Lore 传达准确、上下文顺畅。
 
@@ -160,6 +165,8 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 
 - runed-lexicon 收口链已工具链化：批次验收→写回→快照一律走 `.agents/skills/translation-batch-ops/scripts/round_pipeline.py`（单进程串行 + pipeline.lock 独占锁），禁止手动并行编排；write_translations 与 progress_snapshot 内置守卫，持锁期间外部命令直接拒绝（rc=2）。独立的多批 consume/apply_fixes 并行仍允许（不碰 canonical）。
 
+- **已写回批的审查修正走 `close_round.py`（硬规则）**：该链已工具化为 `translation-batch-ops/scripts/close_round.py` 一条龙（fixes 分组 → apply_fixes 出 patch → patch 写回 → 段核对与快照 → readout 重生成 → 同源组对账 → `new` 断言自动生成）。手串该链已踩坑：忘 regen readout 致审查读旧稿、断言 token 手误假红、同源副本行漂移到收口才发现；而改 `round_pipeline` 的 result 模式会被 `original_dest` 软保护整批拒写。改译文字段名恒为 `new`，传 `translation` 在 `apply_fixes` 入口即被拒（事故锚定：旧版静默丢弃该字段，patch 全部「已就位」0 生效，表面成功实际未改）。
+
 ## A. 规则技能与强制加载路由
 
 命中下表节点时，按 AGENTS.md 顶部总纲完整读取对应 `SKILL.md`（不凭摘要或记忆代行）：
@@ -174,7 +181,7 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 | `skyrim-tool-dev-rules`         | 工具复用检索、性能门禁（30s 缺陷阈值 / 5s 回归线）、临时脚本边界（§2.1） | 编写数据处理脚本前；改动现有自动化工具前                    |
 | `longtext-hallucination-review` | 长文本抗幻觉审查（机械探针 + 逐段精读）、幻觉形态识别与验收纪律          | 审查长叙事译文（BOOK 书页、QUST 长日志）；收口前长文本复核  |
 | `translation-batch-ops`         | 批次验收、覆盖率核查、缺口扫描与补遗、进度快照、批次分片工具集           | 验收批次产出、核对批次状态与覆盖率、声明收敛前、记录进度时  |
-|                                 |                                                                          |                                                             |
+| `subagent-ops`                  | 任务卡编译与模板红线、体量上限、并行与送达纪律、审查/审计/裁决卡变体     | 派任何子代理单之前；验收子代理产出；子代理崩溃无产出归因时   |
 
 强制前置链：
 

@@ -93,7 +93,7 @@ Skill 分三层：
 
 4. **canonical 与派生物**：`DICTIONARY.md` / `GLOSSARY.md` 是 canonical，编译出的 `.compiled.json` 契约与 unit bindings 是派生物。术语决策变更 → 重编译契约 → 重跑 gate。
 
-5. **全局禁用词链路**：`global-forbidden-words.json` 经 `term-contract-compiler --global-bans` 嵌入契约的 `global_bans`，由 gate 以 **TERM004**（+ `global_keep` → **KEEP002**）机械执行。该词库只收跨 MOD 官方名词的系统性坏形态；MOD 专有词、普通词不入库。MOD 确需破例时走 `AGENTS.md` §2.3 的 `[OVERRIDE_GLOBAL_BAN: <源词>] -> <特例译名> | 理由: ...` 白名单协议，写入该 MOD 的 `DICTIONARY.md`。
+5. **全局禁用词链路**：`global-forbidden-words.json` 经 `term-contract-compiler --global-bans` 嵌入契约的 `global_bans`，由 gate 以 **TERM004**（+ `global_keep` → **KEEP002**）机械执行。该词库只收跨 MOD 官方名词的系统性坏形态；MOD 专有词、普通词不入库。**没有 MOD 级白名单通道**（编译器与门禁均不解析豁免声明）：确需偏离时按 `AGENTS.md` §2.3 的三条真实通路处置（改译文 / 修订项目级词条 / 下沉 MOD `terms.json` 走 TERM002）。
 
 6. **规则扫描是闭集，启发式搜是收敛默认方法**：gate / noun-audit / noun-consistency-scan 只覆盖已登记词与已定义模式，**规则零命中不等于收敛**。声明「名词收敛 / 实体收敛」必须同时完成规则扫描 + 启发式种子扩散（分块读译文找专名种子 → 同英文锚全文扩散 → 中文形态归组 → 主会话裁决），缺一不得声明。
 
