@@ -776,6 +776,61 @@ def main() -> int:
         if res.returncode != 2 or "批次目录不存在" not in res.stderr:
             failures.append(f"subs 错批次应 rc=2: rc={res.returncode} {res.stderr[:150]}")
 
+        # ---------- apply_fixes 整句覆盖守卫（事故锚定 2026-09-27 裸词覆盖）----------
+        b2 = work / "T" / "batches" / "B2"
+        b2.mkdir(parents=True, exist_ok=True)
+        cur0 = "分支脱离了他的控制，而如今他仍选择让故事继续。"
+        cur1 = "他谈起自己的支脉，口气像它们已经滑脱了他的掌控。"
+        (b2 / "map.json").write_text(json.dumps({
+            "0": {"translation": cur0, "status": "TRANSLATED", "confidence": "HIGH"},
+            "1": {"translation": cur1, "status": "TRANSLATED", "confidence": "HIGH"},
+        }, ensure_ascii=False), encoding="utf-8")
+        (b2 / "translation.json").write_text(json.dumps({
+            "schema_version": 1,
+            "translations": [
+                {"translation_unit_id": "u:0", "xml_index": 0, "source": "s0",
+                 "translation": cur0, "status": "TRANSLATED", "confidence": "HIGH"},
+                {"translation_unit_id": "u:1", "xml_index": 1, "source": "s1",
+                 "translation": cur1, "status": "TRANSLATED", "confidence": "HIGH"},
+            ],
+        }, ensure_ascii=False), encoding="utf-8")
+        cg = tmp / "collapse-fix.json"
+
+        # G1：单键裸词整句覆盖应被拦截
+        cg.write_text(json.dumps({"0": {"new": "旁支"}}, ensure_ascii=False), encoding="utf-8")
+        res = run(APPLY, "--stem", "T", "--batch", "B2", "--work-root", str(work),
+                  "--fixes", str(cg))
+        if res.returncode == 0 or "整句覆盖守卫" not in (res.stderr + res.stdout):
+            failures.append(
+                f"collapse guard G1 未拦截裸词覆盖: rc={res.returncode} err={res.stderr[:200]}")
+
+        # G2：同值裸词批量替换应被拦截
+        cg.write_text(json.dumps({"0": {"new": "旁支"}, "1": {"new": "旁支"}},
+                                 ensure_ascii=False), encoding="utf-8")
+        res = run(APPLY, "--stem", "T", "--batch", "B2", "--work-root", str(work),
+                  "--fixes", str(cg))
+        if res.returncode == 0 or "同值裸词" not in (res.stderr + res.stdout):
+            failures.append(
+                f"collapse guard G2 未拦截同值裸词批: rc={res.returncode} err={res.stderr[:200]}")
+
+        # 对照：完整句→完整句的正常修正应放行
+        cg.write_text(json.dumps({"0": {"new": "旁支脱离了他的控制，而如今他仍让故事继续。"}},
+                                 ensure_ascii=False), encoding="utf-8")
+        res = run(APPLY, "--stem", "T", "--batch", "B2", "--work-root", str(work),
+                  "--fixes", str(cg))
+        if res.returncode != 0:
+            failures.append(
+                f"collapse guard 误拦正常整句修正: rc={res.returncode} err={res.stderr[:200]}")
+
+        # allow_collapse 显式放行
+        cg.write_text(json.dumps({"0": {"new": "旁支", "allow_collapse": True}},
+                                 ensure_ascii=False), encoding="utf-8")
+        res = run(APPLY, "--stem", "T", "--batch", "B2", "--work-root", str(work),
+                  "--fixes", str(cg))
+        if res.returncode != 0:
+            failures.append(
+                f"allow_collapse 应放行: rc={res.returncode} err={res.stderr[:200]}")
+
         if failures:
             for failure in failures:
                 print(f"FAIL: {failure}")

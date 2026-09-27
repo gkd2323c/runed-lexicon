@@ -264,6 +264,8 @@ fixes JSON：
 
 **`new` 可选**：缺省时只改 status/notes/confidence（常见需求：把 REVIEW/KEEP 状态转成 TRANSLATED 而译文不动），避免为此手写一次性脚本。**改译文的字段名恒为 `new`**：传 `translation` 会在入口直接报错拒绝（事故锚定：旧版静默丢弃该字段只更新 notes，patch 全部「已就位」0 生效，表面成功实际未改）。已写回批的修正收口优先走 `translation-batch-ops` 的 `close_round.py` 一条龙（自动 patch 写回 + readout 重生成 + 同源对账 + new 断言）。
 
+**整句覆盖守卫（事故锚定 2026-09-27）**：`new` 是**整句替换**语义，不是词形替换。事故形态：词形修正意图（offshoot 分支→旁支）把裸词当 `new` 传入，9 处完整译文被整句覆盖为裸词并写回 canonical，靠下游 semgate 0.92+ FAIL 才事后发现。入口机械拦截两型：**G1** 现值为完整句（句末标点、≥12字）而 `new` 无句末标点且不足现值一半；**G2** ≥2 键 `new` 同值且无句末标点（同一裸词批量替换多条完整句）。词形/子串修正一律用 `--find/--replace` 或 `--subs-file` 通道；确认是真短句替换时在 fix 加 `"allow_collapse": true` 显式放行。守卫覆盖手工 `--fixes` 路径（批次模式取批次文件现值，跨批模式取 XML Dest）。
+
 **`--find/--replace`（同型多行替换）**：不值得为 5 条同型修正写全量 new JSON 时用；从各 idx 现值做子串替换并生成 fixes，走同一条写盘链路。`--idx-list` 限定行；无可替换时 no-op 且 exit 0。多行文本用 `--find-file` / `--replace-file`（见下「跨批模式」）。
 
 **`--subs-file`（多组替换声明，替代手写 fix-*.py）**：一个批次涉及多组词对、或多批次各需替换时，用声明式 JSON 一次执行（之前每轮手写 `fix-XXX.py` 的主要原因）：
@@ -377,5 +379,6 @@ py -3 .agents/skills/translation-review-tools/scripts/test_review_tools.py
 
 `test_review_tools.py` 覆盖：read_batch 双数据源与状态过滤、query 四种模式、
 apply_fixes 的更新/校验中止/KEEP 转换/幂等/patch 生成/跨批自动同步（含 --no-sync-batches）、
+整句覆盖守卫（G1 裸词拦截 / G2 同值批拦截 / 正常修正放行 / allow_collapse 显式放行）、
 term_digest 的 MOD/OFF/CTX 格式化与空命中标注、dup 阈值、`--out` 落盘、
 make_review_view 一致性守卫（一致生成 / 漂移拒绝 / --allow-drift）。

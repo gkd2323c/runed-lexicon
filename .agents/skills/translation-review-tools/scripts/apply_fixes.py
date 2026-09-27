@@ -79,6 +79,66 @@ def resolve(value: str) -> Path:
 EXTRA_FIELDS = ("notes", "status", "confidence", "waived_tokens")
 
 
+# ---- 整句覆盖守卫（事故锚定 2026-09-27）----
+# 事故形态：词形修正意图（offshoot 分支→旁支）把裸词当 new 传入，而 new 是整句
+# 替换语义，9 处完整译文被整句覆盖为裸词并写回 canonical；下游 semgate 0.92+ FAIL
+# 事后才发现，canonical 已污染一轮。执行层：机械检查（本入口）> 任务卡约束 > 文档自觉。
+
+_SENT_END = set("。！？!?…")
+
+
+def _sent_end(s: str) -> bool:
+    """字符串是否以句末标点结尾（容忍尾部引号/空白）。"""
+    t = (s or "").strip().rstrip("\"'”’」』》」").strip()
+    return bool(t) and t[-1] in _SENT_END
+
+
+def collapse_guard(fixes: dict[int, dict], current_by_idx: dict, label: str) -> list[str]:
+    """整句覆盖守卫：拦截疑似「词形修正误传为整句替换」的 fixes。
+
+    G1 单键坍缩：现值是完整句（句末标点）而 new 无句末标点且长度不足现值
+    一半（现值 ≥12 字）——真整句改写几乎总保留句末标点，裸词词形误传不带。
+    G2 同值裸词批：≥2 键 new 完全相同且无句末标点，且存在完整句现值——同一
+    裸词批量替换多条完整句是词形修正误传的强信号（合法同值多为同源收敛，
+    收敛形带句末标点，由标点条件放行）。
+    逃生舱：fix 加 "allow_collapse": true 显式声明“就是要短句替换”。
+    """
+    from collections import defaultdict
+    errs: list[str] = []
+    for idx, fix in fixes.items():
+        if "new" not in fix or fix.get("allow_collapse"):
+            continue
+        cur = current_by_idx.get(str(idx))
+        if not cur or "new" not in fix:
+            continue
+        new = fix["new"]
+        if len(cur) >= 12 and _sent_end(cur) and not _sent_end(new) \
+                and len(new) * 2 <= len(cur):
+            errs.append(
+                f"{label}[{idx}] 疑似词形修正误传（整句覆盖守卫）：new（{len(new)}字，"
+                f"无句末标点）远短于现值（{len(cur)}字，完整句）。new 是整句替换语义；"
+                f"词形修正请用 --find/--replace 子串通道，确需短句替换时加 "
+                f"\"allow_collapse\": true 显式放行")
+    by_new: dict = defaultdict(list)
+    for idx, fix in fixes.items():
+        if "new" in fix:
+            by_new[fix["new"]].append(idx)
+    for new, idxs in by_new.items():
+        if len(idxs) < 2 or _sent_end(new):
+            continue
+        if all(fixes[i].get("allow_collapse") for i in idxs):
+            continue
+        long_cur = [i for i in idxs
+                    if (c := current_by_idx.get(str(i))) and len(c) >= 12 and _sent_end(c)]
+        if long_cur:
+            errs.append(
+                f"{label}[{sorted(long_cur)}] 同值裸词批量替换（整句覆盖守卫）："
+                f"{len(idxs)} 处 new 均为无句末标点的同值短句「{new}」，"
+                f"现值为完整句。词形修正请用 --find/--replace；确需时加 "
+                f"\"allow_collapse\": true 显式放行")
+    return errs
+
+
 def normalize_fixes(raw: dict) -> dict[int, dict]:
     """规范化 fixes。`new` 可选：缺省时只改 status/notes/confidence 等字段
     （消除“只想把 REVIEW 转 TRANSLATED 也得写临时脚本”的常规需求）。"""
@@ -661,6 +721,32 @@ def main() -> int:
             patch_skipped = pr["skipped"]
             errors += pr["errors"]
             warnings += pr["warnings"]
+
+    # ---- 整句覆盖守卫（事故锚定 2026-09-27 裸词覆盖 9 处）----
+    # current 来源：canonical patch 目标取 XML Dest；批次模式取批次文件现值
+    #（两者并存时以批次文件为准，它是 apply 的直接写入目标）。
+    current_by_idx: dict = {}
+    if args.translated_xml:
+        xml_for_guard = resolve(args.translated_xml)
+        if xml_for_guard.is_file():
+            for i, node in enumerate(ET.parse(str(xml_for_guard)).getroot().iter("String")):
+                current_by_idx[str(i)] = node.findtext("Dest") or ""
+    if batch_dir is not None:
+        for fname in ("map.json", "translation.json"):
+            fp = batch_dir / fname
+            if not fp.is_file():
+                continue
+            data = json.loads(fp.read_text(encoding="utf-8"))
+            if fname == "map.json":
+                for k, v in data.items():
+                    if isinstance(v, dict):
+                        current_by_idx[str(k)] = v.get("translation", "")
+            else:
+                for u in data.get("translations", []):
+                    if "xml_index" in u:
+                        current_by_idx[str(u["xml_index"])] = u.get("translation", "")
+    if current_by_idx:
+        errors += collapse_guard(fixes, current_by_idx, args.batch or "cross-batch")
 
     if errors:
         print("== 校验失败，未写任何文件 ==", file=sys.stderr)

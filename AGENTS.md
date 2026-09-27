@@ -167,6 +167,8 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 
 - **已写回批的审查修正走 `close_round.py`（硬规则）**：该链已工具化为 `translation-batch-ops/scripts/close_round.py` 一条龙（fixes 分组 → apply_fixes 出 patch → patch 写回 → 段核对与快照 → readout 重生成 → 同源组对账 → `new` 断言自动生成）。手串该链已踩坑：忘 regen readout 致审查读旧稿、断言 token 手误假红、同源副本行漂移到收口才发现；而改 `round_pipeline` 的 result 模式会被 `original_dest` 软保护整批拒写。改译文字段名恒为 `new`，传 `translation` 在 `apply_fixes` 入口即被拒（事故锚定：旧版静默丢弃该字段，patch 全部「已就位」0 生效，表面成功实际未改）。
 
+- **词形/子串修正禁用 `new` 整句通道（硬规则）**：`new` 是整句替换语义，传裸词会把完整译文整句覆盖（事故锚定：词形修正把裸词当 `new`，9 处完整译文被整句覆盖为裸词写回 canonical，靠下游 semgate 0.92+ FAIL 才事后发现）。执行层：机械检查——`apply_fixes.py` 入口整句覆盖守卫（G1 单键坍缩拦截 / G2 同值裸词批拦截）；词形修正走 `--find/--replace` 或 `--subs-file`，真短句替换须在 fix 加 `allow_collapse: true` 显式放行。
+
 ## A. 规则技能与强制加载路由
 
 命中下表节点时，按 AGENTS.md 顶部总纲完整读取对应 `SKILL.md`（不凭摘要或记忆代行）：
@@ -181,7 +183,7 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 | `skyrim-tool-dev-rules`         | 工具复用检索、性能门禁（30s 缺陷阈值 / 5s 回归线）、临时脚本边界（§2.1） | 编写数据处理脚本前；改动现有自动化工具前                    |
 | `longtext-hallucination-review` | 长文本抗幻觉审查（机械探针 + 逐段精读）、幻觉形态识别与验收纪律          | 审查长叙事译文（BOOK 书页、QUST 长日志）；收口前长文本复核  |
 | `translation-batch-ops`         | 批次验收、覆盖率核查、缺口扫描与补遗、进度快照、批次分片工具集           | 验收批次产出、核对批次状态与覆盖率、声明收敛前、记录进度时  |
-| `subagent-ops`                  | 任务卡编译与模板红线、体量上限、并行与送达纪律、审查/审计/裁决卡变体     | 派任何子代理单之前；验收子代理产出；子代理崩溃无产出归因时   |
+| `subagent-ops`                  | 任务卡编译与模板红线、体量上限、并行与送达纪律、审查/审计/裁决卡变体     | 派任何子代理单之前；验收子代理产出；子代理崩溃无产出归因时  |
 
 强制前置链：
 
