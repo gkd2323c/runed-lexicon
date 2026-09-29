@@ -44,12 +44,14 @@ def resolve_path(value: str) -> Path:
     return path.resolve()
 
 
-def load_untranslated(xml_path: Path, rec_filter: set[str]) -> list[dict]:
+def load_untranslated(xml_path: Path, rec_filter: set[str],
+                      include_info: set[str] | None = None) -> list[dict]:
     try:
         root = ET.parse(xml_path).getroot()
     except ET.ParseError as exc:
         raise ValueError(f"Invalid XML in {xml_path}: {exc}") from exc
 
+    info_ok = {r for r in (include_info or set()) if r.startswith("INFO")}
     rows = []
     for index, node in enumerate(root.findall("./Content/String")):
         source = text_of(node.find("Source"))
@@ -57,7 +59,11 @@ def load_untranslated(xml_path: Path, rec_filter: set[str]) -> list[dict]:
         rec = text_of(node.find("REC"))
         if not source or source != dest:
             continue
-        if rec.startswith("INFO"):
+        if info_ok:
+            # INFO-family plan: 候选就是点名的那几个 REC（默认全非 INFO 不参与）
+            if rec not in info_ok:
+                continue
+        elif rec.startswith("INFO"):
             continue
         if rec_filter and rec not in rec_filter:
             continue
@@ -129,6 +135,11 @@ def main() -> int:
     parser.add_argument("--recs", default=None,
                         help="Comma-separated REC filter (exact, e.g. 'CELL:FULL,NPC_:FULL'); "
                              "default = all non-INFO")
+    parser.add_argument("--include-info-recs", default=None,
+                        help="Comma-separated INFO-family RECs to include, e.g. 'INFO:RNAM'. "
+                             "These are player-visible dialogue option rows that no other "
+                             "plan covers; they get their own plan file and RN- batch ids. "
+                             "Default = none (INFO families stay excluded).")
     parser.add_argument("--max-unique", type=int, default=60,
                         help="Max distinct sources per batch (default 60)")
     parser.add_argument("--max-rows", type=int, default=150,
@@ -150,8 +161,15 @@ def main() -> int:
         rec_filter = set()
         if args.recs:
             rec_filter = {r.strip() for r in args.recs.split(",") if r.strip()}
+        info_recs = set()
+        if args.include_info_recs:
+            info_recs = {r.strip() for r in args.include_info_recs.split(",") if r.strip()}
+            unknown = sorted(r for r in info_recs if not r.startswith("INFO"))
+            if unknown:
+                raise ValueError(
+                    f"--include-info-recs only accepts INFO-family RECs; got {unknown}")
 
-        rows = load_untranslated(xml_path, rec_filter)
+        rows = load_untranslated(xml_path, rec_filter, info_recs)
         if not rows:
             raise ValueError("No untranslated non-INFO rows matched the filter")
 
@@ -166,8 +184,10 @@ def main() -> int:
             groups = group_by_source(families[family])
             packed = pack_groups(groups, args.max_unique, args.max_rows)
             slug = family_slug(family)
+            is_info = family.startswith("INFO")
+            prefix = "RN" if is_info else "NI"
             for seq, batch in enumerate(packed, start=1):
-                bid = f"NI-{slug}-{seq:03d}"
+                bid = f"{prefix}-{slug}-{seq:03d}"
                 plan_batches.append({
                     "id": bid,
                     "line": family,
@@ -184,8 +204,11 @@ def main() -> int:
             "source_xml": str(xml_path.relative_to(PROJECT_ROOT))
                           if xml_path.is_relative_to(PROJECT_ROOT) else str(xml_path),
             "selection": {
-                "rule": "source_equals_dest_and_source_nonempty_and_rec_not_INFO",
+                "rule": ("source_equals_dest_and_source_nonempty_and_rec_in_selection"
+                         if info_recs else
+                         "source_equals_dest_and_source_nonempty_and_rec_not_INFO"),
                 "recs": sorted(rec_filter) if rec_filter else "all-non-INFO",
+                "include_info_recs": sorted(info_recs) if info_recs else [],
                 "max_unique": args.max_unique,
                 "max_rows": args.max_rows,
             },
@@ -202,7 +225,8 @@ def main() -> int:
             print("(dry-run: nothing written)")
             return 0
 
-        plan_path = work_root / stem / "context" / f"{stem}-noninfo-batches.json"
+        suffix = "info-rec" if info_recs else "noninfo"
+        plan_path = work_root / stem / "context" / f"{stem}-{suffix}-batches.json"
         plan_path.parent.mkdir(parents=True, exist_ok=True)
         plan_path.write_text(
             json.dumps(plan, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

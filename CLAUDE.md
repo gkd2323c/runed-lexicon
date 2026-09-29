@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-`runed-lexicon` 是《上古卷轴 V：天际》及 MOD 的 Agent-assisted localization 工作流：Agent 做语义理解、翻译与语义审校，确定性 Python 程序做提取、绑定、门禁、写回与结构验证。仓库本身是流程与工具，不含游戏文本（见下「本地数据」）。
+`runed-lexicon` 是《上古卷轴 V：天际》及 MOD 的 Agent-assisted localization 工作流：Agent 做语义理解、翻译与语义审校，确定性 Python 程序做提取、绑定、门禁、写回与结构验证。仓库本身是流程与工具，不含游戏文本（见下「本地数据」）。对外介绍见 `README.md`，贡献与提交边界见 `CONTRIBUTING.md`，公开发布清单见 `PUBLISHING.md`。
 
 ## 权威契约
 
@@ -10,22 +10,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `AGENTS.md` §A 有一张强制加载路由表：命中触发条件时，必须完整读取对应 `.agents/skills/<skill>/SKILL.md` 再执行，禁止用摘要或记忆代行。常用映射：
 
-| 场景                                | 必读 Skill                            |
-| ----------------------------------- | ------------------------------------- |
-| 开始 / 审校翻译批次前               | `skyrim-translation-craft`            |
-| 新 MOD 启动、写回前、发布收敛声明前 | `skyrim-term-contract-workflow`       |
-| 任何程序化操作之前（先检索复用）    | `skyrim-tool-dev-rules`               |
-| 批量改 XML 前后、出验证报告前       | `skyrim-xml-verification`             |
-| 长文本抗幻觉审查、收口前长文复核    | `longtext-hallucination-review`       |
-| 创建 / 修改 Skill                   | `skill-creator`（完整读取后才能动手） |
-| 创建 / 修改项目或 MOD 文档          | `skyrim-doc-system`                   |
+| 场景                                              | 必读 Skill                            |
+| ------------------------------------------------- | ------------------------------------- |
+| 开始 / 审校翻译批次前                             | `skyrim-translation-craft`            |
+| 新 MOD 启动、写回前、发布收敛声明前               | `skyrim-term-contract-workflow`       |
+| 新 MOD 开工前清点官方名、裁决官方名词前           | `proper-noun-index`                   |
+| 验收批次产出、核对覆盖率、声明收敛前、记录进度时  | `translation-batch-ops`               |
+| 派任何子代理单之前、验收子代理产出时              | `subagent-ops`                        |
+| 任何程序化操作之前（先检索复用）                  | `skyrim-tool-dev-rules`               |
+| 批量改 XML 前后、出验证报告前                     | `skyrim-xml-verification`             |
+| 长文本抗幻觉审查、收口前长文复核                  | `longtext-hallucination-review`       |
+| 创建 / 修改 Skill                                 | `skill-creator`（完整读取后才能动手） |
+| 创建 / 修改项目或 MOD 文档                        | `skyrim-doc-system`                   |
 
 ## 常用命令
 
 Python 3.10+，绝大多数脚本只用标准库。解释器以 `skill-creator` preflight 确认的为准（本机为 `py -3`；CI 与本文命令用 `python`）。CI 会额外安装 `pyyaml`、`zhconv`。
 
 ```bash
-# 推送前必跑：复刻 CI 四步（约 16 秒，失败 exit 1）
+# 推送前必跑：复刻 CI 四步（约 30 秒，失败 exit 1）
 python tools/pre-push-check.py
 python tools/pre-push-check.py --syntax-only      # 只跑第 4 步（CI 步骤入口）
 python tools/pre-push-check.py --install-hook   # 装 .git/hooks/pre-push，每台机器一次
@@ -34,15 +37,30 @@ python tools/pre-push-check.py --install-hook   # 装 .git/hooks/pre-push，每�
 python -m unittest discover -s .agents/skills/translation-executor/scripts -p "test_*.py"
 python -m unittest discover -s .agents/skills/translation-executor/scripts -p "test_fill_set.py"
 
-# CI 第 2 步的三个 standalone 回归脚本
+# CI 第 2 步的七个 standalone 回归脚本（与 pre-push-check.py 的 STANDALONE_SCRIPTS 两边必须同步改）
 python .agents/skills/xtranslator-xml-writer/scripts/test_patch_mode.py
+python .agents/skills/xtranslator-xml-writer/scripts/test_incremental_mode.py
+python .agents/skills/noninfo-batch-planner/scripts/test_plan_noninfo.py
+python .agents/skills/translation-review-tools/scripts/test_review_tools.py
 python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
+python .agents/skills/translation-fidelity-scan/scripts/test_fidelity_scan.py
 python corpus/translation-regression/scripts/validate_corpus.py
 
 # 改对应逻辑时必须跑，但不进 CI
 python .agents/skills/translation-executor/scripts/test_workflow_regressions.py
 python .agents/skills/local-model-translator/scripts/test_import_map.py
 python .agents/skills/xtranslator-xml-writer/scripts/test_keep_semantics.py
+
+# 收口链：一轮「验收→charset→预检→写回→段核对→快照」的唯一串行入口（pipeline.lock 独占）
+python .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
+  --stem <stem> --batches <BATCH-ID...> \
+  --xml mods/<stem>/<stem>_english_chinese.xml \
+  --contract .work/<stem>/contracts/<stem>.compiled.json
+# 已写回批的审查修正一条龙（fixes 分组 → patch → 写回 → 段核对 → readout 重生成）
+python .agents/skills/translation-batch-ops/scripts/close_round.py \
+  --stem <stem> --batches <BATCH-ID...> --fixes <fixes.json> \
+  --xml mods/<stem>/<stem>_english_chinese.xml \
+  --contract .work/<stem>/contracts/<stem>.compiled.json
 
 # 新建 / 修改 Skill 后的最低验证
 node .agents/skills/skill-creator/scripts/check_env.mjs --capability quick-validate
@@ -74,12 +92,20 @@ ESP/ESM ──xTranslator──> mods/<plugin>/<plugin>_english_chinese.xml   �
               mods/<plugin>/<plugin>_english_chinese_translated.xml   （唯一 canonical）
 ```
 
-Skill 分三层：
+跨文件才能看出的架构要点：
 
-- **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`、`xtranslator-xml-writer`、`translation-batch-ops`（批次运维：验收/覆盖/缺口/进度/分片）
+- **对话结构两段式**：mutagen 导出的原始 JSON 必须经 `convert-dialogue-context.py` 适配成 `<stem>-dialogue-context.json` 才能进 builder；直接传原始 JSON 会 0 连接、静默 unmatched。逐批索引用 `make-batch-index.py` 从批次计划抽 `idx`。
+- **批次计划**：INFO 批次用 `plan-info-batches.py`；非 INFO 记录族（QUST 日志、BOOK、CELL/NPC_ 名等）用 `noninfo-batch-planner`。两者产出 pipeline-ready 批次，供 context-builder / verify / writer 共同消费。
+- **门禁两层**：机械层 `quality_gate.py`（TERM/KEEP/占位符/字符集）FAIL 是硬拦截、阻断写回；语义层 `semantic_gate.py` 是参考层，FAIL/PARTIAL 只记明细不阻塞主线，无 key 时记 `UNCHECKED`（口径详见 AGENTS.md §4）。
+- **收口链已工具链化**：验收→写回→快照唯一入口 `round_pipeline.py`（单进程串行 + `pipeline.lock` 独占锁，持锁期间外部命令 rc=2 拒绝）；已写回批的审查修正走 `close_round.py`。禁止手动并行编排，详见 `translation-batch-ops` SKILL。
+
+Skill 分四层 + 元 skill：
+
+- **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`（含 `semantic_gate.py` 参考层）、`xtranslator-xml-writer`、`translation-batch-ops`（批次运维：验收/覆盖/缺口/进度/分片/收口链 round_pipeline 与 close_round）、`translation-batch-preparer`（批次切分与未译清点）、`noninfo-batch-planner`（非 INFO 批次计划）、`translation-review-tools`（读批/术语摘要/修正集 apply/字符集归一/抗幻觉探针）
 - **契约与名词**：`term-contract-compiler`（编译契约）、`proper-noun-index`（源侧官方专名清点）、`dictionary-noun-audit`（译文侧漏项候选）、`noun-consistency-scan`（同源多译分裂）
-- **结构提取与扫描**：`mutagen-dialogue-exporter`（秒级解析插件，取代 xEdit；`xedit-context-exporter` 已退役）、`translation-fidelity-scan`、`fantasy-context-auditor`（本地 LLM 预筛）、`local-model-translator`
-- **纯规则**（无脚本）：`skyrim-translation-craft`、`skyrim-doc-system`、`skyrim-term-contract-workflow`、`skyrim-tool-dev-rules`、`skyrim-xml-verification`、`longtext-hallucination-review`、`subagent-ops`
+- **结构提取与查询**：`mutagen-dialogue-exporter`（秒级解析插件，取代 xEdit；`xedit-context-exporter` 已退役）、`skyrim-xml-tools`（XML 检视/未译清单/官方词典查询，只读）、`translation-fidelity-scan`、`fantasy-context-auditor`（本地 LLM 预筛）、`local-model-translator`
+- **纯规则**（无脚本）：`skyrim-translation-craft`、`skyrim-doc-system`、`skyrim-term-contract-workflow`、`skyrim-tool-dev-rules`、`skyrim-xml-verification`、`longtext-hallucination-review`、`subagent-ops`、`shuo-ren-hua`（中文文风，写/改中文文档默认应用）
+- **元 skill**：`skill-creator`（创建/修改 skill 的规范与 `quick_validate.py` / `check_env.mjs` 验证脚本）
 
 ## 必须知道的约束
 
@@ -113,7 +139,7 @@ Skill 分三层：
 
 `dictionary/**/*.xml`、`mods/**`、`tools/xEdit/**`、`tools/term-rules/*.txt`、`tools/Mutagen/`、`.work/`、`_tmp/`、`.agents/skills/hana-subagent-ops/` 均被 git 排除（不发布）。其中 `dictionary/**/*.xml` 的规则不在 `.gitignore`，而在本机 `.git/info/exclude-dictionary`（由 `core.excludesFile` 指向）：平台检索工具会跳过 `.gitignore` / `.git/info/exclude` 排除的文件、但不读 `core.excludesFile` 来源，规则置于该来源使 Agent 可检索词典且 git 仍不追踪。**新 clone 需重建**：将 `dictionary/**/*.xml` 写入 `.git/info/exclude-dictionary` 并执行 `git config --local core.excludesFile <repo>/.git/info/exclude-dictionary`。**全新 clone 下涉及 `mods/<plugin>/` 与 `dictionary/` 的命令无法直接运行**——需要用户自备官方英中 xTranslator XML（导出方法见 `dictionary/EXPORT_GUIDE.md`）与目标 MOD XML。
 
-各 MOD 工作区典型内容：`<plugin>_english_chinese.xml`（源）、`<plugin>_english_chinese_translated.xml`（canonical 成品）、插件二进制（仅结构恢复需要时）、`CONTEXT.md` / `DICTIONARY.md` / `PROGRESS.md`、`terms.json`。翻译前必须完整读取 `CONTEXT.md` 与 `DICTIONARY.md`；**任一缺失就停下询问用户是否补建，不得静默创建空模板、不得启动翻译**。
+各 MOD 工作区典型内容：`<plugin>_english_chinese.xml`（源）、`<plugin>_english_chinese_translated.xml`（canonical 成品）、插件二进制（仅结构恢复需要时）、`CONTEXT.md` / `DICTIONARY.md` / `PROGRESS.md` / `SOP.md`、`terms.json`。翻译前必须完整读取 `CONTEXT.md` 与 `DICTIONARY.md`；**任一缺失就停下询问用户是否补建，不得静默创建空模板、不得启动翻译**。接手已有 MOD 先读 `SOP.md` 与 `PROGRESS.md` 恢复上下文。
 
 `corpus/` 与 `_tmp/` 的区别：`corpus/translation-regression/` 是随仓库发布的**交付资产**（事故驱动的语义等价 synthetic fixture，分 `gate` / `translator` 两层，两层不可互算）；`_tmp/` 是运行时产物，任务收尾即清理。
 

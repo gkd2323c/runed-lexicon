@@ -12,7 +12,7 @@ metadata:
 
 ## 核心模型
 
-- **候选**：`Source == Dest` 且非空、`REC` 不以 `INFO` 开头的行。
+- **候选**：`Source == Dest` 且非空、`REC` 不以 `INFO` 开头的行（`--include-info-recs` 点名的 INFO 族例外）。
 - **分组单元**：同一条 `Source` 的全部行是不可分割组（共享同一译文）；同源行永不跨批。组序 = 首次出现序（XML 顺序）。
 - **批次**：按 REC 大类（`:` 前缀）分家族，族内贪心装批；装批上限 `--max-unique`（distinct 源数，默认 60）与 `--max-rows`（行数，默认 150），单个超限组仍整组输出。
 - **批 id**：`NI-<家族slug>-<NNN>`（家族按名排序、批号从 001 起），例如 `NI-CELL-001`、`NI-NPC-001`。
@@ -36,7 +36,25 @@ py -3 .../plan_noninfo_batches.py --xml <xml> --recs "CELL:FULL,WRLD:FULL,REFR:F
 
 # 调整装批上限
 py -3 .../plan_noninfo_batches.py --xml <xml> --max-unique 40 --max-rows 120
+
+# INFO 族行（如玩家对话选项 INFO:RNAM）——单独成计划，不进 noninfo 计划
+py -3 .../plan_noninfo_batches.py --xml <xml> --stem <stem> \
+  --include-info-recs "INFO:RNAM" --max-unique 45 --max-rows 60
 ```
+
+## INFO 族选项行（`--include-info-recs`）
+
+`INFO:NAM1` 的对白由 `plan-info-batches.py` 按对话链计划；`INFO:RNAM` 这类行既不在 `split-info-lines.py` 的对话链里，又被本工具原有的「REC 不以 INFO 开头」规则排除，结果是**玩家可见的对话选项行没有任何计划管辖**，既不漏在计划外也不进收口统计。
+
+`--include-info-recs` 显式点名这类 REC。与默认模式行为不同，读脚本前先记住几点：
+
+- 候选**只**是点名的 REC，不含默认的全非 INFO 集合（与 `--recs` 取交集，不是并集）。
+- 计划写到 `.work/<stem>/context/<stem>-info-rec-batches.json`，不覆盖 noninfo 计划。
+- 批 id 前缀用 `RN-`（非 `NI-`），家族 slug 仍取 REC 的 `:` 前缀，故 `INFO:RNAM` 得到 `RN-INFO-001`。
+- `selection.rule` 记为 `..._rec_in_selection` 并落 `include_info_recs` 列表，便于事后核对计划怎么选出来的。
+- 传了非 INFO 开头的 REC 直接报错退出（exit 2），避免拼错静默产生空计划。
+
+收口口径上把这份计划一并传给 `scan_plan_gaps.py --plan`，否则这些行会显示为 GAPS。
 
 ## 输出契约（确定性）
 

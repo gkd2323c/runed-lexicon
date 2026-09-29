@@ -148,6 +148,8 @@ def main() -> int:
     ap.add_argument("--contract", required=True, help="编译契约 JSON")
     ap.add_argument("--phases", default=",".join(ALL_PHASES))
     ap.add_argument("--note", default="", help="快照备注")
+    ap.add_argument("--plan", default="",
+                    help="快照覆盖率口径的计划文件；默认 <stem>-info-batches.json，非 INFO 批次传 noninfo 计划")
     ap.add_argument("--break-lock", action="store_true", help="清除已存在的锁（仅 stale 时）")
     args = ap.parse_args()
 
@@ -176,8 +178,11 @@ def main() -> int:
         for b in args.batches:
             if "consume" in phases:
                 lock.phase(f"consume {b}")
-                rc = run([sys.executable, CONSUME, "--stem", stem, "--batch", b,
-                          "--xml", args.xml, "--contract", args.contract], "consume")
+                consume_cmd = [sys.executable, CONSUME, "--stem", stem, "--batch", b,
+                               "--xml", args.xml, "--contract", args.contract]
+                if args.plan:
+                    consume_cmd += ["--plan", args.plan]
+                rc = run(consume_cmd, "consume")
                 if rc != 0:
                     fail_detail(work / "reports" / f"{b}-verify-report.json")
                     raise Stop(f"{b} consume FAIL，已停在写回前；裁决（fix/waive）后重跑本命令")
@@ -256,10 +261,13 @@ def main() -> int:
         # ---- 快照（写回落定后，同进程）----
         if "snapshot" in phases:
             lock.phase("snapshot")
+            plan_path = args.plan or str(work / "context" / f"{stem}-info-batches.json")
+            log_path = work / "reports" / f"{stem}-progress-log.json"
             snap_cmd = [sys.executable, SNAPSHOT, "--xml", str(canonical),
                         "--source-xml", args.xml,
-                        "--plan", str(work / "context" / f"{stem}-info-batches.json"),
-                        "--batches-dir", str(work / "batches"), "--record"]
+                        "--plan", plan_path,
+                        "--batches-dir", str(work / "batches"), "--record",
+                        "--log", str(log_path)]
             gaps = work / "context" / f"{stem}-gaps-batches.json"
             if gaps.is_file():
                 snap_cmd += ["--plan", str(gaps)]

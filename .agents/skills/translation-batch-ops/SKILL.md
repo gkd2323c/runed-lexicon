@@ -236,6 +236,16 @@ py -3 .agents/skills/translation-batch-ops/scripts/close_round.py \
 
 fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；也接受裸 `{"<idx>": {...}}`（此时必须且只能配一个 --batch）。改译文字段名是 `new`（传 `translation` 会被 apply_fixes 入口直接拒绝）。安全边界：只接管已写回批修正；首次写回（consume→write result 链）仍走 5c；源 XML 只读，写回仅经 `--patch` 通道。同值修正（new=现译文）时空 patch 自动跳过 write，可作零风险自测。同源组对账只比较已译形态（`Dest != Source`）；未来批次仍为 Source 的同源副本不算翻译分裂。实测全链（含 3086 行同源对账）约 8s。
 
+**同源对账的豁免通道**：对话里存在 prompt 驱动的必要差异——同一句 `I am.` 分别回 `You sound disappointed.` 与 `You sound happy about this.`，译文必须不同；按源文分组会把它们永久判成分裂，让 close_round 无限失败。对账默认严格，例外需人工逐条回源核实后登记到 `.work/<plugin>/contracts/<plugin>-same-source-exemptions.json`：
+
+```json
+{
+  "I am.": { "idxs": [15322], "reason": "prompt 决定：15322 回 You sound happy about this.，14334 回 You sound disappointed.。主形取较早的 14334。" }
+}
+```
+
+格式 `{"<source>": {"idxs": [...], "reason": "..."}}`（也接受同 source 的数组多写）。登记的 idx 所属形态会从分裂计数中剔除；`idxs` 必须是该形态的**全部** idx（写全而非写一两个），否则残余差异仍会失败。取 prompt 铁证用 `context.json` 的 `dialogue_context.info.prompt`，或 `close_round.prompts_for()` 懒加载查询。豁免文件缺失时 close_round 在失败信息里提示该路径。
+
 ## 6. 批次文件对账与重建（`batch_sync.py`）
 
 canonical 是唯一真相源，批次文件（map.json / translation.json）是它的派生视图——可从 canonical 重建，不承载独立信息。**处置原则：一律机器重建（重新生成），不逐条手工修补、不逐案调查历史成因。**

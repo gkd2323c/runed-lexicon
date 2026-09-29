@@ -8,7 +8,11 @@
   断言从 fixes 的 new 值自动生成，逐 idx 验证 `new in dest`。
 - readout 忘记在修正后重新生成会让审查读旧稿（r18 事故形态）；本脚本默认 regen。
 - 同源副本行（DIAL/RNAM 等同 Source 多行）在别的批次，逐批修正只改自己批次的键；
-  本脚本收口时内置同源组对账，split>0 直接失败。
+  本脚本收口时内置同源组对账，split>0 直接失败。对账默认严格（同源必同形）；仅当
+  译文差异确由对话 prompt 决定时，经人工回源核实后登记到
+  `contracts/<stem>-same-source-exemptions.json` 才放行（I am. 分别回 You sound
+  disappointed. 与 You sound happy about this. 即此类）。
+- 同源对账早期无豁免通道，prompt 驱动的合法差异永久判成分裂，close_round 无限失败。
 
 流程：fixes 分组 -> apply_fixes(每批, 生成 patch) -> patch write(每批) ->
 round_pipeline verify,snapshot -> readout regen(每批) -> 同源组对账 -> new 断言。
@@ -69,7 +73,41 @@ def load_fixes(paths: list[str], batches: list[str]) -> dict[str, dict[str, dict
     return merged
 
 
-def same_source_split(xml: Path) -> list[tuple[str, dict[str, list[int]]]]:
+def _exempt_forms(src: str, forms: dict[str, list[int]],
+                  exemptions: dict[str, set[int]]) -> dict[str, list[int]]:
+    """剔除显式登记的合法差异形；剔除后不足两形即视为无分裂。"""
+    allow = exemptions.get(src)
+    if not allow:
+        return forms
+    return {d: idxs for d, idxs in forms.items() if not set(idxs) <= allow}
+
+
+def load_exemptions(path: Path) -> dict[str, set[int]]:
+    """同源多形豁免：{"<source>": {"idxs": [...], "reason": "..."}}。
+
+    对账默认严格（同源必同形）。只有经人工逐条回源核实、确认译文差异由对话 prompt
+    决定且属必要差异的行，才登记在这里；未登记的分裂一律让 close_round 失败。
+    """
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out: dict[str, set[int]] = {}
+    for src, items in (data.get("exemptions") or data).items():
+        if isinstance(items, dict):
+            items = [items]
+        idxs: set[int] = set()
+        for it in items or []:
+            idxs.update(int(i) for i in (it.get("idxs") or []))
+        if idxs:
+            out[src] = idxs
+    return out
+
+
+def same_source_split(xml: Path, exemptions: dict[str, set[int]] | None = None) -> list[tuple[str, dict[str, list[int]]]]:
+    """同源多 Dest 分裂组。exemptions 为显式登记的合法差异形，剔除后仍 >=2 形才判分裂。"""
     rows = ET.parse(xml).getroot().findall(".//String")
     by_src: dict[str, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
     for i, s in enumerate(rows):
@@ -77,7 +115,61 @@ def same_source_split(xml: Path) -> list[tuple[str, dict[str, list[int]]]]:
         dest = s.findtext("Dest") or ""
         if src.strip() and dest != src:
             by_src[src][dest].append(i)
-    return [(src, d) for src, d in by_src.items() if len(d) > 1]
+    out: list[tuple[str, dict[str, list[int]]]] = []
+    for src, forms in by_src.items():
+        if len(forms) < 2:
+            continue
+        if exemptions:
+            forms = _exempt_forms(src, forms, exemptions)
+        if len(forms) > 1:
+            out.append((src, forms))
+    return out
+
+
+def _index_owner(workb: Path) -> dict[int, str]:
+    owner: dict[int, str] = {}
+    for d in sorted(workb.iterdir()):
+        f = d / "index.txt"
+        if not f.is_file():
+            continue
+        for line in f.read_text(encoding="utf-8").splitlines():
+            s = line.strip()
+            if s.isdigit():
+                owner[int(s)] = d.name
+    return owner
+
+
+def prompts_for(workb: Path, idxs: set[int]) -> dict[int, str | None]:
+    """idx -> DIAL prompt（懒加载，只解析涉及 idx 的批次 context.json）。
+
+    供人工核实豁免登记时取铁证，不参与自动判定（见 load_exemptions）。
+    """
+    owner = _index_owner(workb)
+    wanted: dict[str, set[int]] = defaultdict(set)
+    for i in idxs:
+        bid = owner.get(i)
+        if bid:
+            wanted[bid].add(i)
+    prompts: dict[int, str | None] = {}
+    for bid, need in wanted.items():
+        cf = workb / bid / "context.json"
+        if not cf.is_file():
+            continue
+        try:
+            data = json.loads(cf.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        for b in data.get("batches", []):
+            for e in b.get("entries", []):
+                idx = (e.get("xml") or {}).get("index")
+                if idx not in need:
+                    continue
+                info = ((e.get("dialogue_context") or {}).get("info") or {})
+                pr = (info.get("prompt") or "").strip()
+                prompts[idx] = pr or None
+    for i in idxs:
+        prompts.setdefault(i, None)
+    return prompts
 
 
 def main() -> int:
@@ -143,14 +235,19 @@ def main() -> int:
             run([sys.executable, READOUT, "--stem", stem, "--batch", bid, "--out", out],
                 f"readout:{bid}")
 
-    # 5) 同源组对账（跨批副本行漂移的常驻防线）
-    splits = same_source_split(source if False else translated)  # 对 canonical
+    # 5) 同源组对账（跨批副本行漂移的常驻防线；显式登记的 prompt 必要差异不计）
+    exemptions = load_exemptions(workb.parent / "contracts" / f"{stem}-same-source-exemptions.json")
+    splits = same_source_split(translated, exemptions)  # 对 canonical
     if splits:
         for src, forms in splits[:10]:
             print("SPLIT:", src[:80])
             for dest, idxs in forms.items():
                 print("   ", idxs, "->", dest[:70])
-        raise SystemExit(f"CLOSE ROUND FAIL: 同源多 Dest 分裂 {len(splits)} 组")
+        hint = ""
+        if not exemptions:
+            hint = ("；若确属 prompt 决定的必要差异，先回源核实并登记到 "
+                    f"contracts/{stem}-same-source-exemptions.json 再重跑")
+        raise SystemExit(f"CLOSE ROUND FAIL: 同源多 Dest 分裂 {len(splits)} 组{hint}")
 
     # 6) new 断言（从 fixes 自动生成，消灭手写 token 手误）
     rows = ET.parse(translated).getroot().findall(".//String")
