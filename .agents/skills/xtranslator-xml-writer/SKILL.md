@@ -50,7 +50,11 @@ py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
 `--in-place` updates the canonical through a read-then-atomic-replace (safe because
 the baseline is fully read before anything is written). `--archive-to` stores a
 content-addressed snapshot of the pre-write canonical at `<dir>/<sha256>/<filename>`
-before it is replaced. `--force` here only replaces the existing report file. Omit
+before it is replaced; pairing it with `--archive-keep N` deletes all but the newest
+N snapshot generations, which is what stops the archive from growing by one full XML
+per writeback round. The snapshot written by the current run is always kept, and only
+bare-sha256 directories are pruned, so any other file in the archive root survives.
+`--force` here only replaces the existing report file. Omit
 `--in-place` and `--archive-to` when the previous canonical was archived manually:
 then pass the archived copy as `--xml` and the canonical path as `--output`.
 
@@ -243,8 +247,8 @@ few units still awaiting review (e.g. long BOOK texts held for a second pass),
 `--skip-nonfinal` skips exactly those units instead of rejecting the whole run.
 Skipped units are listed in the report (`skipped_units` with file/unit/status +
 `skipped_count`) and never written; they must be resolved and written by a later
-generation. Without the flag the default stays strict-reject. R14 (2026-09-08):
-Druadach BOOK 15 files carried 8 REVIEW units; manual subset extraction produced
+generation. Without the flag the default stays strict-reject. R14: a BOOK-heavy
+run carried 8 REVIEW units across 15 files; manual subset extraction produced
 430 TRANSLATED + 5 KEEP, and `--skip-nonfinal --check-only` on the original
 files reproduces exactly the same counts.
 

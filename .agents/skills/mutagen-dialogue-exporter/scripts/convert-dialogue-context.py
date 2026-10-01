@@ -26,7 +26,9 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
-stem = sys.argv[1] if len(sys.argv) > 1 else "Druadach"
+if len(sys.argv) < 2:
+    raise SystemExit("usage: convert-dialogue-context.py <stem> [<moddir>] [<out>]")
+stem = sys.argv[1]
 moddir = sys.argv[2] if len(sys.argv) > 2 else f"mods/{stem}.esm"
 out_path = sys.argv[3] if len(sys.argv) > 3 else f".work/{stem}/context/{stem}-dialogue-context.json"
 

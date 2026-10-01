@@ -17,7 +17,9 @@ import json
 import sys
 from pathlib import Path
 
-stem = sys.argv[1] if len(sys.argv) > 1 else "Druadach"
+if len(sys.argv) < 2:
+    raise SystemExit("usage: make-batch-index.py <stem> <batch-id> [<batch-dir>]")
+stem = sys.argv[1]
 batch_id = sys.argv[2] if len(sys.argv) > 2 else "INFO-001"
 batch_dir_name = sys.argv[3] if len(sys.argv) > 3 else f"{stem}/batches"
 

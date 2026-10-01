@@ -181,6 +181,8 @@ def main() -> int:
     ap.add_argument("--contract", required=True)
     ap.add_argument("--translated-xml", default=None)
     ap.add_argument("--note", default="close_round")
+    ap.add_argument("--archive-keep", type=int, default=5,
+                    help="写回归档保留的最近代数（默认 5，0=不限）；archive 只增不减会随轮次无限膨胀")
     ap.add_argument("--no-readout", action="store_true")
     args = ap.parse_args()
 
@@ -221,6 +223,7 @@ def main() -> int:
     for bid, patch in patches:
         run([sys.executable, WRITER, "--xml", translated, "--source-xml", source,
              "--report", report, "--force", "--in-place", "--archive-to", archive,
+             "--archive-keep", str(args.archive_keep),
              "--patch", patch], f"patch:{bid}")
 
     # 3) round verify,snapshot（不带 write：result 模式对已写回键会拒）

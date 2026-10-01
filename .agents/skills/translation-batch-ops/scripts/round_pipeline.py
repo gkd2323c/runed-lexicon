@@ -140,6 +140,50 @@ def time_str() -> str:
     return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+def same_source_precheck(stem: str, batches: list[str], work: Path,
+                         canonical: Path, src_xml: Path) -> None:
+    """写回前同源预检：本批译文与 canonical 既有同源形不一致即停。
+
+    首次写回没有这道检查时，分片批各片各定的形会直接进 canonical，要等到下一次
+    close_round 的同源对账才爆（那时已写回，回滚成本高）。口径与 close_round 一致：
+    同源必同形，prompt 驱动的合法差异走 same-source-exemptions.json。
+    """
+    import xml.etree.ElementTree as ET
+    if not canonical.is_file() or not src_xml.is_file():
+        return
+    srcs = [s.findtext("Source") or "" for s in ET.parse(src_xml).getroot().iter("String")]
+    forms: dict[str, dict[str, list[str]]] = {}
+    for i, s in enumerate(ET.parse(canonical).getroot().iter("String")):
+        src = s.findtext("Source") or ""
+        dst = s.findtext("Dest") or ""
+        if src and dst and dst != src:
+            forms.setdefault(src, {}).setdefault(dst, []).append(str(i))
+    for b in batches:
+        mf = work / "batches" / b / "map.json"
+        if not mf.is_file():
+            continue
+        for k, v in json.loads(mf.read_text(encoding="utf-8")).items():
+            i = int(k)
+            src = srcs[i] if i < len(srcs) else ""
+            dst = str((v or {}).get("translation") or "").strip()
+            if src and dst:
+                forms.setdefault(src, {}).setdefault(dst, []).append(k)
+    try:
+        from close_round import load_exemptions
+        exempt = set(load_exemptions(work / "contracts" / f"{stem}-same-source-exemptions.json"))
+    except Exception:
+        exempt = set()
+    bad = [(s, f) for s, f in forms.items() if len(f) > 1 and s not in exempt]
+    if bad:
+        print(f"error: 写回前同源预检失败：{len(bad)} 组同源多形（本批译文与 canonical 既有形不一致）",
+              file=sys.stderr)
+        for s, f in bad[:10]:
+            print(f"  SRC: {s[:70]}", file=sys.stderr)
+            for t, ks in f.items():
+                print(f"     {len(ks)}x {t[:50]} {ks[:6]}", file=sys.stderr)
+        raise Stop("同源预检失败（写回前）；按 canonical 既有形对齐后重跑")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stem", required=True)
@@ -151,6 +195,9 @@ def main() -> int:
     ap.add_argument("--plan", default="",
                     help="快照覆盖率口径的计划文件；默认 <stem>-info-batches.json，非 INFO 批次传 noninfo 计划")
     ap.add_argument("--break-lock", action="store_true", help="清除已存在的锁（仅 stale 时）")
+    ap.add_argument("--archive-keep", type=int, default=5,
+                    help="写回归档保留的最近代数（默认 5，0=不限）。archive 每轮写回新增一份"
+                         "完整 canonical 且从不清理，不设上限会随轮次无限膨胀")
     args = ap.parse_args()
 
     stem = args.stem
@@ -232,13 +279,19 @@ def main() -> int:
             if run(cmd, "check") != 0:
                 raise Stop("writer --check-only 预检失败，未写任何字节")
 
+        # ---- 写回前同源预检（分片批各片各定形时的第一道拦截）----
+        if "write" in phases:
+            lock.phase("same-source-precheck")
+            same_source_precheck(stem, args.batches, work, canonical, Path(args.xml))
+
         # ---- 串行写回 ----
         written = []
         if "write" in phases:
             for b, rj in zip(args.batches, results):
                 lock.phase(f"write {b}")
                 cmd = [sys.executable, WRITER, *writer_common, "--in-place",
-                       "--archive-to", str(work / "archive"), "--result", str(rj)]
+                       "--archive-to", str(work / "archive"),
+                       "--archive-keep", str(args.archive_keep), "--result", str(rj)]
                 if run(cmd, "write") != 0:
                     raise Stop(f"{b} 写回失败；已停，后续批未写")
                 written.append(b)

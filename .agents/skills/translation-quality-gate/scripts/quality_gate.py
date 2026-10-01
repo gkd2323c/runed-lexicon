@@ -145,8 +145,8 @@ def truncation_issue(unit: dict) -> list:
     if not src or not dst or src == dst:
         return []
     # R15: 富文本先 strip 标签再判定。此前 `if '<' in src or '<' in dst: return []`
-    # 一刀切跳过全部带标签文本，导致 BOOK（HTML 信件/书籍重灾区）的 11 条截断
-    # 无一条被检出（Druadach-book 2026-09-08）。标签内的省略号 strip 后自然
+    # 一刀切跳过全部带标签文本，导致 BOOK（HTML 信件/书籍重灾区）的截断
+    # 无一条被检出。标签内的省略号 strip 后自然
     # 消失，不会误报；纯标签行 strip 后为空，由上方的 not dst 排除。
     src_text = re.sub(r'<[^>]*>', '', src)
     dst_text = re.sub(r'<[^>]*>', '', dst)

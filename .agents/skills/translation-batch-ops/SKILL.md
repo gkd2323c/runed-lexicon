@@ -1,9 +1,9 @@
 ---
 name: translation-batch-ops
-description: runed-lexicon 批次流水线的状态、覆盖、验收、对账重建与进度工具集。覆盖一轮收口的唯一串行入口（round_pipeline：consume→charset→check→write→verify→snapshot 单进程顺序执行 + 独占锁防并行覆盖）、批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次文件对账与重建（batch_sync）、批次 context 单批重建（rebuild_context）。Use when 把验收批次收口至写回快照（一律走 round_pipeline）、验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、处理批次文件与 canonical 的漂移或缺失（判向/拉平/补全，不逐条修补）、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、契约编译（归 term-contract-compiler）。
+description: runed-lexicon 批次流水线的状态、覆盖、验收、对账重建与进度工具集。覆盖一轮收口的唯一串行入口（round_pipeline：consume→charset→check→write→verify→snapshot 单进程顺序执行 + 独占锁防并行覆盖）、批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次文件对账与重建（batch_sync）、批次 context 单批重建（rebuild_context）、同源继承预填与折叠（inherit_prefill）。Use when 把验收批次收口至写回快照（一律走 round_pipeline）、验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、派单前继承 canonical 既有译文并折叠批内重复句、处理批次文件与 canonical 的漂移或缺失（判向/拉平/补全，不逐条修补）、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、契约编译（归 term-contract-compiler）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.4.1"
+  version: "1.4.2"
 ---
 
 # Translation Batch Ops
@@ -142,7 +142,12 @@ py -3 .agents/skills/translation-batch-ops/scripts/shard_batch.py merge --stem <
 py -3 .../shard_batch.py merge --stem <S> --batch <B> --parts blockA blockB --pattern "map-{lab}.json"
 ```
 
-`split` 按源文字符权重贪心平分，让两片承载量接近；按行数切会失衡：一条长文抵几十条短文。`merge` 默认找 `map-part-<lab>.json`，`--pattern` 可适配其它命名（分片键重叠、合并键集与 index.txt 不等均拒绝）。
+`split` 按源文字符权重贪心平分，让两片承载量接近；按行数切会失衡：一条长文抵几十条短文。`merge` 默认找 `map-part-<lab>.json`，`--pattern` 可适配其它命名。merge 设三道门：
+
+- **分片互重**：两片出现同一个键即拒绝。
+- **每片不得越界**：每片键集必须与它自己的 `index-part-<lab>.txt` 严格相等，缺或多都拒绝。缺这道门时，某片多写了别片的键会被「合并 == index.txt」掩盖（多出的键恰好也在整批内），错误静默通过。
+- **片间同源译形**：合并键集一致不等于译形一致。分片独立翻译时同一 Source 可能被两片各定一次形，此分裂若不在此拦住，会活到 `close_round` 同源对账才爆，那时已写回 canonical。默认报错退出并列出各组各形；`--converge` 按多数形自动收敛。
+- 手动拆半（`--pattern`、无 index-part）时跳过越界检查。
 
 **maps/ 分片兼容（v1.1.0）**：翻译子代理按分片各自交付时，产物通常落在 `maps/<BID><lab>-map.json`（如 `GAP-INFO-002a-map.json`）且值为扁平 `{idx: "译文"}`。merge 自动回退到该路径与形态（扁平字符串自动升格为 object 形态）。
 
@@ -153,8 +158,7 @@ py -3 .../shard_batch.py merge --stem <S> --batch GAP-INFO-002 --parts a b \
 
 ## 5a. 子代理产出一键消费（`consume_batch.py`）
 
-把「翻译产出 → 验收就绪」的机械链条收敛为一个命令（2026-09-20 GAP 战役沉淀；
-此前此链条散落在多个一次性脚本中，属流程缺陷）：
+把「翻译产出 → 验收就绪」的机械链条收敛为一个命令（此前此链条散落在多个一次性脚本中，属流程缺陷）：
 
 ```text
 py -3 .agents/skills/translation-batch-ops/scripts/consume_batch.py \
@@ -205,7 +209,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
     --xml mods/<mod>/<plugin>_english_chinese.xml \
     --contract .work/<plugin>/contracts/<plugin>.compiled.json \
     [--phases consume,charset,check,write,verify,snapshot] \
-    [--note "<快照备注>"] [--break-lock]
+    [--note "<快照备注>"] [--archive-keep N] [--break-lock]
 ```
 
 步骤（顺序固定，任一步失败即停、后续不执行，锁必然释放）：
@@ -213,9 +217,10 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
 1. `consume`：逐批 consume_batch（语义/契约 FAIL 即停，打印 verify-report fails 明细交主会话裁决后重跑）；
 2. `charset`：逐批 normalize_charset 检查，有差异自动 apply + 重 consume（0 差异跳过）；
 3. `check`：writer `--check-only` 预检（跨批 duplicate / scope / KEEP 冲突）；
-4. `write`：逐批 writer `--in-place` 串行写回；
-5. `verify`：段核对（各批 idx 在 canonical 中 Source==Dest 计数必须为 0）；
-6. `snapshot`：progress_snapshot `--record`（同进程内写回落定后执行，hash 必然一致）。
+4. `same-source-precheck`（随 `write` 自动执行）：写回前比对本批译文与 canonical 既有同源形，不一致即停。分片批各片各定的形若无这道检查会直接进 canonical，等到下一次 `close_round` 才爆；口径与 close_round 同源对账一致，prompt 驱动的合法差异走 `same-source-exemptions.json`；
+5. `write`：逐批 writer `--in-place` 串行写回（每轮归档保留最近 `--archive-keep` 代，默认 5）；
+6. `verify`：段核对（各批 idx 在 canonical 中 Source==Dest 计数必须为 0）；
+7. `snapshot`：progress_snapshot `--record`（同进程内写回落定后执行，hash 必然一致）。
 
 锁语义：acquire 用 O_EXCL 创建（token/pid/phase/started）；子进程经 env `RUNED_PIPELINE_TOKEN` 继承 token；**write_translations 与 progress_snapshot 内置同锁守卫**，外部无 token 的独立命令一律拒绝（rc=2）——手动快照/写回撞上 pipeline 直接报错，不再产生写前态。stale 锁（进程崩溃遗留）用 `--break-lock` 清除。`--phases` 可选子集（如裁决后只补 `charset,check,write,verify,snapshot`）。
 
@@ -231,10 +236,11 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
 py -3 .agents/skills/translation-batch-ops/scripts/close_round.py \
   --stem <plugin> --batches <B1> [<B2> ...] --fixes <fixes.json> \
   --xml mods/<plugin>/<plugin>_english_chinese.xml \
-  --contract .work/<plugin>/contracts/<plugin>.compiled.json --note "rNN审查N条全采"
+  --contract .work/<plugin>/contracts/<plugin>.compiled.json \
+  --note "rNN审查N条全采" [--archive-keep N]
 ```
 
-fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；也接受裸 `{"<idx>": {...}}`（此时必须且只能配一个 --batch）。改译文字段名是 `new`（传 `translation` 会被 apply_fixes 入口直接拒绝）。安全边界：只接管已写回批修正；首次写回（consume→write result 链）仍走 5c；源 XML 只读，写回仅经 `--patch` 通道。同值修正（new=现译文）时空 patch 自动跳过 write，可作零风险自测。同源组对账只比较已译形态（`Dest != Source`）；未来批次仍为 Source 的同源副本不算翻译分裂。实测全链（含 3086 行同源对账）约 8s。
+fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；也接受裸 `{"<idx>": {...}}`（此时必须且只能配一个 --batch）。改译文字段名是 `new`（传 `translation` 会被 apply_fixes 入口直接拒绝）。安全边界：只接管已写回批修正；首次写回（consume→write result 链）仍走 5c；源 XML 只读，写回仅经 `--patch` 通道；每次 patch write 归档保留最近 `--archive-keep` 代（默认 5），archive 只增不减会随轮次无限膨胀。同值修正（new=现译文）时空 patch 自动跳过 write，可作零风险自测。同源组对账只比较已译形态（`Dest != Source`）；未来批次仍为 Source 的同源副本不算翻译分裂。实测全链（含 3086 行同源对账）约 8s。
 
 **同源对账的豁免通道**：对话里存在 prompt 驱动的必要差异——同一句 `I am.` 分别回 `You sound disappointed.` 与 `You sound happy about this.`，译文必须不同；按源文分组会把它们永久判成分裂，让 close_round 无限失败。对账默认严格，例外需人工逐条回源核实后登记到 `.work/<plugin>/contracts/<plugin>-same-source-exemptions.json`：
 
@@ -245,6 +251,31 @@ fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；�
 ```
 
 格式 `{"<source>": {"idxs": [...], "reason": "..."}}`（也接受同 source 的数组多写）。登记的 idx 所属形态会从分裂计数中剔除；`idxs` 必须是该形态的**全部** idx（写全而非写一两个），否则残余差异仍会失败。取 prompt 铁证用 `context.json` 的 `dialogue_context.info.prompt`，或 `close_round.prompts_for()` 懒加载查询。豁免文件缺失时 close_round 在失败信息里提示该路径。
+
+## 5e. 同源继承预填与折叠（`inherit_prefill.py`）
+
+派单前把两件纯机械劳动从译者实例里移出来：**继承**（批次内 canonical 已有同源译文的键直接填好）与**折叠**（批内同源重复句合成唯一句清单，只把代表键交给译者）。MOD 文本重复率往往很高（应答句、公式收束句、矩阵批基句反复出现），旧流程让译者照抄并复制这些行，白烧实例预算、也把复制错位留在 LLM 侧。
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/inherit_prefill.py prefill \
+  --stem <S> --batch <B> [--part a]
+# -> <批目录>/prefill.json（inherited + groups）与 uniq.txt（代表键<TAB>源文）
+# 打印：键 N | 继承 X | 待译 Y 行 -> 折叠为 Z 个唯一句（省 W 行）
+
+py -3 .../inherit_prefill.py expand \
+  --stem <S> --batch <B> [--part a] \
+  --prefill <批目录>/prefill.json --uniq-map <批目录>/uniq-map.json
+# -> <批目录>/map.json（完整键集；继承项 notes=inherited，折叠项 notes=folded）
+```
+
+用法要点：
+
+- 译者只回 `uniq.txt` 里代表键的译文（`{"<repIdx>": "译文"}`，或 `{"<repIdx>": {"translation": ..., "confidence": ...}}`），`expand` 负责展开到同源各键；代表键缺译文、展开后键集不符、出现空译文时一律报错退出，不产半成品。
+- 收益随批次重复度变化：重复密集的批次可把译者输出量压到原键数的两三成，全新内容批次收益接近零；`prefill` 的统计行会给出该批的继承数与折叠数，据此判断是否走本通道。
+- 继承方向与流程口径一致（同源必同形，`close_round` 同源对账 split 必须为 0）；`contracts/<stem>-same-source-exemptions.json` 登记的 prompt 驱动合法差异源句**不继承**，留给译者按语境处理。
+- 继承项在 map 里标 `notes=inherited`，审查卡应优先核对这批键（机械填入的译文同样进审查队列，不因「来自 canonical」而免检）。
+- 只读 canonical 与源 XML，写批目录内的 prefill/uniq/map 文件；写回仍走 `round_pipeline` / `write_translations`。单次调用 <1s（约 4.3 万 String 规模）。
+- 低重复批次可不用：`prefill` 的统计行会显示继承与折叠的收益，收益接近 0 时直接走原流程。
 
 ## 6. 批次文件对账与重建（`batch_sync.py`）
 

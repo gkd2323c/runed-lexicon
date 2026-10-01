@@ -54,7 +54,7 @@ Agent 在任何环节输出的文件，语义、角色、路径三者必须确�
 
 * **固定命名**：文件名由「角色 + 目标对象」构成，禁止日期戳、序号、`final`/`vN`/`roundN`/`backup`/`recheck`/`after-X` 等任何版本或状态标签。版本演进只允许存在于 `PROGRESS.md` 哈希链与写回报告中。
 * **固定落点**：写回产物 = `mods/<plugin>/<plugin>_english_chinese_translated.xml`（唯一 canonical，同名覆盖式演进）；gate / noun-audit / writeback 报告 = `.work/<plugin>/reports/<plugin>-gate-report.json` / `.work/<plugin>/reports/<plugin>-noun-audit.json` / `.work/<plugin>/reports/<plugin>-writeback-report.json`（同路径覆盖）；翻译 map 与结果 JSON 同理（角色名固定，如 `.work/<plugin>/maps/<plugin>-fix-map.json`），同代次内多文件必须以角色语义区分（如 `-map-blockA`），不得以序号或时间戳区分。
-* **历史演进**：上一代 canonical 进 `.work/<plugin>/archive/`；`PROGRESS.md` 记录哈希链。归档区文件保留原貌，不参与活跃工作流。
+* **历史演进与保留上限**：上一代 canonical 进 `.work/<plugin>/archive/`；`PROGRESS.md` 记录哈希链。归档区文件保留原貌，不参与活跃工作流。归档若只增不减会随写回轮次无限膨胀（实测单 MOD 累积 725 代快照、占 8 GB），故归档保留上限由 `write_translations --archive-keep N` 机械执行，`round_pipeline` / `close_round` 默认保留最近 5 代。
 * **机械强制**：主流水线工具（writer / gate / noun-audit）对输出路径执行命名校验，不符合契约直接拒绝。agent 不得绕过（禁止用 shell 复制、重命名、重定向伪造产出路径）。
 * **治理元规则**：本契约约束一切工作流环节与工具产出；新增工具或流程若引入新的输出角色，先在对应 `SKILL.md` 登记固定路径，再投入使用。
 

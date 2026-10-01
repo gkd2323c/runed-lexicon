@@ -21,6 +21,9 @@ metadata:
 | `hallucination_probe.py` | 长文本抗幻觉机械探针（段落/长度比/数字语义/性别代词） | 各种 `probe*.py` |
 | `longtext_readout.py` | 生成长文本源译对照分片读本（供语义精读） | 各种 `readout*.py` / `slice_*.py` |
 | `adjudication_pack.py` | 裁决包生成（扫描候选 + XML/对话主题/terms 证据预切）与 verdict 机械校验、修正计划生成 | 各种 `build_*pack*.py` / 裁决对账脚本 |
+| `canon_hints.py` | 从 canonical 提取目标批次中已定形的整句/句级翻译，输出派单提示 | 各种临时提取 hints 脚本 |
+| `artifact_scan.py` | 审查工件与流程元语言泄漏扫描（HIT/WEAK 两级机制） | 各种一次性泄漏排查脚本 |
+| `formula_scan.py` | 公式句多译法扫描与修正集生成（按标点切句，对位比对首尾句分裂） | 各种公式句对账脚本 |
 
 ## make_fixes_from_report.py
 
@@ -342,6 +345,45 @@ py -3 .../apply_fixes.py --stem Artaeum --batch NI-CELL-002 --fixes fix.json \
 - **patch 生成**：`--patch-out` 已存在时默认合并（同 idx 以本次值为准并计数提示）；XML 当前 Dest 已等于 new 的条目跳过（已就位）。
 - **修正单编制纪律（验收侧）**：单内必须覆盖该批全部 `REVIEW` 条目（裁决「保留」也用无 new 的 status 项转正，漏转会在写回时被 writer 拦截 `non-final status 'REVIEW'`）；`--batch` 为单批工具，idx 先对照该批 map/index 核实归属、按批拆单（凭记忆归档会整单被拒）。
 - 不触 MOD XML 本身；patch 由 `xtranslator-xml-writer` 消费写回。
+
+## canon_hints.py
+
+批次派单前的既有定形提取工具：读取批次 `index.txt`，将待译源句与当前已写回的 canonical XML 对比，
+提取已定形的整句与句级译文，写入 Markdown 提示供任务卡消费（使译者直接继承既有译文，防跨批同源分裂）：
+
+```text
+py -3 .../canon_hints.py --stem <stem> --batch <BID>
+py -3 .../canon_hints.py --index <index.txt> --source-xml <src.xml> --canonical <canon.xml> --out <out.md>
+```
+
+- 默认落盘至 `.work/<stem>/batches/<BID>/canon-hints.md`（成为批次标准准备资产）。
+- 按标点切分中英文单句并对位，支持整句与句级两级提示。
+
+## artifact_scan.py
+
+审查工件与流程元语言泄漏扫描器（只读）：在 canonical 译文 XML 的 `Dest` 中排查备注、裁决说明、
+文件名、英文残留、流程术语等非正规译文内容：
+
+```text
+py -3 .../artifact_scan.py --stem <stem> [--strict] [--show-weak] [--limit N]
+py -3 .../artifact_scan.py --xml <canonical.xml> [--strict]
+```
+
+- **HIT（硬伤）**：确定属于流程泄漏（如「主会话裁决」「统一为一形」「DICTIONARY.md」「直角引号」「括注编号」等），计入退出码（非零退出）。
+- **WEAK（疑似）**：可能属于合法正文但带有元语言词，默认只做统计，`--strict` 时才计入失败。
+
+## formula_scan.py
+
+公式句多译法扫描与修正集生成器（只读 XML，生成 fix-map）：专门检测「固定收束句 + 变动评注」这一规则
+扫描盲区。按标点严格切句，对位比对多句行的首句与尾句在全库是否出现多种不同译法：
+
+```text
+py -3 .../formula_scan.py --stem <stem> [--out <map.json>] [--dry-run]
+py -3 .../formula_scan.py --xml <canonical.xml> [--dry-run]
+```
+
+- 组内中文形 >1 种即判定为分裂；多数形定形，平票取最早 idx 形。
+- 产出扁平 fix-map，修正只替换对应首句/尾句位置，保留变动评注。
 
 ## normalize_charset.py
 

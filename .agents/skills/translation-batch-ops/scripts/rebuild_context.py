@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """rebuild_context.py — 批次 context 重建 + translation.json 骨架重生成（单批模式）。
 
-背景（2026-09-20 GAP 战役沉淀）：备料 context 必须用 --batch-size 0（单批全量）。
+背景：备料 context 必须用 --batch-size 0（单批全量）。
 多批结构（batch-size=1 逐条拆批）会让 translation_result.validate 只认 batch_index=0
 那一批，其余全部报 unknown translation_unit_id。本命令把「重建 context → 重生成
 translation.json 骨架（保留已有译文与 immutable 同步）」收敛为一个命令。

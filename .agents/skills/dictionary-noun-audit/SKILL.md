@@ -132,7 +132,7 @@ zero-flag run is never read as "everything is checked".
    `translation-quality-gate` enforces it.
 2. **Single-word names from weak records.** `BOOK`/`MISC`/`WOOP`-only single
    words stay optional unless `--include-single` or `--entity` is given (737 vs
-   3755 candidates on Druadach). The switch is a noise trade, not a capability
+   3755 candidates on a large MOD). The switch is a noise trade, not a capability
    gap: the candidates exist, they are simply not printed by default.
 3. **Dest-side errors without a Source-side name.** The audit only fires when the
    Source contains the official name. A wrong name that appears only in the Dest

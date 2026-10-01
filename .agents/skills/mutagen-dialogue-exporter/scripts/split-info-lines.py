@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Mutagen DIAL→INFO 结构 → 按任务线拆 INFO 批次（v2 简洁版）。
 
-输入: .work/Druadach/context/Druadach-mutagen-dialogue.json + 源 XML
-产出: .work/Druadach/context/Druadach-info-split.json
+输入: .work/<stem>/context/<stem>-mutagen-dialogue.json + 源 XML
+产出: .work/<stem>/context/<stem>-info-split.json
       {lines: {questEdid: {topics: [{dial, edid, topic, subtype, infos: [{idx, prompt_idx, speaker, responses}]}], rows, untranslated}},
        unlinked: [未链接且未译的 INFO NAM1 xml_index], batch_plan: [...] }
 """
@@ -12,7 +12,9 @@ import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-plugin = sys.argv[1] if len(sys.argv) > 1 else 'Druadach'
+if len(sys.argv) < 2:
+    raise SystemExit("usage: split-info-lines.py <plugin> [<moddir>]")
+plugin = sys.argv[1]
 moddir = sys.argv[2] if len(sys.argv) > 2 else 'mods/%s.esm' % plugin
 doc = json.load(open('.work/%s/context/%s-mutagen-dialogue.json' % (plugin, plugin), encoding='utf-8'))
 t = ET.parse('%s/%s_english_chinese.xml' % (moddir, plugin))
@@ -20,9 +22,9 @@ strs = t.getroot().findall('.//String')
 
 # local FormKey(hex6) -> {subrecord -> [xml_index]}
 # xTranslator 对 INFO 的 EDID 列有两种形态，必须同时支持：
-#   1) FormID 型 [04197AF5] —— 作者未给 INFO 起 EditorID 时（Druadach 等）
+#   1) FormID 型 [04197AF5] —— 作者未给 INFO 起 EditorID 时
 #   2) 命名型 SIGREL_HELLO_F90_H05 —— 作者为每条 INFO 填了 EditorID 时
-#      （TheKalpicAnomaly 实测：命名型占 NAM1 行 68%，只用 FormID 通道会漏掉）
+#      （实测命名型可占 NAM1 行过半，只用 FormID 通道会漏掉）
 # 命名型按原样 EDID 精确匹配 mutagen 的 info.edid；两通道互斥，不重叠。
 fk_pat = re.compile(r'\[(\d\d)([0-9a-fA-F]{6})\]')
 by_fk = defaultdict(lambda: defaultdict(list))

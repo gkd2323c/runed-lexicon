@@ -13,7 +13,9 @@ Covers:
   5. idempotent replay exemption on original_dest; manual-correction protection.
   6. --in-place updates the canonical baseline atomically; without it the same
      path is still refused.
-  7. --archive-to snapshots the baseline content-addressably before writing.
+  7. --archive-to snapshots the baseline content-addressably before writing;
+     --archive-keep caps the archive at the N newest generations (the snapshot
+     just written is protected; non-snapshot files are never deleted).
 
 Synthetic mini-XML only; never touches real project files.
 Run: py -3 .agents/skills/xtranslator-xml-writer/scripts/test_incremental_mode.py
@@ -23,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -322,6 +325,42 @@ def main() -> int:
         )
         if res.returncode != 0:
             failures.append(f"case6b rerun failed: rc={res.returncode} err={res.stderr.strip()}")
+
+        # --- case 6c: --archive-keep caps archive growth (newest N generations)
+        arch6c = tmp / "arch6c"
+        arch6c.mkdir(parents=True, exist_ok=True)
+        seeds = ["a" * 64, "b" * 64, "c" * 64, "d" * 64]
+        for i, name in enumerate(seeds):
+            seed_dir = arch6c / name
+            seed_dir.mkdir()
+            (seed_dir / "seed.xml").write_text(f"gen{i}", encoding="utf-8")
+            os.utime(seed_dir, (1000 + i, 1000 + i))
+        res = run(
+            "--xml", str(canonical), "--source-xml", str(source),
+            "--result", str(r1), "--output", str(tmp / "case6c" / "t_english_chinese_translated.xml"),
+            "--archive-to", str(arch6c), "--archive-keep", "2",
+        )
+        if res.returncode != 0:
+            failures.append(f"case6c archive-keep failed: rc={res.returncode} err={res.stderr.strip()}")
+        else:
+            kept = sorted(p.name for p in arch6c.iterdir() if p.is_dir())
+            if len(kept) != 2:
+                failures.append(f"case6c prune kept {len(kept)} generations, expected 2: {kept}")
+            elif sha256_of(canonical) not in kept:
+                failures.append(f"case6c pruned the snapshot just written: {kept}")
+            elif seeds[-1] not in kept:
+                failures.append(f"case6c lost the newest previous generation: {kept}")
+        # non-snapshot entries in the archive root must never be deleted
+        (arch6c / "README.md").write_text("keep me", encoding="utf-8")
+        res = run(
+            "--xml", str(canonical), "--source-xml", str(source),
+            "--result", str(r1), "--output", str(tmp / "case6d" / "t_english_chinese_translated.xml"),
+            "--archive-to", str(arch6c), "--archive-keep", "1",
+        )
+        if res.returncode != 0:
+            failures.append(f"case6d archive-keep failed: rc={res.returncode} err={res.stderr.strip()}")
+        elif not (arch6c / "README.md").exists():
+            failures.append("case6d prune deleted a non-snapshot file in the archive root")
 
         # --- case 7: stale-generation baseline that would drop newer translations
         stale_baseline = tmp / "stale_baseline.xml"

@@ -492,6 +492,46 @@ def write_report(path: Path, report: dict[str, Any], force: bool) -> None:
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+ARCHIVE_SNAPSHOT_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def prune_archive(arch_root: Path, keep: int, protect: str | None = None) -> list[str]:
+    """Delete content-addressed snapshots beyond the newest `keep` generations.
+
+    The archive directory only ever grows: each writeback copies the previous
+    canonical into <archive>/<sha256>/. A MOD that goes through hundreds of
+    writeback rounds therefore accumulates hundreds of near-identical full XMLs,
+    which eventually dominates the whole working tree. `--archive-keep N` caps it
+    at the N newest generations. The snapshot written by the current run is always
+    protected, so an idempotent re-run cannot delete what it just archived.
+    Only directories whose name is a bare sha256 are considered, so unrelated
+    files dropped in the archive root are never touched. Returns removed names.
+    """
+    if keep <= 0 or not arch_root.is_dir():
+        return []
+    snaps = [
+        d for d in arch_root.iterdir()
+        if d.is_dir() and ARCHIVE_SNAPSHOT_RE.fullmatch(d.name)
+    ]
+    if len(snaps) <= keep:
+        return []
+    snaps.sort(key=lambda d: (d.stat().st_mtime, d.name), reverse=True)
+    keepset = {d.name for d in snaps[:keep]}
+    if protect:
+        keepset.add(protect)
+    removed: list[str] = []
+    for d in snaps:
+        if d.name in keepset:
+            continue
+        try:
+            shutil.rmtree(d)
+        except OSError as exc:
+            print(f"archive-prune: could not remove {d.name}: {exc}", file=sys.stderr)
+            continue
+        removed.append(d.name)
+    return removed
+
+
 def main() -> int:
     g = guard_pipeline_lock(stem_from_xml_arg())
     if g:
@@ -518,6 +558,13 @@ def main() -> int:
         "--archive-to",
         help="Directory root for a pre-write content-addressed snapshot of the "
              "baseline: <dir>/<baseline-sha256>/<filename>",
+    )
+    parser.add_argument(
+        "--archive-keep", type=int, default=0, metavar="N",
+        help="With --archive-to: after archiving, delete all but the newest N "
+             "snapshot generations (0 = keep every generation, unbounded). Caps "
+             "the archive directory, which otherwise grows by one full XML per "
+             "writeback round.",
     )
     parser.add_argument(
         "--allow-full-rebuild", action="store_true",
@@ -786,6 +833,8 @@ def main() -> int:
                 arch_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(xml_path, arch_file)
             archived_to = relative(arch_file)
+            for stale in prune_archive(arch_root, args.archive_keep, protect=baseline_hash):
+                print(f"archive-prune: removed stale snapshot {stale}")
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         # 原子写回：先写同目录临时文件再替换目标，避免写回中断留下悬空/半截文件。

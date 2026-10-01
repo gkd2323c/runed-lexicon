@@ -310,15 +310,13 @@ def find_global_ban_hits(source: str, dest: str, ban: Dict) -> List[str]:
     is suppressed ("晨星" inside "晨星月" must not fire when the full month name
     is present). Occurrences NOT covered by the target still fire, so a bare
     missing-月 error keeps being caught even in a unit that also contains the
-    canonical form. Root cause of 20 false TERM004 FAILs in Druadach-book
-    (2026-09-08): month bans list the bare word as forbidden and the 带月 form
-    as target, so target and forbidden matched the same text.
+    canonical form. Root cause: month bans list the bare word as forbidden and
+    the 带月 form as target, so target and forbidden matched the same text.
 
     R13: forbidden 是 target 子串且命中后紧跟 target 剩余部分（允许间隔
     "..."/"…"/空白，见 _target_tail_covered）时同样豁免——source 残缺形态
     （如 "Morning Star..." 残缺日期）的忠实译文 "晨星...月" 不是裸译错误。
-    Root cause of 1 false TERM004 FAIL in Druadach-book xml-index:8530
-    (2026-09-08): "第十八..天：周一...，晨星...月..日" 的 "晨星" 被报，
+    Root cause: 残缺日期行（如 "第十八..天：周一...，晨星...月..日"）的 "晨星" 被报，
     而其后 "...月" 正是 target 剩余部分。
 
     R20 (v0.2.3): allow_english 双实体共存豁免——ban 声明 allow_english 列表时，

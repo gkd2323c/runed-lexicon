@@ -11,7 +11,9 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
-plugin = sys.argv[1] if len(sys.argv) > 1 else 'Druadach'
+if len(sys.argv) < 2:
+    raise SystemExit("usage: plan-info-batches.py <plugin> [<moddir>]")
+plugin = sys.argv[1]
 moddir = sys.argv[2] if len(sys.argv) > 2 else 'mods/%s.esm' % plugin
 split = json.load(open('.work/%s/context/%s-info-split.json' % (plugin, plugin), encoding='utf-8'))
 t = ET.parse('%s/%s_english_chinese.xml' % (moddir, plugin))
