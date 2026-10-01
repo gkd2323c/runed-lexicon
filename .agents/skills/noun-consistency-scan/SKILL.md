@@ -16,7 +16,7 @@ compatibility: >-
   output (C pool), proper-noun-index scan --json output (D pool), MOD terms.json
   (C/D pool term matching).
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Noun Consistency Scan（名词翻译一致性扫描）
@@ -71,6 +71,36 @@ candidates without correctness knowledge; the main Agent adjudicates. A converge
 requires both the rule pass and the heuristic pass — rule pass alone is an unfinished
 claim. Dialogue rows (INFO/DIAL) are prime drift territory precisely because display-name
 scans exclude them; the heuristic pass must cover them, not inherit the A-pool exclusion.
+
+### `seed_scan.py` — 开集发现的机械实现（步 1–3）
+
+步 1–3（种子发现 → 全文扩散 → 中文形态归组）过去靠子代理通读实现，成本高且随实例波动；
+`seed_scan.py` 把这三步确定化。发现与裁决仍然分离：**它只产候选，不下结论**。
+
+```text
+py -3 .agents/skills/noun-consistency-scan/scripts/seed_scan.py \
+  --stem <plugin> [--min-occurrences 3] [--min-group 2] [--max-occurrences 60] \
+  [--out .work/<plugin>/reports/<plugin>-seed-scan.json] [--limit N]
+```
+
+判据：**互斥覆盖**，不做位置对齐。同一英文种子的全部出现行里，枚举译文的 CJK 2~5 字
+n-gram，若这些串能把出现行**递归最平衡二分**成 ≥2 组、且每组都有一个**别组绝不出现**
+的形（优先要求贴 CJK 块首，即前缀式译名），即报为同锚多形候选。
+
+为什么不用「英文第 N 个词 ↔ 中文第 M 块」的位置对齐：两句式台词里第二个专名会映射到
+不存在的块号，短句上错位率极高；互斥覆盖只看共现关系，结论可解释、可复核。
+
+种子过滤（决定信噪比，逐条都对应实测噪声源）：首词是虚词即丢（`Against Mora`/`Can I`）；
+出现次数超 `--max-occurrences` 即丢（`Can I` ×142）；单词种子在语料里常以小写出现即丢
+（`Calm`/`Corruption`/`Defeat` 这类被句首大写的普通名词）。已登记英文形（proper-noun-index
+清单 `names[].name` 与编译契约 `terms[].source`）自动排除，避免已登记专名重复报警。
+
+已知限制（裁决时须知）：中文含引号或分隔符时（`“凯娜之女”`）CJK 块被打断，跨块形态
+抓不到；所有格种子（`Alduin's`）与长句会带入句级 n-gram 噪声。实测 27,767 行语料
+351 种子 → 14 候选、1.1s。**候选数不是质量指标**，逐条裁决后仍可能出现零真漂移
+（2026-10-01 TheKalpicAnomaly 即如此：全部为已知名所有格或假阳性）。
+
+输出角色：`.work/<plugin>/reports/<plugin>-seed-scan.json`
 
 ## Usage
 
@@ -150,9 +180,17 @@ Smoke checks after any change:
 
 ```text
 py -3 -m py_compile .agents/skills/noun-consistency-scan/scripts/noun_consistency_scan.py
+py -3 -m py_compile .agents/skills/noun-consistency-scan/scripts/seed_scan.py
+py -3 -m unittest discover -s .agents/skills/noun-consistency-scan/scripts -p "test_seed_scan.py"
 py -3 .agents/skills/noun-consistency-scan/scripts/noun_consistency_scan.py \
   --xml mods/<plugin>/<plugin>_english_chinese_translated.xml --out _tmp/data/noun-scan-smoke --pools A
+py -3 .agents/skills/noun-consistency-scan/scripts/seed_scan.py --stem <plugin> --limit 5
 ```
+
+`test_seed_scan.py` 覆盖 `seed_scan.py` 的判据与过滤：多词种子与重复计数、虚词首词剔除
+（`Against Mora`/`Can I`）、小写形态过滤（`Calm`）、连接词连缀（`Order of the Blue`）、
+互斥分组报出、单一形不报、组内行数不足不报、组间互斥校验、已登记专名不重复报警、
+未登记漂移报出、`--min-occurrences` 闸门、CLI 落盘与「规则零命中不等于收敛」提醒。
 
 A pool group count after a convergence pass: each remaining group must be re-read from the
 current XML and judged on its own (same object vs legitimate layer split vs different

@@ -27,7 +27,8 @@ metadata:
 
 1. **备料·索引**：`py -3 .agents/skills/mutagen-dialogue-exporter/scripts/make-batch-index.py <stem> <BID>` → 生成 `batches/<BID>/index.txt`（从主计划 JSON 提取该批 idx）。
 2. **备料·context + 骨架**：`py -3 .agents/skills/translation-batch-ops/scripts/rebuild_context.py --stem <stem> --batch <BID>` → 单批全量 context.json + translation.json 骨架（mods 目录名自动探测）。
-3. **备料·术语摘要**：`py -3 .agents/skills/translation-review-tools/scripts/term_digest.py --context .work/<stem>/batches/<BID>/context.json --out .work/<stem>/batches/<BID>/term-digest.txt`
+3. **备料·术语摘要**：`py -3 .agents/skills/translation-review-tools/scripts/term_digest.py --context .work/<stem>/batches/<BID>/context.json --out .work/<stem>/batches/<BID>/term-digest.md`
+   （输出名必须是 `term-digest.md`：§2 的 PREPPED 判定只认 `.md`，写成 `.txt` 会被算成 PARTIAL 而非已备料，派单前被覆盖率扫描挡下。）
 4. **派单**：子代理 **write** 权限，产出落 `batches/<BID>/map.json`；译者轮换（hanako 分身 / butter）；任务卡按 `subagent-ops` 模板（输入指向 index.txt 与 term-digest.txt，禁枚举术语）。
 5. **收口（唯一入口）**：`round_pipeline.py`（§5c）一条命令完成 consume→charset→check→write→verify→snapshot；语义 FAIL 时它停在写回前，裁决后重跑。
 

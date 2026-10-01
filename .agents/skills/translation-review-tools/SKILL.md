@@ -3,7 +3,7 @@ name: translation-review-tools
 description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # Translation Review Tools
@@ -36,6 +36,11 @@ py -3 .../make_fixes_from_report.py \
   --xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
   --out .work/<plugin>/maps/<plugin>-fix-map-review-XXX.json \
   [--drop 4960,4981] [--override ov.json] [--align-dups] [--include 5107,5108]
+
+# 多批修正：直接产出 close_round 需要的分组形态
+py -3 .../make_fixes_from_report.py --report <review.json> --xml <translated.xml> \
+  --batches INFO-334 INFO-335 --batches-dir .work/<plugin>/batches \
+  --out .work/<plugin>/maps/<plugin>-fix-map-334-335.json
 ```
 
 - 兼容两种报告 schema：`findings[]`（新）与 `issues[]`（历史）；`xml_index`/`idx` 均可。
@@ -44,7 +49,20 @@ py -3 .../make_fixes_from_report.py \
 - `--align-dups`：把裁决值广播到全库同源句的所有副本（同源分裂统一）；不传时只检测并打印分歧清单供人工判断。
 - 只读生成，不写批次文件；输出直接喂 `apply_fixes.py --fixes`。
 
+**`--batches` / `--batches-dir`（多批修正的分组通道）**：默认输出扁平 `{idx: {new}}`，
+而 `close_round.py` 的多批修正要的是分组 `{batch: {idx: {new}}}`（扁平形态只配一个 `--batch`）。
+分组以往靠手转，而失效点全在「idx 归属哪个批次」——映射写错时分组顶层键会退化成 idx 本身，
+`close_round` 随后报「裸格式 fixes 只能配一个 --batch」，报错点离病因隔了两步。
+传 `--batches` 后归属由各批 `index.txt` 机械判定：
+
+- 归属判不出（idx 不属任何声明批次、批次缺 `index.txt`、两批共享同一 idx）一律**失败退出且不落盘**——
+  漏声明批次的修正会静默消失，机械拦截优于事后对账发现。
+- 输出顶层键顺序跟随 `--batches` 声明顺序，并打印 `close_round --batches <键>` 供直接复制。
+- 越界 idx 仍按既有口径记 `WARN idx 越界` 跳过，不算孤儿。
+- 修正集条目保持 `expected_current`；`close_round` 的 `apply_fixes` 以此做 CAS 校验。
+
 核销标准链：`make_fixes_from_report.py`（生成）→ `apply_fixes.py --fixes ... --translated-xml ... --patch-out ...`（联动批次 + 出 patch）→ `xtranslator-xml-writer` 的 `write_translations.py --patch`（写回 canonical）。
+已写回批的修正直接走 `translation-batch-ops` 的 `close_round.py`（它自带分组消费），无需手串后半程。
 
 ## adjudication_pack.py
 
@@ -417,6 +435,8 @@ py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --fixes _tmp/data/charset
 ```text
 py -3 .agents/skills/skill-creator/scripts/quick_validate.py .agents/skills/translation-review-tools
 py -3 .agents/skills/translation-review-tools/scripts/test_review_tools.py
+py -3 -m unittest discover -s .agents/skills/translation-review-tools/scripts -p "test_make_fixes_grouping.py"
+py -3 -m unittest discover -s .agents/skills/translation-review-tools/scripts -p "test_formula_scan_exempt.py"
 ```
 
 `test_review_tools.py` 覆盖：read_batch 双数据源与状态过滤、query 四种模式、
@@ -424,3 +444,13 @@ apply_fixes 的更新/校验中止/KEEP 转换/幂等/patch 生成/跨批自动�
 整句覆盖守卫（G1 裸词拦截 / G2 同值批拦截 / 正常修正放行 / allow_collapse 显式放行）、
 term_digest 的 MOD/OFF/CTX 格式化与空命中标注、dup 阈值、`--out` 落盘、
 make_review_view 一致性守卫（一致生成 / 漂移拒绝 / --allow-drift）。
+
+`test_make_fixes_grouping.py`（unittest 风格，CI 的 `unittest discover` 步骤自动收集）
+覆盖 `make_fixes_from_report.py` 的分组通道：idx→批次归属映射、缺 `index.txt` 失败、
+两批 idx 重叠失败、孤儿 idx 失败且不落盘、越界 idx 按既有口径跳过、空批次省略、
+声明顺序保持、CLI 默认扁平形态不变、`--batches` 与 `--batches-dir` 不同用即报用法错。
+
+`test_formula_scan_exempt.py`（同为 unittest 风格）覆盖 `formula_scan.py` 的豁免认得与
+分组输出：豁免文件两种写法（`{idxs, reason}` 与数组）、缺文件当空、豁免 idx 不被整句组
+改回错值、无豁免时仍报整句分裂、豁免只作用于整句组（首句公式收敛不受影响）、
+`--batches`/`--batches-dir` 同用校验、分组输出形态与 `close_round --batches` 提示。

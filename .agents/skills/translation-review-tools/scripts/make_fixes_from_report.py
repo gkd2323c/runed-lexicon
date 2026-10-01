@@ -14,6 +14,15 @@
   --override   特裁项：{idx: 新值} JSON，覆盖报告建议值（部分采纳 / 语境重造）
   --align-dups 同源句副本对齐：修正集的裁决值广播到全库同源句的所有副本
                （不传时仍检测并打印分歧清单，供人工判断是否对齐）
+  --batches    配合 --batches-dir，按批次分组输出 close_round 需要的
+               {batch: {idx: fix}} 形态（见下方「多批修正」）
+
+多批修正（本选项存在的理由）：
+  close_round.py 的 --fixes 接受分组形态 {batch: {idx: {new}}}，而本脚本默认输出
+  扁平 {idx: {new}}；扁平形态只配一个 --batch，多批修正必须先转分组，而手转
+  分组的失效点是「idx 归属哪个批次」判错——写错时 grouped 键会变成 idx 本身，
+  close_round 随后报「裸格式 fixes 只能配一个 --batch」，而错误发生在更早、
+  更难定位的一步。传 --batches 后归属由各批 index.txt 机械判定，判不出直接失败。
 
 用法：
   py -3 make_fixes_from_report.py \
@@ -21,6 +30,11 @@
       --xml mods/<stem>/<stem>_english_chinese_translated.xml \
       --out .work/<stem>/maps/<stem>-fix-map-review-XXX.json \
       [--drop 4960,4981] [--override ov.json] [--align-dups]
+
+  # 多批修正（--batches 必与 --batches-dir 同用）
+  py -3 make_fixes_from_report.py --report <review.json> --xml <translated.xml> \
+      --batches INFO-334 INFO-335 --batches-dir .work/<stem>/batches \
+      --out .work/<stem>/maps/<stem>-fix-map-334-335.json
 """
 from __future__ import annotations
 
@@ -75,6 +89,40 @@ def load_canonical(path: str):
     return srcs, dests
 
 
+def load_batch_owner(batches_dir: str, batches: list[str]) -> dict[int, str]:
+    """idx → 批次名。归属只认各批 index.txt，判不出即抛错，不猜。"""
+    owner: dict[int, str] = {}
+    for bid in batches:
+        idx_path = Path(batches_dir) / bid / "index.txt"
+        if not idx_path.is_file():
+            raise SystemExit(f"批次缺 index.txt，无法判定 idx 归属: {idx_path}")
+        for line in idx_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            i = int(line)
+            if i in owner and owner[i] != bid:
+                raise SystemExit(
+                    f"idx {i} 同时属于 {owner[i]} 与 {bid}，批次计划重叠，拒绝猜测")
+            owner[i] = bid
+    return owner
+
+
+def group_fixes(fixes: dict[int, dict], owner: dict[int, str],
+                batches: list[str]) -> dict[str, dict]:
+    """扁平修正集 → close_round 的分组形态；归属判不出的 idx 直接失败。"""
+    grouped: dict[str, dict] = {}
+    orphans = sorted(i for i in fixes if i not in owner)
+    if orphans:
+        raise SystemExit(
+            f"以下 idx 不属于任何声明批次，无法分组：{orphans}；"
+            f"把所属批次加进 --batches，或确认报告里的 idx 是否写错")
+    for i, fix in sorted(fixes.items()):
+        grouped.setdefault(owner[i], {})[str(i)] = fix
+    # 保持 --batches 的声明顺序，便于人工核对输出
+    return {bid: grouped[bid] for bid in batches if bid in grouped}
+
+
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="审查报告 → 修正集生成")
@@ -86,7 +134,13 @@ def main() -> int:
     ap.add_argument("--align-dups", action="store_true",
                     help="把裁决值广播到全库同源句所有副本（默认仅检测并打印）")
     ap.add_argument("--include", default=None, help="仅处理指定 idx（逗号/空格分隔）")
+    ap.add_argument("--batches", nargs="+", default=None,
+                    help="按批次分组输出（close_round 的 {batch: {idx: fix}} 形态）")
+    ap.add_argument("--batches-dir", default=None,
+                    help="批次目录（默认 .work/<stem>/batches），--batches 必与它同用")
     args = ap.parse_args()
+    if bool(args.batches) != bool(args.batches_dir):
+        raise SystemExit("--batches 与 --batches-dir 必须同用")
 
     report = json.loads(Path(args.report).read_text(encoding="utf-8"))
     items = parse_report(report)
@@ -140,8 +194,20 @@ def main() -> int:
                     dup_aligned += 1
 
     out_path = Path(args.out)
-    out_path.write_text(json.dumps({str(k): v for k, v in sorted(fixes.items())},
-                                   ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.batches:
+        batches_dir = args.batches_dir
+        if not batches_dir:
+            stem = Path(args.report).parts[2] if len(Path(args.report).parts) > 2 else None
+            if not stem:
+                raise SystemExit("无法从报告路径推断 stem，请显式传 --batches-dir")
+            batches_dir = str(Path(".work") / stem / "batches")
+        owner = load_batch_owner(batches_dir, args.batches)
+        payload = {bid: {k: v for k, v in fx.items()}
+                   for bid, fx in group_fixes(fixes, owner, args.batches).items()}
+    else:
+        payload = {str(k): v for k, v in sorted(fixes.items())}
+    out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2),
+                        encoding="utf-8")
 
     print(f"report: {args.report}")
     print(f"报告条目 {len(items)}；修正 {len(fixes) - dup_aligned}；"
@@ -158,6 +224,9 @@ def main() -> int:
             print(f"    {fixes[trigger]['new'][:70]}")
         if args.align_dups:
             print(f"  → 已扩展修正 {dup_aligned} 条")
+    if args.batches:
+        print("分组: " + "，".join(f"{bid} {len(fx)} 条" for bid, fx in payload.items()))
+        print("  → close_round --batches " + " ".join(payload))
     print(f"fix map -> {out_path}")
     return 0
 
