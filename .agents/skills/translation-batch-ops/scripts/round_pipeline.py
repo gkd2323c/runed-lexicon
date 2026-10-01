@@ -14,6 +14,7 @@ progress_snapshot 内置同锁守卫（见各自 SKILL），持锁期间一切�
   check    writer --check-only 预检（跨批 duplicate / scope / KEEP 冲突）
   write    逐批 write_translations --in-place 串行写回（任一批失败即停）
   verify   段核对：各批 idx 在 canonical 中 Source==Dest 计数必须为 0
+           （KEEP 行除外——KEEP 的定义就是保留原文，Dest==Source 是其正确终态）
   snapshot progress_snapshot --record（同进程内，写回落定后）
 
 用法：
@@ -333,8 +334,16 @@ def main() -> int:
             bad_rows = []
             for b in args.batches:
                 m = json.loads((work / "batches" / b / "map.json").read_text(encoding="utf-8"))
-                u = sum(1 for k in m
-                        if (rows[int(k)].findtext("Source") or "") == (rows[int(k)].findtext("Dest") or ""))
+                # KEEP 的定义就是「保留原文不译」——Dest==Source 正是它的正确终态，
+                # 不计入残留。事故锚定：NI-TES4-001（TES4:CNAM 的 DEFAULT 技术占位符）
+                # 判 KEEP 后写回 0 处 Dest 变更，段核对却报「未译残留 1/1」把整轮卡死，
+                # 表现为「这批怎么都收不掉」。此前该代码只判 Source==Dest 不看 status。
+                u = 0
+                for k, v in m.items():
+                    if isinstance(v, dict) and v.get("status") == "KEEP":
+                        continue
+                    if (rows[int(k)].findtext("Source") or "") == (rows[int(k)].findtext("Dest") or ""):
+                        u += 1
                 if u:
                     bad_rows.append(f"{b} 未译残留 {u}/{len(m)}")
             if bad_rows:
