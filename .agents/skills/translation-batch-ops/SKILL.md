@@ -3,7 +3,7 @@ name: translation-batch-ops
 description: runed-lexicon 批次流水线的状态、覆盖、验收、对账重建与进度工具集。覆盖一轮收口的唯一串行入口（round_pipeline：consume→charset→check→write→verify→snapshot 单进程顺序执行 + 独占锁防并行覆盖）、批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次文件对账与重建（batch_sync）、批次 context 单批重建（rebuild_context）、同源继承预填与折叠（inherit_prefill）。Use when 把验收批次收口至写回快照（一律走 round_pipeline）、验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、派单前继承 canonical 既有译文并折叠批内重复句、处理批次文件与 canonical 的漂移或缺失（判向/拉平/补全，不逐条修补）、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、契约编译（归 term-contract-compiler）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.4.2"
+  version: "1.7.0"
 ---
 
 # Translation Batch Ops
@@ -31,6 +31,7 @@ metadata:
    （输出名必须是 `term-digest.md`：§2 的 PREPPED 判定只认 `.md`，写成 `.txt` 会被算成 PARTIAL 而非已备料，派单前被覆盖率扫描挡下。）
 4. **派单**：子代理 **write** 权限，产出落 `batches/<BID>/map.json`；译者轮换（hanako 分身 / butter）；任务卡按 `subagent-ops` 模板（输入指向 index.txt 与 term-digest.txt，禁枚举术语）。
 5. **收口（唯一入口）**：`round_pipeline.py`（§5c）一条命令完成 consume→charset→check→write→verify→snapshot；语义 FAIL 时它停在写回前，裁决后重跑。
+6. **文档治理（与步 5 同轮）**：刷新该 MOD `PROGRESS.md` 的状态数字（以步 5 产出的 `--record` 快照为准）、更新「下一动作」、确认无新增「已收口」条目。**这一步是硬规则不是收尾补办**（AGENTS.md §5；判据与归档机制见 `skyrim-doc-system` §12）。
 
 > **硬规则（2026-09-22）：步 5 的收口链禁止拆成手动并行命令。** 手动编排曾六次产生覆盖时序（快照记入写前态 200/205/213/216/220、charset 读到 fill 前空文、统计读到写前态）；write_translations 与 progress_snapshot 内置 pipeline.lock 守卫，持锁期间外部命令直接拒绝。独立的多批 consume / apply_fixes 并行仍允许（不碰 canonical，见 skyrim-tool-dev-rules §2 第 4 条）。
 
@@ -120,7 +121,18 @@ py -3 .agents/skills/translation-batch-ops/scripts/progress_snapshot.py \
 
 `--plan` 可重复：主计划与补遗计划（存在时）一并传入合并统计——只传主计划会使缺口批写回的译文不进流水线口径，战役交叉校验持续报「口径不一致」（差值恰为缺口批行数）。
 
-四段输出：① 全库已译/总数与分类分布（INFO/DIAL/QUST/NPC_/BOOK/其他——让未开工类别可见）；② INFO 战役口径（canonical 与流水线双口径交叉校验，不一致时显式告警）；③ 批次状态（已验收/待消费/已备料/未备料），并在存在「已验收但未写回」时追加告警行（需带 `--xml`）；④ 较上次快照增量。性能基线：约 1.5 万条（4.6MB）规模的全量统计 **~0.8s**。
+四段输出：① 全库已译/总数与分类分布（INFO/DIAL/QUST/NPC_/BOOK/其他——让未开工类别可见）；② INFO 战役口径（canonical 与流水线双口径交叉校验，不一致时显式告警）；③ 批次状态（已验收/待消费/已备料/未备料）+ 四道欠账告警；④ 较上次快照增量。性能基线：约 1.5 万条（4.6MB）规模的全量统计 **~0.8s**。
+
+**③ 的四道欠账告警**——派单侧与产出侧各两道，缺一道就会静默漏译：
+
+| 告警 | 触发 | 指向 |
+| --- | --- | --- |
+| `!! 已备料未派单` | PREPPED 且备料超 **60** 分钟仍无 `map.json` | 派单侧：料备好了没人接 |
+| `批次备料警告: 部分备料` | PARTIAL（三件套不齐） | 备料不完整，不可派单 |
+| `!! 滞留` | TRANSLATED 超 180 分钟未 consume | 产出侧：交付可能丢失 |
+| `!! 已验收但未写回` | VERIFIED 但 canonical 仍 == Source | 产出侧：写回遗漏 |
+
+主状态行的「已备料 N」**后面直接跟成员 ID**（最多 12 个，溢出显示 `+N`），按「躺了多久」降序——已备料待派就是下一轮的开工清单，只给计数会让人无从判断下一批派什么。事故锚定：TheKalpicAnomaly 2026-10-02，INFO-368/369 备料后整轮无人派单、canonical 里 93 行始终未译，摘要只打印「已备料 6」这个计数，直到审查器逐行读出未译才暴露；补上成员清单与本告警后首次实跑即额外抓出躺了 37 小时的 `NI-QUST-001` / `NI-TES4-001`。**开工顺序取本告警列表里最久未派的批次，不是按批号顺推。**
 
 **口径交叉校验的语义（②）**：pipeline 只计批次侧 `status==TRANSLATED` 的行。批次侧残存 REVIEW 条目（值已定稿并写回 canonical、仅状态未转正）会使 pipeline 少于 canonical、持续报「不一致」。差异处置：求差（canonical INFO 已译集 − 源预译集 − 各批 translation.json 的 TRANSLATED 并集）→ 核对差异行批次值==canonical 值 → 将仍挂 REVIEW 的条目在 map.json 与 translation.json 中一并转正。2026-09-21 TheKalpicAnomaly 按此清 23 条后双口径一致。
 
@@ -253,6 +265,24 @@ fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；�
 
 格式 `{"<source>": {"idxs": [...], "reason": "..."}}`（也接受同 source 的数组多写）。登记的 idx 所属形态会从分裂计数中剔除；`idxs` 必须是该形态的**全部** idx（写全而非写一两个），否则残余差异仍会失败。取 prompt 铁证用 `context.json` 的 `dialogue_context.info.prompt`，或 `close_round.prompts_for()` 懒加载查询。豁免文件缺失时 close_round 在失败信息里提示该路径。
 
+### 5d-1. patch 残留剪枝（`prune_close_patch.py`）
+
+`close-round-patch.json` 是**追加**而非重建，跨轮重跑时 writer 对每条做 compare-and-swap（`expected_dest` 必须等于 canonical 现值），残留条目会让整轮 FAIL。残留分两类，处置完全不同：
+
+| 类别 | 判据 | 处置 |
+| --- | --- | --- |
+| **已就位** | 条目 `translation` **等于** canonical Dest（上一轮实际已写进去了，只是文件没清） | 可安全剪除 → `--prune` |
+| **老值** | 条目 `translation` **不等于** canonical Dest | 剪不掉（`expected_dest` 也过期），须删整个文件让其按本轮 fixes 重建 → `--drop-stale` |
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/prune_close_patch.py \
+  --stem <plugin> --batches <B1> [<B2> ...] [--prune] [--drop-stale]
+```
+
+**默认 dry-run**，只分类打印（`[已就位]` / `[老值]` + 原因）不写任何文件；`--prune` 只删已就位、`--drop-stale` 只删老值，两者互不越界，老值必须显式放行。批次无 patch 文件时如实报告「无 patch 文件」而非报错；空 patch（`{}`，本轮无修正）视为正常。idx 越界或非整数一律归入「老值」并标注原因，**绝不静默丢弃**。`--xml` 默认取 canonical，可覆盖。实测：一次 9 批扫描 1.2s。
+
+**这条能力此前只有 SOP 条文、没有工具**，每轮撞 stale 都在 `_tmp/` 手搓一次性脚本——已在本项目累计触发 5 次（INFO-334/063/212/154/358），是典型的跨 MOD 通用缺口。
+
 ## 5e. 同源继承预填与折叠（`inherit_prefill.py`）
 
 派单前把两件纯机械劳动从译者实例里移出来：**继承**（批次内 canonical 已有同源译文的键直接填好）与**折叠**（批内同源重复句合成唯一句清单，只把代表键交给译者）。MOD 文本重复率往往很高（应答句、公式收束句、矩阵批基句反复出现），旧流程让译者照抄并复制这些行，白烧实例预算、也把复制错位留在 LLM 侧。
@@ -349,12 +379,21 @@ py -3 .../make_patch_from_maps.py --canonical <translated.xml> --out <patch.json
 
 ```text
 cd .agents/skills/translation-batch-ops/scripts
-py -3 -m unittest test_batch_coverage test_scan_plan_gaps test_batch_sync
+py -3 -m unittest test_batch_coverage test_scan_plan_gaps test_batch_sync \
+  test_close_round test_prune_close_patch test_progress_snapshot_scope
 ```
 
 测试覆盖：覆盖率分类的未写回检测（含 KEEP 行不计）、缺口扫描的未认领行检测（含空白行排除）、补遗批次装批（同源不拆）、gaps 计划幂等与保护、活跃批次目录拒写、机械匹配孤儿的检测/清单落盘/核验清单两种形态扣除/--fail-on-orphans 卡点；
 batch_sync 的双文件同步/已就位/缺失/mismatch 仍同步/dry-run、CLI check 方向判定、
 make_patch_from_maps 的同步链、rebuild 的缺文件重建/补键（只增不改）/dry-run/--batch 过滤/缺 index 跳过/重链提示（覆盖判定）。
+
+`test_prune_close_patch.py`（15 项）覆盖 patch 残留剪枝：dict/list/包裹三种形态归一、空 patch 视为正常、
+已就位与老值分类判定、idx 越界与非整数归入老值不丢弃、**默认 dry-run 不写盘**、
+`--prune` 只删已就位、`--drop-stale` 只删老值（互不越界）、无 patch 文件不报错、canonical 缺失返回用法错 2。
+
+`test_progress_snapshot_scope.py`（6 项）覆盖 INFO 战役交叉核对的量纲：`recs` 是否以 INFO 开头决定归属
+（`INFO:RNAM` 计入、`NI-DIAL-*` 排除）、三计划齐传时两侧同量纲、输入顺序无关、缺 `recs` 的 NAM1 批次计入、
+单计划模式行为不变。
 
 新命令（consume_batch / rebuild_context / shard merge maps 兼容）的验证方式：
 对任一已消费批次做幂等复跑（应 PASS 且译文保留数不变），例如：

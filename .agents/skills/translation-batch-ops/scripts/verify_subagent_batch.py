@@ -49,6 +49,26 @@ def fail(bucket, where, code, detail):
     bucket.append({'where': where, 'code': code, 'detail': detail})
 
 
+def semgate_uncheck_reason(stdout):
+    """从语义门 stdout 里取出 UNCHECKED 的**真实原因**。
+
+    semantic_gate.py 对 UNCHECKED 分两种情形分别给出可读原因：
+      · `SEMGATE_UNCHECKED: api_key 未配置（…）`      → 凭据缺失
+      · `SEMGATE_UNCHECKED: 语义门连接未配置（…）`    → 缺 api_url/model
+    两者处置完全不同（前者查环境变量，后者查项目根
+    `semantic-gate.config.json`），报错必须区分。取不到时回退到中性表述，
+    **不再断言「KEY 未设置」**——那是个未经核实的断言。
+    """
+    for line in (stdout or '').splitlines():
+        s = line.strip()
+        if s.startswith('SEMGATE_UNCHECKED:'):
+            detail = s.split(':', 1)[1].strip()
+            if detail:
+                return '本批语义层未检查：' + detail
+    return ('本批语义层未检查：语义门未返回具体原因'
+            '（rc 输出异常；见 %s 的 semantic_gate 段）')
+
+
 def default_report_path(a):
     """默认验收报告落点：.work/<plugin>/reports/<BID>-verify-report.json。
     插件名从 --xml / --map / --plan 路径推导；推导失败时回退 .work/<BID>-verify-report.json。"""
@@ -221,11 +241,17 @@ def main():
                                      'detail': '参考层 %s 条未判定（调用失败，语义层未完成，不阻塞；见 %s-semgate-report.json）'
                                      % (sv.get('unjudged_count'), a.batch)})
                 elif sv_verdict == 'UNCHECKED':
-                    # 无 key：本批语义层未检查。不阻断主线，但状态显式入报告，
+                    # 本批语义层未检查。不阻断主线，但状态显式入报告，
                     # 不与「检查过且通过」混淆。
+                    # **必须报真实原因**：semantic_gate.py 区分「无 api_key」与
+                    # 「缺 api_url/model」两种 UNCHECKED，这里早先把两者一律写成
+                    # 「TYPESAFE_API_KEY 未设置」——于是密钥明明在（107 字符，
+                    # Process+User 双级），配置文件缺失这件事被连续多轮误报成
+                    # 「环境缺 key」，并被下游派单卡与项目文档照抄放大。
                     out['semantic_gate']['checked'] = False
+                    reason = semgate_uncheck_reason(r.stdout or '')
                     warnings.append({'where': a.batch, 'code': 'SEMGATE_UNCHECKED',
-                                     'detail': 'TYPESAFE_API_KEY 未设置，本批语义层未检查'})
+                                     'detail': reason})
                 else:
                     out['semantic_gate']['checked'] = True
             except Exception as e:  # noqa: BLE001

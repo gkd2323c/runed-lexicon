@@ -32,6 +32,11 @@ def classify(batch, batches_dir, canonical=None):
     has_digest = os.path.isfile(os.path.join(d, 'term-digest.md'))
     map_path = os.path.join(d, 'map.json')
     map_mtime = os.path.getmtime(map_path) if has_map else None
+    # PREPPED 也要有时间戳：备好了却长期没人派单是真实事故（已备料 6 批里两批
+    # 静默躺了整轮，快照只打印计数不打印成员，主会话无从发现漏派）。
+    prep_mtime = None
+    if has_tr:
+        prep_mtime = os.path.getmtime(os.path.join(d, 'translation.json'))
     total = len(batch.get('idx') or [])
     filled = 0
     entries = []
@@ -86,6 +91,7 @@ def classify(batch, batches_dir, canonical=None):
         'unwritten': unwritten,
         'unwritten_idx': unwritten_idx,
         'map_mtime': map_mtime,
+        'prep_mtime': prep_mtime,
     }
 
 

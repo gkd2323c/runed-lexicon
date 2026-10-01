@@ -161,6 +161,10 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 
 - **收尾交接义务（硬规则）**：任何工作停止点（停下汇报、等待用户、等待后台结果）之前，必须把该 MOD 的 `PROGRESS.md` 与 `SOP.md` 维护到「新会话可直接开工」状态（验收细则见 `skyrim-doc-system`），新会话仅凭这两份文档即可确定并直接执行第一个动作，无需现场拼装流程或推断状态。无变化时以确认为过。
 
+- **文档治理是收口链的必经环节（硬规则）**：每轮收口（`round_pipeline` 写回或 `close_round` 修正完成）后，**同轮**治理该 MOD 的 `PROGRESS.md`，与刷新状态数字同级；不留到下轮、不攒到收尾。自查表与归档机制见 `skyrim-doc-system` §12。
+
+- **禁止文档内容自我繁殖（硬规则）**：`PROGRESS.md` 不得逐批追加「已收口」条目。事故形态（`TheKalpicAnomaly_GLENMORIL` 2026-10-02）：文件累积到 500 行 / 289 条同构流水账，占 59% 篇幅，新接手者须通读全文才能判断当前状态；同时状态数字已过期停在 51.0% 而实际 65.7%——**可由 `progress_snapshot.py` 重算的状态信息不得手写进文档**，批次级历史不得占据正文。分三层：① 状态数字只在单一表格且以 `--record` 快照为准；② 只有**跨批次通用**的纪律与裁决进正文；③ 批次级流水账移入 `.work/<plugin>/archive/` 归档并在正文留检索指引（原文一字不改）。执行层：文档自觉 + 收口清单逐项核对（禁止逐批追加属纯自觉条款，判据与阈值下沉 `skyrim-doc-system` §12）。
+
 - 修改中间结果 JSON 一律调用 `fill_translations.py`，查询分析优先调用现有封装工具。
 
 - runed-lexicon 收口链已工具链化：批次验收→写回→快照一律走 `.agents/skills/translation-batch-ops/scripts/round_pipeline.py`（单进程串行 + pipeline.lock 独占锁），禁止手动并行编排；write_translations 与 progress_snapshot 内置守卫，持锁期间外部命令直接拒绝（rc=2）。独立的多批 consume/apply_fixes 并行仍允许（不碰 canonical）。

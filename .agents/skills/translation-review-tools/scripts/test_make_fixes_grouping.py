@@ -72,6 +72,53 @@ class LoadBatchOwnerTest(unittest.TestCase):
             self.assertIn("重叠", str(cm.exception))
 
 
+class IntroduceOverridesTest(unittest.TestCase):
+    """--override 引入报告外 idx 的行为锁定。
+
+    事故锚定：institution 全库 81:4，reviewer 只在报告里点名了一侧，
+    主会话按全库多数反向收敛，要改的那几行根本不在 findings 中。旧版
+    override 只在 findings 循环内取值，这类裁决无处落盘。
+    """
+
+    DESTS = ["甲", "乙", "丙", "丁"]
+
+    def test_idx_outside_report_is_added(self):
+        fixes, noop, oob = m.introduce_overrides(
+            {2: "新丙"}, {0}, set(), set(), self.DESTS)
+        self.assertEqual(fixes, {2: {"new": "新丙", "expected_current": "丙"}})
+        self.assertEqual(noop, [])
+        self.assertEqual(oob, [])
+
+    def test_idx_already_in_report_is_not_duplicated(self):
+        # 报告内的 idx 走主循环的覆盖逻辑，此处不得再产生第二条修正
+        fixes, _, _ = m.introduce_overrides(
+            {0: "改0"}, {0}, set(), set(), self.DESTS)
+        self.assertEqual(fixes, {})
+
+    def test_drop_wins_over_override(self):
+        # 显式驳回优先：驳回就是驳回，不被「特裁」复活
+        fixes, _, _ = m.introduce_overrides(
+            {2: "新丙"}, set(), {2}, set(), self.DESTS)
+        self.assertEqual(fixes, {})
+
+    def test_include_filter_is_respected(self):
+        fixes, _, _ = m.introduce_overrides(
+            {2: "新丙", 3: "新丁"}, set(), set(), {3}, self.DESTS)
+        self.assertEqual(sorted(fixes), [3])
+
+    def test_same_value_is_noop_not_a_fix(self):
+        fixes, noop, _ = m.introduce_overrides(
+            {1: "乙"}, set(), set(), set(), self.DESTS)
+        self.assertEqual(fixes, {})
+        self.assertEqual(noop, [1])
+
+    def test_out_of_range_is_reported_not_written(self):
+        fixes, _, oob = m.introduce_overrides(
+            {99: "越界"}, set(), set(), set(), self.DESTS)
+        self.assertEqual(fixes, {})
+        self.assertEqual(oob, [99])
+
+
 class GroupFixesTest(unittest.TestCase):
     def test_groups_and_keeps_declaration_order(self):
         owner = {10: "INFO-334", 20: "INFO-335", 11: "INFO-334"}
@@ -177,6 +224,25 @@ class CliTest(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn("WARN idx 越界", r.stderr)
             self.assertEqual(json.loads(out.read_text(encoding="utf-8")), {})
+
+    def test_cli_override_introduces_idx_outside_report(self):
+        # 端到端：报告只列 idx 0，override 引入报告外的 idx 1，
+        # 须落到正确批次分组（INFO-334 拥有 idx 1）
+        with tempfile.TemporaryDirectory() as td:
+            bd, xml, rep = self._fixture(td)
+            ov = Path(td) / "ov.json"
+            ov.write_text(json.dumps({"1": "新乙"}, ensure_ascii=False),
+                          encoding="utf-8")
+            out = Path(td) / "grouped.json"
+            r = self._run("--report", str(rep), "--xml", str(xml),
+                          "--batches", "INFO-334", "INFO-335",
+                          "--batches-dir", str(bd),
+                          "--override", str(ov), "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            data = json.loads(out.read_text(encoding="utf-8"))
+            self.assertEqual(sorted(data["INFO-334"]), ["0", "1"])
+            self.assertEqual(data["INFO-334"]["1"]["new"], "新乙")
+            self.assertIn("报告外新增 1", r.stdout)
 
 
 if __name__ == "__main__":

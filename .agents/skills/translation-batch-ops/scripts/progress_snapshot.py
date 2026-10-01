@@ -148,13 +148,21 @@ def load_canonical_map(path):
     return out
 
 
-def batch_summary(plan, batches_dir, canonical=None, stall_minutes=180, now=None):
+def batch_summary(plan, batches_dir, canonical=None, stall_minutes=180,
+                  prep_stall_minutes=60, now=None):
     """批次状态摘要。
 
     state=TRANSLATED（map 已落盘、尚未 consume）在活跃流水线中是**正常在途**：
     子代理落盘后到交付/验收之间必然出现，不是欠账、不是行动信号（唯一开工信号是
     交付送达）。只有 map 长时间（stall_minutes，默认 180）未被消费的才另计为
     「滞留」——那才值得看一眼是否交付丢失。
+
+    事故锚定（TheKalpicAnomaly_GLENMORIL 2026-10-02）：INFO-368/369 备料后整轮
+    无人派单、canonical 里 93 行始终未译，而摘要只打印「已备料 6」这个**计数**。
+    计数不告诉人「是哪 6 批」，编排者只能凭印象挑下一批，于是这两批被静默跳过，
+    直到审查器逐行读出未译才暴露。派单侧此前是**裸的**：滞留（TRANSLATED 未消费）
+    与「已验收但未写回」两道防线都在产出侧，唯独 PREPPED 长期无人接没有告警。
+    故此处补 `prepped_ids`（成员清单，无条件带出）与 `prepped_stale`（超期告警）。
     """
     import time as _time
     now = now if now is not None else _time.time()
@@ -165,6 +173,8 @@ def batch_summary(plan, batches_dir, canonical=None, stall_minutes=180, now=None
     unwritten_lines = 0
     unwritten_batches = []
     stalled_batches = []
+    prepped_batches = []
+    prepped_stale_batches = []
     for r in rows:
         state = r['state']
         if state == 'VERIFIED':
@@ -180,6 +190,12 @@ def batch_summary(plan, batches_dir, canonical=None, stall_minutes=180, now=None
                 })
         elif state == 'PREPPED':
             summary['prepped'] += 1
+            pm = r.get('prep_mtime')
+            age = round((now - pm) / 60) if pm is not None else None
+            entry = {'id': r['id'], 'age_minutes': age}
+            prepped_batches.append(entry)
+            if age is not None and age > prep_stall_minutes:
+                prepped_stale_batches.append(entry)
         elif state == 'PARTIAL':
             # 三件套不齐（如缺 term-digest），不可派单；区别于完全未备料
             summary['partial'] += 1
@@ -198,7 +214,41 @@ def batch_summary(plan, batches_dir, canonical=None, stall_minutes=180, now=None
     summary['stalled'] = len(stalled_batches)
     summary['stalled_batches'] = sorted(stalled_batches, key=lambda x: -x['age_minutes'])
     summary['stall_minutes'] = stall_minutes
+    # 成员清单按备料先后排（最该派的最前），不按批号——批号序与「哪批躺最久」无关。
+    summary['prepped_ids'] = [b['id'] for b in
+                              sorted(prepped_batches, key=lambda x: -(x['age_minutes'] or 0))]
+    summary['prepped_stale'] = len(prepped_stale_batches)
+    summary['prepped_stale_batches'] = prepped_stale_batches
+    summary['prep_stall_minutes'] = prep_stall_minutes
     return summary
+
+
+def batch_in_info_family(batch):
+    """批次是否覆盖 canonical 的 INFO 家族。
+
+    以批次自报的 REC 为准，不按 ID 前缀：`INFO:RNAM` 的 REC 同样以 INFO 开头，
+    在 `scan_xml` 的族归类里**属于 INFO 家族**，所以 RN-INFO-* 计划必须计入。
+    反过来按 `INFO-` 前缀筛会漏掉 RN 计划、只按 `INFO` 开头筛又会把
+    `NI-DIAL-*` 混进来（DIAL 是独立族）。
+
+    INFO:NAM1 计划（info-batches）不带 `recs`（它用 `dials` 描述对话线），
+    按 INFO 族计。
+    """
+    recs = batch.get('recs')
+    if not recs:
+        return True
+    return any(str(r).startswith('INFO') for r in recs)
+
+
+def info_scoped_batches(batches):
+    """从合并批次里挑出 canonical **INFO 家族**对应的那一份。
+
+    交叉核对的右侧 `campaign_from_canonical` 取的是 canonical 的 INFO 家族，
+    左侧必须同量纲。三计划齐传时 merged 含 INFO + NI-DIAL + RN-INFO，
+    直接拿 `filled_lines` 合计去比 INFO 家族会恒不相等（实测三计划齐传：
+    pipeline=27988 / canonical=23542），报出来的「口径不一致」是假的。
+    """
+    return [b for b in batches if batch_in_info_family(b)]
 
 
 def plan_totals(plans):
@@ -244,7 +294,14 @@ def build_snapshot(args):
         snap['batches'] = batch_summary(merged, args.batches_dir, canonical)
         snap['plan'] = plan_totals(plans)
         if 'info_crosscheck' in snap:
-            from_pipe = snap['batches']['filled_lines']
+            # 左侧必须与右侧同量纲（都只算 INFO 族），否则三计划齐传时恒报不一致
+            if len(plans) > 1:
+                info_only = info_scoped_batches(merged['batches'])
+                from_pipe = batch_summary({'batches': info_only},
+                                          args.batches_dir, canonical)['filled_lines']
+                snap['info_crosscheck']['pipeline_scope'] = 'INFO 族'
+            else:
+                from_pipe = snap['batches']['filled_lines']
             from_canon = snap['info_crosscheck']['campaign_from_canonical']
             snap['info_crosscheck']['campaign_from_pipeline'] = from_pipe
             snap['info_crosscheck']['consistent'] = (from_pipe == from_canon)
@@ -265,6 +322,59 @@ def identical(a, b):
 
 def fmt_pct(part, whole):
     return f'{part / whole * 100:.1f}%' if whole else '—'
+
+
+PREPPED_ID_CAP = 12
+
+
+def format_batch_lines(batches, plan_t=None):
+    """批次状态渲染（主状态行 + 三道欠账告警）。
+
+    抽成独立函数是为了能测「成员 ID 是否真的出现在主行」——事故正是卡在这里：
+    已备料只打印计数，人看不到是哪几批，编排者无从判断下一批派什么。
+    """
+    lines = []
+    if not batches:
+        return lines
+    plan_t = plan_t or {}
+    prep_ids = batches.get('prepped_ids') or []
+    prep_cell = f" | 已备料 {batches['prepped']}"
+    # 计数不告诉人「是哪几批」。已备料待派就是下一轮的开工清单，成员必须
+    # 在主行可见，否则编排者只能凭印象挑批（事故：整轮静默漏派两批）。
+    if prep_ids:
+        shown = prep_ids[:PREPPED_ID_CAP]
+        extra = f" +{len(prep_ids) - PREPPED_ID_CAP}" if len(prep_ids) > PREPPED_ID_CAP else ""
+        prep_cell += " " + ",".join(shown) + extra
+    lines.append(f"批次: 已验收 {batches['verified']}/{batches['total']} "
+                 f"({fmt_pct(batches['verified'], batches['total'])})"
+                 f" | 在途 {batches['translated']}{prep_cell}"
+                 f" | 未备料 {batches['missing']}")
+    stale = batches.get('prepped_stale') or 0
+    if stale:
+        ids = ", ".join(f"{b['id']}({b['age_minutes']}min)"
+                        for b in (batches.get('prepped_stale_batches') or []))
+        lines.append(f"  !! 已备料未派单 {stale} 批"
+                     f"（备料超 {batches.get('prep_stall_minutes')} 分钟仍无 map.json）: {ids}")
+        lines.append("     （这些批次三件套齐、可直接派单；长期不派会静默漏译，"
+                     "下一轮开工应从这批里挑最久未派的）")
+    partial = batches.get('partial') or 0
+    if partial:
+        # 三件套不齐不可派单；独立成行避免改写主状态行的历史对比习惯
+        lines.append(f"批次备料警告: 部分备料(三件套不齐) {partial} 批——补齐前不可派单")
+    stalled = batches.get('stalled') or 0
+    if stalled:
+        ids = ', '.join(f"{b['id']}({b['age_minutes']}min)"
+                        for b in batches.get('stalled_batches') or [])
+        lines.append(f"  !! 滞留 {stalled} 批（在途超 {batches.get('stall_minutes')} 分钟未消费）: {ids}")
+        lines.append("     （滞留仅提示复核可能性；子代理已交卷的仍等交付送达，勿提前处理）")
+    unwritten = batches.get('unwritten_lines') or 0
+    if unwritten:
+        lines.append(f"  !! 已验收但未写回: "
+                     f"{len(batches.get('unwritten_batches') or [])} 批 / {unwritten} 行"
+                     f"（canonical 仍与 Source 相同）")
+    if plan_t.get('target_lines'):
+        lines.append(f"目标行: {plan_t['target_lines']}（唯一源句 {plan_t.get('unique_sources')}）")
+    return lines
 
 
 def print_snapshot(snap, prev):
@@ -291,28 +401,7 @@ def print_snapshot(snap, prev):
                          f"canonical={camp.get('campaign_from_canonical')}")
     batches = snap.get('batches')
     plan_t = snap.get('plan') or {}
-    if batches:
-        lines.append(f"批次: 已验收 {batches['verified']}/{batches['total']} "
-                     f"({fmt_pct(batches['verified'], batches['total'])})"
-                     f" | 在途 {batches['translated']} | 已备料 {batches['prepped']}"
-                     f" | 未备料 {batches['missing']}")
-        partial = batches.get('partial') or 0
-        if partial:
-            # 三件套不齐不可派单；独立成行避免改写主状态行的历史对比习惯
-            lines.append(f"批次备料警告: 部分备料(三件套不齐) {partial} 批——补齐前不可派单")
-        stalled = batches.get('stalled') or 0
-        if stalled:
-            ids = ', '.join(f"{b['id']}({b['age_minutes']}min)"
-                            for b in batches.get('stalled_batches') or [])
-            lines.append(f"  !! 滞留 {stalled} 批（在途超 {batches.get('stall_minutes')} 分钟未消费）: {ids}")
-            lines.append("     （滞留仅提示复核可能性；子代理已交卷的仍等交付送达，勿提前处理）")
-        unwritten = batches.get('unwritten_lines') or 0
-        if unwritten:
-            lines.append(f"  !! 已验收但未写回: "
-                          f"{len(batches.get('unwritten_batches') or [])} 批 / {unwritten} 行"
-                          f"（canonical 仍与 Source 相同）")
-        if plan_t.get('target_lines'):
-            lines.append(f"目标行: {plan_t['target_lines']}（唯一源句 {plan_t.get('unique_sources')}）")
+    lines.extend(format_batch_lines(batches, plan_t))
     if prev:
         dx = (xml or {}).get('translated', 0) - (prev.get('xml') or {}).get('translated', 0)
         db = (batches or {}).get('verified', 0) - (prev.get('batches') or {}).get('verified', 0)

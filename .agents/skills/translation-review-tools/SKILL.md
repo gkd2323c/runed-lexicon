@@ -3,7 +3,7 @@ name: translation-review-tools
 description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
-  version: "0.5.0"
+  version: "0.8.0"
 ---
 
 # Translation Review Tools
@@ -22,6 +22,7 @@ metadata:
 | `longtext_readout.py` | 生成长文本源译对照分片读本（供语义精读） | 各种 `readout*.py` / `slice_*.py` |
 | `adjudication_pack.py` | 裁决包生成（扫描候选 + XML/对话主题/terms 证据预切）与 verdict 机械校验、修正计划生成 | 各种 `build_*pack*.py` / 裁决对账脚本 |
 | `canon_hints.py` | 从 canonical 提取目标批次中已定形的整句/句级翻译，输出派单提示 | 各种临时提取 hints 脚本 |
+| `form_census.py` | 同锚词形普查：全库分布 vs 批内分布并排 + **背离告警**（批内主形 ≠ 全库主形时告警），裁决收敛方向前必跑 | 各种 `form_probe*.py` / `probe_*corpus*.py` / 手数词频 |
 | `artifact_scan.py` | 审查工件与流程元语言泄漏扫描（HIT/WEAK 两级机制） | 各种一次性泄漏排查脚本 |
 | `formula_scan.py` | 公式句多译法扫描与修正集生成（按标点切句，对位比对首尾句分裂） | 各种公式句对账脚本 |
 
@@ -46,6 +47,11 @@ py -3 .../make_fixes_from_report.py --report <review.json> --xml <translated.xml
 - 兼容两种报告 schema：`findings[]`（新）与 `issues[]`（历史）；`xml_index`/`idx` 均可。
 - `expected_current` 从 canonical 当场读取（CAS 基准）；现值已等于裁决值的条目列为 no-op 剔除。
 - `--drop`：驳回项（如官方实证现状正确）；`--override`：`{idx: 新值}` 特裁（部分采纳/语境重造）。
+- `--override` **可引入报告 findings 之外的 idx**（`introduce_overrides`）。跨批同锚词收敛的常态是
+  「reviewer 只点名了一侧，另一侧由主会话按全库多数裁定」：例 `institution` 全库 81:4 悬殊，
+  reviewer 按批内少数形建议统一，主会话反向裁定要改的正是 reviewer 没提到的那几行。
+  显式 `--drop` 仍优先于 override（驳回不被特裁复活）；`--include` 同样生效；越界记
+  `WARN override idx 越界`；现值已同记 no-op。stdout 单列「特裁新增（报告外，reviewer 未点名）」便于复核。
 - `--align-dups`：把裁决值广播到全库同源句的所有副本（同源分裂统一）；不传时只检测并打印分歧清单供人工判断。
 - 只读生成，不写批次文件；输出直接喂 `apply_fixes.py --fixes`。
 
@@ -202,6 +208,20 @@ py -3 .../term_digest.py --context .work/Artaeum/batches/NI-NPC-005/context.json
 
 MOD = 项目契约命中（`mod_terms_hits`）；OFF = 官方词典命中（`official_dictionary_hits`）；CTX = 对话语境锚点（仅对话条目）。空命中照列 `-`，让执行者知道「没有」是真的，不是漏看。派单任务卡的输入段指向本摘要，不指向原始 context.json。纯只读，除 `--out` 指定的文件外不碰任何文件。
 
+### 大小写警示（专名判别的第一信号）
+
+命中项若**词条首字母大写、而本行源文里出现的是全小写形态**，会在该词条后标注 `⚠源文小写，疑普通名词`：
+
+```text
+[28267] INFO:NAM1 | …the companions whose behavior remains consistent…
+    MOD: The Companions→战友团 (CONFIRMED) ⚠源文小写，疑普通名词
+    OFF: Familiar=使魔[NPC_:FULL] ⚠源文小写，疑普通名词
+```
+
+判据只看大小写（词条去冠词后取词干，两侧都加词边界），**不猜语义**。动机是实测事故：2026-10-02 INFO-370 的译者看到「官方词条 `Familiar=使魔[NPC_:FULL]`」自然以为 `familiar shapes`（熟悉的形状）必须译成召唤法术，只能靠人工识破；同批还查出 `The Companions`（`the companions`=同行者）与 `Confidence`（`confidence`=对自身感官的笃信）两处同类误绑。**大小写是专名判别的第一信号，必须在派单材料里显式给出**，不该让每个译者实例各自踩一次。
+
+同源同批已收敛的形态：`engineering` 一律「工程」；`history` 主形「历史」，「来历」是既有的「出身」义形。
+
 ### 法术名统一表附带（`--spell-registry`，默认自动探测）
 
 摘要末尾附 MOD 专属法术名统一表（`.work/<plugin>/notes/*-spell-name-registry.md`，自动探测；也可 `--spell-registry` 显式指定）：
@@ -260,6 +280,31 @@ py -3 .../lookup_terms.py Dwarven --max-len 70 --per-term 6
 用途：子代理把原版既有名词标 MEDIUM / REVIEW 悬置时，编排者批量查证后入词表（见 `skyrim-translation-craft` §8）。**无命中时显式输出「(无官方见证)」**，以便区分「官方没有这个词」与「脚本没查到」——前者需要编排者自行定名并标 PROVISIONAL。
 
 只读工具，不修改任何文件。
+
+## form_census.py
+
+裁决「同锚分裂该往哪个形收敛」时，**方向必须按全库多数，不能按批内多数**。这是硬纪律：审查实例只看得到自己批内的分布，方向判错会连带成百行返工。本工具把全库分布与批内分布并排打出，并在两者背离时直接告警，让「批内多数 ≠ 全库多数」成为可见事实而不是需要靠人记得的纪律。
+
+```text
+# 基本普查（形态从契约词条自动取；无词条则全部计入未归类）
+py -3 .../form_census.py --stem <S> --anchor institution --anchor rescue
+
+# 显式形态 + 批内分布 + 背离告警
+py -3 .../form_census.py --stem <S> --anchor hierarchy --forms 等级 等级体系 层级 \
+  --batches-dir .work/<S>/batches
+
+# 落盘 JSON 供后续程序消费
+py -3 .../form_census.py --stem <S> --anchor rescue --out .work/<S>/reports/<S>-form-census.json
+```
+
+每个锚输出四段：① 各形态计数 + **全库主形** + 次形与占比；② `未归类` 桶（词表未登记的新形，或副词/形容词变体，`--show-sites` 逐条打 idx 与译形）；③ 批内分布（给了 `--batches-dir` 才有）；④ **背离告警**——某批次（≥2 行）主形与全库主形不同即告警。
+
+- 形态匹配一律**长度降序**，「等级体系」不会被短形「等级」吃掉；`--forms` 直传与契约自动取两条路径行为一致。
+- **词表无该锚时自动切开集发现**（`--auto-forms N`，默认 8，`0` 关闭）：要裁决的词往往还没进词表——这恰恰是最需要查分布的情形，若一律落「未归类」工具等于不可用。本模式统计该锚各行译文的 CJK n-gram（长度 2–4）频次，同一锚的行高度平行（同一说话人、同一语域），概念自身的形态通常排在前列。**去重作用域是整行**（同一行里「同意」出现三次只计一次），避免长句刷榜。**只产候选不下结论**——高频项混着「变成」「一个」这类通用词，由主会话挑选后用 `--forms` 复跑拿准确分布。实测 `consent`→同意 92%、`custody`→看管 100%、`rescue`→营救 68%、`purpose`→目的 74%、`obvious`→显而易见 71%，均与人工裁决一致。
+- 锚按**正则**匹配、大小写不敏感，不做词形还原：查某个词请把变体用 `|` 串起来（`confiden(ce|t)`）。
+- 源 XML 与 canonical 条数不一致直接退出 2，不给半截统计。
+- 批内分布依赖 `batches/*/index.txt`；缺失则该段整体跳过并说明，**不猜归属**。
+- **本工具不下结论**。「哪个形该保留」是语义裁决，归主会话；工具只负责把分布与背离如实摆出来。实跑 4.3 万行 / 单锚约 1.5s。
 
 ## apply_fixes.py
 
@@ -449,8 +494,21 @@ make_review_view 一致性守卫（一致生成 / 漂移拒绝 / --allow-drift�
 覆盖 `make_fixes_from_report.py` 的分组通道：idx→批次归属映射、缺 `index.txt` 失败、
 两批 idx 重叠失败、孤儿 idx 失败且不落盘、越界 idx 按既有口径跳过、空批次省略、
 声明顺序保持、CLI 默认扁平形态不变、`--batches` 与 `--batches-dir` 不同用即报用法错。
+另覆盖 `introduce_overrides`（--override 引入报告外 idx）：报告外 idx 被补进修正集并回填
+`expected_current`、报告内 idx 不重复产出、`--drop` 优先于 override、`--include` 过滤生效、
+现值已同记 no-op、越界只报不写，以及 CLI 端到端（override 引入的 idx 落到正确批次分组）。
 
 `test_formula_scan_exempt.py`（同为 unittest 风格）覆盖 `formula_scan.py` 的豁免认得与
 分组输出：豁免文件两种写法（`{idxs, reason}` 与数组）、缺文件当空、豁免 idx 不被整句组
 改回错值、无豁免时仍报整句分裂、豁免只作用于整句组（首句公式收敛不受影响）、
 `--batches`/`--batches-dir` 同用校验、分组输出形态与 `close_round --batches` 提示。
+
+`test_form_census.py`（24 项，CI 的 `unittest discover` 步骤自动收集）覆盖 `form_census.py`：
+源/Dest 顺序读取、未译行排除（空 Dest 与 `Dest==Source`）、**长形优先**（`等级体系`
+不被 `等级` 吃掉，`--forms` 直传与契约自动取两条路径一致）、未归类桶、无形态时全量入桶、
+锚为正则且大小写不敏感、批内主形识别与背离构成、单行批次不制造噪声告警、未知 idx 跳过、
+契约形态提取（长形排序在前）与缺文件/未知锚回退空、CLI 报全库主形与收敛提示、
+`--out` 落盘且内部下划线键不外泄、缺 XML 与源/译条数不一致均退 2；
+开集发现：主形排首位、**整行去重**（同行三次「同意」只计一次，标点切开也算一次）、
+忽略非 CJK、空输入安全、`sites` 只含已译行。
+

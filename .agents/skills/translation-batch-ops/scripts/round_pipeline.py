@@ -184,6 +184,29 @@ def same_source_precheck(stem: str, batches: list[str], work: Path,
         raise Stop("同源预检失败（写回前）；按 canonical 既有形对齐后重跑")
 
 
+def plan_for_batch(work: Path, stem: str, batch: str, explicit: str = "") -> str:
+    """按批次 ID 前缀解析该批所属的计划文件（显式 --plan 优先）。
+
+    事故锚定（TheKalpicAnomaly_GLENMORIL 2026-10-02）：`--plan` 默认空，且原实现
+    **只在显式传了才转发给 consume**。于是 NI-* 批次永远拿 info 计划，consume 报
+    `unknown batch`，round_pipeline 停在写回前——症状是「这批已备料却怎么都收不掉」，
+    NI-QUST-001 / NI-TES4-001 因此静默躺了 37 小时，且每次都只报 unknown batch，
+    看不出是计划选错。调用方不该知道批次属于哪个族。
+    """
+    if explicit:
+        return explicit
+    if batch.startswith("GAP-"):
+        suffix = "-gaps-batches.json"
+    elif batch.startswith("NI-"):
+        suffix = "-noninfo-batches.json"
+    elif batch.startswith("RN-"):
+        suffix = "-info-rec-batches.json"
+    else:
+        suffix = "-info-batches.json"
+    p = work / "context" / f"{stem}{suffix}"
+    return str(p) if p.is_file() else ""
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stem", required=True)
@@ -227,8 +250,14 @@ def main() -> int:
                 lock.phase(f"consume {b}")
                 consume_cmd = [sys.executable, CONSUME, "--stem", stem, "--batch", b,
                                "--xml", args.xml, "--contract", args.contract]
-                if args.plan:
-                    consume_cmd += ["--plan", args.plan]
+                # 每批按自己的族选计划（NI-*/RN-*/GAP-* 各属不同计划文件），
+                # 否则 consume 会拿 info 计划去找非 INFO 批次，报 unknown batch。
+                bplan = plan_for_batch(work, stem, b, args.plan)
+                if bplan:
+                    consume_cmd += ["--plan", bplan]
+                else:
+                    print(f"warning: 批次 {b} 未找到所属计划文件，consume 将用其内置默认",
+                          file=sys.stderr)
                 rc = run(consume_cmd, "consume")
                 if rc != 0:
                     fail_detail(work / "reports" / f"{b}-verify-report.json")

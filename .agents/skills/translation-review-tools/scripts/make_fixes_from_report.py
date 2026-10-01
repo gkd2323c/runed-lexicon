@@ -11,7 +11,9 @@
 
 处置选项（对应核销中的三类人工裁决）：
   --drop       驳回项（如「官方实证现状正确，不采纳该建议」），从修正集剔除
-  --override   特裁项：{idx: 新值} JSON，覆盖报告建议值（部分采纳 / 语境重造）
+  --override   特裁项：{idx: 新值} JSON。覆盖报告建议值（部分采纳 / 语境重造），
+               且可**引入报告外的 idx**——跨批同锚词收敛时 reviewer 往往只点名
+               一侧，另一侧由主会话按全库多数裁定（见 introduce_overrides）
   --align-dups 同源句副本对齐：修正集的裁决值广播到全库同源句的所有副本
                （不传时仍检测并打印分歧清单，供人工判断是否对齐）
   --batches    配合 --batches-dir，按批次分组输出 close_round 需要的
@@ -108,6 +110,38 @@ def load_batch_owner(batches_dir: str, batches: list[str]) -> dict[int, str]:
     return owner
 
 
+def introduce_overrides(overrides: dict[int, str], reported: set[int],
+                        drops: set[int], includes: set[int],
+                        dests: list[str]) -> tuple[dict[int, dict], list[int], list[int]]:
+    """把 --override 中**不在报告 findings 里**的 idx 补进修正集。
+
+    跨批收敛的常态是「审查只点名了同锚词的一侧，另一侧由主会话裁决」。
+    事故锚定——institution 在全库 81:4 悬殊，reviewer 按批内少数形给出
+    「统一到制度」的建议，主会话按全库多数反向裁定要改「制度」那几行；
+    而那些行不在该批报告的 findings 中，旧版 override 只在 findings 循环内
+    取值（`overrides.get(i, it["proposed"])`），这类裁决无处落盘，只能手改
+    修正集或另写临时脚本——正是本函数要消除的缺口。
+
+    显式 --drop 仍优先于 override：驳回就是驳回，不被「特裁」复活。
+    返回 (新增修正, 现值已同的 no-op idx, 越界 idx)。
+    """
+    fixes: dict[int, dict] = {}
+    noop: list[int] = []
+    oob: list[int] = []
+    for i in sorted(overrides):
+        if i in reported or i in drops or (includes and i not in includes):
+            continue
+        if not (0 <= i < len(dests)):
+            oob.append(i)
+            continue
+        new = overrides[i]
+        if dests[i] == new:
+            noop.append(i)
+            continue
+        fixes[i] = {"new": new, "expected_current": dests[i]}
+    return fixes, noop, oob
+
+
 def group_fixes(fixes: dict[int, dict], owner: dict[int, str],
                 batches: list[str]) -> dict[str, dict]:
     """扁平修正集 → close_round 的分组形态；归属判不出的 idx 直接失败。"""
@@ -173,6 +207,17 @@ def main() -> int:
             continue
         fixes[i] = {"new": new, "expected_current": cur}
 
+    # 特裁可引入报告外的 idx（跨批收敛时 reviewer 往往只点名一侧）
+    reported = {it["idx"] for it in items}
+    extra, extra_noop, extra_oob = introduce_overrides(
+        overrides, reported, drops, includes, dests)
+    for i in extra_oob:
+        print(f"  WARN override idx 越界: {i}", file=sys.stderr)
+    fixes.update(extra)
+    noop.extend(extra_noop)
+    introduced = sorted(extra)
+    overridden.extend(introduced)
+
     # 同源副本检测：修正集内 idx 的源文在别处的副本译文是否与裁决值不一致。
     by_src: dict[str, list[int]] = {}
     for idx, src in enumerate(srcs):
@@ -211,9 +256,12 @@ def main() -> int:
 
     print(f"report: {args.report}")
     print(f"报告条目 {len(items)}；修正 {len(fixes) - dup_aligned}；"
-          f"特裁 {len(overridden)}；驳回 {len(dropped)}；no-op {len(noop)}")
+          f"特裁 {len(overridden)}（报告外新增 {len(introduced)}）；"
+          f"驳回 {len(dropped)}；no-op {len(noop)}")
     if dropped:
         print(f"  驳回: {sorted(dropped)}")
+    if introduced:
+        print(f"  特裁新增（报告外，reviewer 未点名）: {introduced}")
     if noop:
         print(f"  no-op（现值已同）: {sorted(noop)}")
     if dup_groups:

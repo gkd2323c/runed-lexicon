@@ -39,7 +39,34 @@ import sys
 from pathlib import Path
 
 
-def _fmt_mod(hits) -> str:
+def _case_mismatch_note(en: str, source: str) -> str:
+    """词条是大写专名、但本行源文里实际是小写普通名词时给出警示。
+
+    事故锚定（2026-10-02 INFO-370）：官方词典的 `The Companions=战友团` 与
+    `Familiar=使魔` 是大写专名，但它们在源文里以小写出现
+    （`the companions whose behavior…`=同行者、`familiar shapes`=熟悉的形状）。
+    digest 早先只打 `Familiar=使魔[NPC_:FULL]`，译者看到「官方词条」自然
+    以为必须译成召唤法术/派系名，只能靠人工识破。**大小写是专名判别的第一
+    信号，必须在派单材料里显式给出**，而不是让每个译者实例各自踩一次。
+
+    判据：词条英文首字母大写，且源文里能找到该词的**全小写**形态。
+    只在两者同时成立时标注，不猜语义。
+    """
+    if not en or not source:
+        return ""
+    if not en[0].isupper():
+        return ""
+    # 词条本身（去掉前导冠词后）在本行是否以小写形态出现
+    stem = re.sub(r"^(the|a|an|The|A|An)\s+", "", en).strip()
+    if not stem:
+        return ""
+    if re.search(r"(?<![A-Za-z])" + re.escape(stem[0].lower()) + re.escape(stem[1:])
+                 + r"(?![A-Za-z])", source):
+        return " ⚠源文小写，疑普通名词"
+    return ""
+
+
+def _fmt_mod(hits, source: str = "") -> str:
     if not hits:
         return "-"
     seen = []
@@ -51,13 +78,14 @@ def _fmt_mod(hits) -> str:
         st = (h.get("status") or "").strip()
         if not en:
             continue
-        item = f"{en}→{zh}" + (f" ({st})" if st else "")
+        item = (f"{en}→{zh}" + (f" ({st})" if st else "")
+                + _case_mismatch_note(en, source))
         if item not in seen:
             seen.append(item)
     return "; ".join(seen) if seen else "-"
 
 
-def _fmt_off(hits) -> str:
+def _fmt_off(hits, source: str = "") -> str:
     if not hits:
         return "-"
     seen = []
@@ -69,7 +97,8 @@ def _fmt_off(hits) -> str:
         rec = (h.get("rec") or "").strip()
         if not en:
             continue
-        item = f"{en}={zh}" + (f"[{rec}]" if rec else "")
+        item = (f"{en}={zh}" + (f"[{rec}]" if rec else "")
+                + _case_mismatch_note(en, source))
         if item not in seen:
             seen.append(item)
     return "; ".join(seen) if seen else "-"
@@ -153,8 +182,8 @@ def digest(context: dict, registry: dict | None = None) -> str:
             if isinstance(dup, int) and dup > 1:
                 head += f" | dup={dup}"
             lines.append(head)
-            lines.append("    MOD: " + _fmt_mod(t.get("mod_terms_hits")))
-            lines.append("    OFF: " + _fmt_off(t.get("official_dictionary_hits")))
+            lines.append("    MOD: " + _fmt_mod(t.get("mod_terms_hits"), src))
+            lines.append("    OFF: " + _fmt_off(t.get("official_dictionary_hits"), src))
             ctx = _fmt_ctx(e)
             if ctx:
                 lines.append("    CTX: " + ctx)
