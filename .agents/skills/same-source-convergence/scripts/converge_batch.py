@@ -193,9 +193,15 @@ def main():
         rows[srcs[int(k)] if int(k) < len(srcs) else ''].append(
             (k, str((v or {}).get('translation') or '').strip()))
 
-    def multiform():
+    def multiform(data=None):
+        """data 缺省用磁盘现值。传 mp 可以用内存里的改写后结果复验。"""
+        m = mp if data is None else data
+        rr = defaultdict(list)
+        for k, v in m.items():
+            i = int(k)
+            rr[srcs[i] if i < len(srcs) else ''].append((k, str((v or {}).get('translation') or '').strip()))
         out = []
-        for s, rs in rows.items():
+        for s, rs in rr.items():
             if s in exempt:
                 continue
             if len(set(canon_forms.get(s, {})) | {t for _, t in rs}) > 1:
@@ -219,17 +225,25 @@ def main():
         for s in missing[:10]:
             print('     %s' % s[:110])
         return 1
-    extra = [s for s in T if s not in {x for x, _ in groups}]
-    if extra:
-        warn('有 %d 条裁决项不在多形组里（可能已收敛，请确认表没写错）：' % len(extra))
-        for s in extra[:5]:
-            print('     %s' % s[:110])
+    # 表里有、但当前已经单形的源句也要照表覆盖。原因有二：
+    #  · 有人误跑 consume_batch / inherit_prefill 把同源多形压成了单形，
+    #    胜出的是随机一侧，不是裁决结果；
+    #  · 表本来就该是这一批的最终口径。
+    stale = [s for s in T
+             if s in rows and {t for _, t in rows[s]} != {T[s]}
+             and s not in exempt and s not in {x for x, _ in groups}]
+    if stale:
+        print('另有 %d 条裁决项当前已是单形（多半被同源继承压平），仍按表覆盖：' % len(stale))
+        for s in stale[:5]:
+            print('     现 %s -> 表 %s' % (sorted({t for _, t in rows[s]})[0][:44], T[s][:44]))
 
     if not a.apply:
         print('\n-- 契约核对（预检；加 --apply 才会改写）--')
         hard = 0
-        for s in groups:
-            tgt = T[s]
+        for s in list(T) + [x for x, _ in groups]:
+            tgt = T.get(s)
+            if tgt is None:
+                continue
             msgs = []
             if check_contract(s, tgt, cidx, msgs, a.strict):
                 hard += 1
@@ -242,7 +256,7 @@ def main():
         return 0
 
     msgs_all, hard = [], 0
-    for s in groups:
+    for s in T:
         msgs = []
         if check_contract(s, T[s], cidx, msgs, a.strict):
             hard += 1
@@ -253,11 +267,12 @@ def main():
         warn('契约硬失败 %d 条，中止（--strict 已开）' % hard)
         return 1
 
+    # 覆盖范围 = 裁决表里出现在本批的全部源句（不管它当前是不是多形）
     changed, pf_changed, outside = 0, 0, []
     shards = sorted(bdir.glob('map-part-*.json'))
-    for s, rs in groups:
-        tgt = T[s]
-        for k, old in rs:
+    todo = {s: T[s] for s in T if s in rows and s not in exempt}
+    for s, tgt in todo.items():
+        for k, old in rows[s]:
             if old == tgt:
                 continue
             if owner.get(int(k)) != batch and not a.allow_cross_batch:
@@ -305,7 +320,7 @@ def main():
     print('\n%s 改写 %d 行（%d 组）+ 豁免同 prompt %d 行；写穿分片 %d 行（%d 个文件）-> %s'
           % (batch, changed, len(groups), pf_changed, sh, len(shards), mf))
 
-    left = multiform()
+    left = multiform(mp)
     print('剩余同源异形组 %d' % len(left))
     for s, rs in left:
         print('  !! %s\n     canonical: %s\n     %s: %s'

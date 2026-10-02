@@ -3,7 +3,7 @@ name: translation-review-tools
 description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
-  version: "0.10.1"
+  version: "0.11.0"
 ---
 
 # Translation Review Tools
@@ -25,6 +25,7 @@ metadata:
 | `form_census.py` | 同锚词形普查：全库分布 vs 批内分布并排 + **背离告警**（批内主形 ≠ 全库主形时告警），裁决收敛方向前必跑 | 各种 `form_probe*.py` / `probe_*corpus*.py` / 手数词频 |
 | `artifact_scan.py` | 审查工件与流程元语言泄漏扫描（HIT/WEAK 两级机制） | 各种一次性泄漏排查脚本 |
 | `formula_scan.py` | 公式句多译法扫描与修正集生成（按标点切句，对位比对首尾句分裂） | 各种公式句对账脚本 |
+| `check_review_proposed.py` | 收口前核 review-record 的 `proposed` 是否真是可落盘译文（防「改法只写在 rationale、字段留原样」的静默空转） | 每次收口手写 `proposed == 现译` 比对 |
 
 ## make_fixes_from_report.py
 
@@ -69,6 +70,63 @@ py -3 .../make_fixes_from_report.py --report <review.json> --xml <translated.xml
 
 核销标准链：`make_fixes_from_report.py`（生成）→ `apply_fixes.py --fixes ... --translated-xml ... --patch-out ...`（联动批次 + 出 patch）→ `xtranslator-xml-writer` 的 `write_translations.py --patch`（写回 canonical）。
 已写回批的修正直接走 `translation-batch-ops` 的 `close_round.py`（它自带分组消费），无需手串后半程。
+
+## check_review_proposed.py
+
+**收口前的强制闸门**，紧接在 `make_fixes_from_report.py` 之前跑：
+
+```text
+py -3 .../check_review_proposed.py \
+  --xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
+  --reports .work/<plugin>/reports/<plugin>-INFO-577-review-record.json [...]
+
+# 确认某条确实「本无缺陷、proposed 有意留空」时才放宽
+py -3 .../check_review_proposed.py --xml <canonical.xml> --reports <rec.json> --allow-same
+```
+
+存在不可用 finding 时退出码 1，阻断收口。
+
+### 为什么需要它（事故锚定）
+
+`INFO-574` 的审查记录 7 条 finding 的 `proposed` **全部逐字等于 canonical 现译**。子代理把改法
+写进了 `rationale` 散文（「改动仅一处词」「改后既顺搭配又落回主形」），`proposed` 字段却原样
+留成现译。这类记录喂给 `make_fixes_from_report.py` 是**静默空转**：不报错、不改字节、
+`close_round` 照样打印 `PASS`，而本该修的缺陷一条没修。事后 `prune_close_patch` 只会把
+它们报成「已就位 7 条」，进一步掩盖「本该改却没改」。
+
+### 判定的三种不可用形态
+
+| kind | 含义 | 处置 |
+| --- | --- | --- |
+| `EMPTY` | `proposed` 为空 / 非字符串 / 全空白 | 主会话按 rationale 重写 |
+| `SAME_AS_NOW` | 与 canonical 现译逐字相同（含仅差首尾空白） | 改法只写在散文里 → 重写；或确认本无缺陷则从 findings 剔除 |
+| `NOT_IN_BATCH` | `xml_index` 不是标量 int（字符串 / 浮点 / 列表） | 修字段类型，否则收口时归属与 CAS 都会失效 |
+
+`--allow-same` 只放宽 `SAME_AS_NOW`，**不放宽** `EMPTY` 与 `NOT_IN_BATCH`——后两者是记录
+本身的缺陷，不是裁决选择。
+
+### 它是**收口前**闸门，收口后会误报（这是设计如此）
+
+收口应用之后重跑本脚本，**已修好的 finding 会重新报成 `SAME_AS_NOW`**——因为 canonical
+现在正好等于它的 `proposed`。实跑确认：`INFO-578` / `INFO-579` 的 6 条在 `close_round`
+应用前全部可用，应用后全部变 `SAME_AS_NOW`。
+
+这不是误报，是「已就位」，判据在别处：
+
+| 现象 | 含义 | 处置 |
+| --- | --- | --- |
+| 收口**前**报 `SAME_AS_NOW` | 改法只写在散文里，字段留了现译（574 事故） | 必须处置，阻断收口 |
+| 收口**后**报 `SAME_AS_NOW` | 该条已被应用，canonical == proposed | 已就位，无需处置 |
+
+收口后要确认「哪些是已就位」，用 `translation-batch-ops` 的 `prune_close_patch.py`
+（它按批报「已就位 N 条 / 老值 M 条」），不要用本脚本的退出码。
+
+### 边界
+
+- 只读输入（canonical + review-record），不写盘。
+- 判据是「`proposed` 能否直接落盘」，**不判 proposed 的语义对错**——语义裁决归主会话。
+  一份 `proposed` 全可用的记录仍可能整条方向错，必须照常逐条回源文判读。
+- 回归用例 `test_check_review_proposed.py`（10 例 unittest，覆盖上述三形态 + `--allow-same` 边界）。
 
 ## adjudication_pack.py
 
