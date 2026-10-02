@@ -57,12 +57,25 @@ def cmd_contract(a):
     if not terms:
         print('!! 契约缺失或为空：.work/%s/contracts/%s.compiled.json' % (a.stem, a.stem))
         return 1
+    # compiled.json 的 terms 以 term_id 为 key（如 kalpic.glen.distinction），
+    # 源词形在 source 字段。只按 key 查会对**任何**源词都报「无此词条」，
+    # 让这把尺空转、还让人以为「契约没管这个词」。
+    by_source = {}
+    for k, v in terms.items():
+        if not isinstance(v, dict):
+            continue
+        src = str(v.get('source') or '').strip().lower()
+        if src:
+            by_source.setdefault(src, (k, v))
     for w in a.words:
         cands = stem_candidates(w)
         hit = None
         for c in cands:
+            if c in by_source:
+                hit = by_source[c]
+                break
             for k, v in terms.items():
-                if k.lower() == c:
+                if isinstance(v, dict) and k.lower() == c:
                     hit = (k, v)
                     break
             if hit:
