@@ -3,7 +3,7 @@ name: same-source-convergence
 description: runed-lexicon 同源整族收敛工具集。判组（列出 canonical 与批次内全部同源多形组，含批内分裂与跨批副本）、表驱动收敛（裁决表外置为 JSON，脚本通用；写穿 map-part-*.json 防重合并冲掉；契约 target 机械核对；未裁决即中止防漏判）、分片合并与八条交卷门槛自检、按分片索引切分 readout、多批修正集合并与按盘面重同步、已写回批次按裁决表生成 close_round 修正集、批次侧产物与 canonical 的对齐与全库脱节扫描。Use when 翻译批次写回前需要把同源多形收敛成整族同形、把裁决表落成可复用的 JSON 而非一次性的按批号脚本、合并分片子代理交付、核对某批 map.json 与 translation.json 是否与 canonical 脱节、或已写回批次需要按裁决表收口。Do NOT trigger for 翻译语义裁决本身（那是人的判断）、契约编译（归 term-contract-compiler）、批次状态与覆盖率（归 translation-batch-ops）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # 同源整族收敛
