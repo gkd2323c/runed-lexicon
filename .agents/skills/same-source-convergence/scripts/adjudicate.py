@@ -52,14 +52,13 @@ def load_terms(stem):
     return terms
 
 
-def cmd_contract(a):
-    terms = load_terms(a.stem)
-    if not terms:
-        print('!! 契约缺失或为空：.work/%s/contracts/%s.compiled.json' % (a.stem, a.stem))
-        return 1
-    # compiled.json 的 terms 以 term_id 为 key（如 kalpic.glen.distinction），
-    # 源词形在 source 字段。只按 key 查会对**任何**源词都报「无此词条」，
-    # 让这把尺空转、还让人以为「契约没管这个词」。
+def source_index(terms):
+    """按 source 字段给契约词条建索引（小写源词形 -> (term_id, 词条)）。
+
+    compiled.json 的 terms 以 term_id 为 key（如 kalpic.glen.distinction），
+    源词形在 source 字段。只按 key 查会对**任何**源词都报「无此词条」，
+    让这把尺空转、还让人以为「契约没管这个词」。
+    """
     by_source = {}
     for k, v in terms.items():
         if not isinstance(v, dict):
@@ -67,6 +66,15 @@ def cmd_contract(a):
         src = str(v.get('source') or '').strip().lower()
         if src:
             by_source.setdefault(src, (k, v))
+    return by_source
+
+
+def cmd_contract(a):
+    terms = load_terms(a.stem)
+    if not terms:
+        print('!! 契约缺失或为空：.work/%s/contracts/%s.compiled.json' % (a.stem, a.stem))
+        return 1
+    by_source = source_index(terms)
     for w in a.words:
         cands = stem_candidates(w)
         hit = None
