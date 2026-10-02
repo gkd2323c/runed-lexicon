@@ -1,7 +1,7 @@
 ---
 name: term-contract-compiler
 description: Deterministically compile the MOD's structured `terms.json` into the machine-readable `terms` section of a Translation Contract consumed by translation-quality-gate, with a mechanical terminology lint (quote pairing / direction slips / invisible chars / width mixing / traditional chars) enforced before every compile. Use whenever a terms.json decision must become executable term definitions with forbidden variants and risk flags, when building the gate input for a MOD, when a terminology decision changed and the compiled contract must be regenerated, or when terminology data needs a mechanical character-level health check (lint_terms.py). The compiler never infers unit bindings (those are semantic, produced by the analysis Agent) and never auto-binds ambiguous terms; terms with alias/knowledge-boundary risk default to FORBIDDEN_ONLY. 触发词：词表 lint、引号配对、禁词库检查、编译前检查。
-compatibility: Python 3.10+. Standard library only. Machine term source: the MOD's structured `mods/<plugin>/terms.json` (canonical). Human-facing `DICTIONARY.md` is never consumed by the pipeline (AGENTS.md §2.0); a deprecated `--dictionary` Markdown path remains only for pre-migration MODs (MVF1 / evgSIRENROOT).
+compatibility: Python 3.10+. Standard library only. Machine term source is the MOD's structured `mods/<plugin>/terms.json` (canonical). Human-facing `DICTIONARY.md` is never consumed by the pipeline (AGENTS.md §2.0); a deprecated `--dictionary` Markdown path remains only for pre-migration MODs (MVF1 / evgSIRENROOT).
 metadata:
   version: "0.3.2"
 ---

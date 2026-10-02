@@ -22,8 +22,8 @@ Reuse contract: extraction tokens, stop/verb heads, strong-record families and
 normalization are imported from dictionary-noun-audit so this tool can never
 drift from the audit's matching behavior. Ambiguity hints reuse the
 term-contract-compiler denylist. No translation semantics are decided here:
-every entry still needs Agent adjudication into the MOD's DICTIONARY.md /
-terms.json before the compiler/gate run.
+every entry still needs Agent adjudication into the MOD's `terms.json` (machine
+source) and `DICTIONARY.md` (human doc) before the compiler/gate run.
 
 Exit codes: 0 success; 2 real failure (missing inputs, unreadable target).
 """
@@ -439,7 +439,7 @@ def _print_inventory(items):
     if opt:
         print(f"  OPTIONAL (weak single-word names): {opt}")
     print('NOTE: inventory is a candidate list. Adjudicate each name into the MOD',
-          'DICTIONARY.md / terms.json before compiling the contract.')
+          'terms.json (machine source) and DICTIONARY.md before compiling.')
 
 
 def main():
