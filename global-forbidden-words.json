@@ -59,6 +59,16 @@
    "category": "lore-name"
   },
   {
+   "english": "hour / Chinese traditional time unit",
+   "forbidden": [
+    "时辰"
+   ],
+   "target": "小时",
+   "reason": "「时辰」为中国传统两小时制计时单位，TES 无对应物；实测把 an hour 译作「一个时辰」将时长放大一倍（TheKalpicAnomaly_GLENMORIL 16 处）。hour 既定口径为「小时／一小时」",
+   "category": "anachronism-time",
+   "unconditional": true
+  },
+  {
    "english": "Allah / God (Islam)",
    "forbidden": [
     "真主",

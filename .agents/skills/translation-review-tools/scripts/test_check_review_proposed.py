@@ -99,6 +99,34 @@ class TestCli(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertIn('findings=0', out)
 
+    def test_broken_json_reported_not_crashed(self):
+        """坏 JSON 必须报成「该批视为未审」并退出 1，不能抛 traceback。
+
+        真实事故：RN-INFO-083 因正则片段 `^\\[\\d+\\]` 的末尾 `\\]` 只写了一个
+        反斜杠（半截转义）而整份无法解析，9 条 findings 白写；闸门当时只抛栈。
+        """
+        bad = self.tmp / 'broken.json'
+        bad.write_text(
+            '{"batch": "INFO-001", "checks_run": ["正则 ^\\\\[\\\\d+\\] 命中 46"],\n'
+            ' "findings": []}', encoding='utf-8')
+        rc, out = self._run([str(bad)])
+        self.assertEqual(rc, 1, out)
+        self.assertIn('记录无法解析', out)
+        self.assertIn('视为未审', out)
+        self.assertNotIn('Traceback', out)
+
+    def test_broken_json_repair_hint(self):
+        bad = self.tmp / 'broken2.json'
+        bad.write_text('{"a": "\\]"}', encoding='utf-8')
+        rc, out = self._run([str(bad), '--repair-hint'])
+        self.assertEqual(rc, 1, out)
+        self.assertIn('repair_json_escapes', out)
+
+    def test_missing_file_reported_not_crashed(self):
+        rc, out = self._run([str(self.tmp / 'nope.json')])
+        self.assertEqual(rc, 1, out)
+        self.assertIn('记录无法解析', out)
+
 
 if __name__ == '__main__':
     unittest.main()

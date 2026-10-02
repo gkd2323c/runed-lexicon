@@ -3,7 +3,7 @@ name: translation-review-tools
 description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
-  version: "0.12.0"
+  version: "0.13.0"
 ---
 
 # Translation Review Tools
@@ -25,7 +25,8 @@ metadata:
 | `form_census.py` | 同锚词形普查：全库分布 vs 批内分布并排 + **背离告警**（批内主形 ≠ 全库主形时告警），裁决收敛方向前必跑 | 各种 `form_probe*.py` / `probe_*corpus*.py` / 手数词频 |
 | `artifact_scan.py` | 审查工件与流程元语言泄漏扫描（HIT/WEAK 两级机制） | 各种一次性泄漏排查脚本 |
 | `formula_scan.py` | 公式句多译法扫描与修正集生成（按标点切句，对位比对首尾句分裂） | 各种公式句对账脚本 |
-| `check_review_proposed.py` | 收口前核 review-record 的 `proposed` 是否真是可落盘译文（防「改法只写在 rationale、字段留原样」的静默空转） | 每次收口手写 `proposed == 现译` 比对 |
+| `check_review_proposed.py` | 收口前核 review-record 的 `proposed` 是否真是可落盘译文（防「改法只写在 rationale、字段留原样」的静默空转）；坏 JSON 记为「视为未审」 | 每次收口手写 `proposed == 现译` 比对 |
+| `repair_json_escapes.py` | 机械修 review-record 里「正则片段反斜杠只转义了一半」造成的非法 JSON | 坏记录直接整份重派，白扔已写的 findings |
 | `dump_review_findings.py` | 审查记录 → 裁决视图（每条 finding 连同源文 / canonical 现译 / proposed / rationale 一屏打出，`--full` 附未报项与风险注） | 每轮手拼「读报告 → 查 canonical 取现值」转录 |
 | `append_adjudication_note.py` | 总档定点追加 notes + 刷新 `canonical_at_adjudication` / `totals.verification`（同 topic 替换不堆重复），落盘后回读断言 | 几十万字符的总档手工 Edit |
 
@@ -128,7 +129,33 @@ py -3 .../check_review_proposed.py --xml <canonical.xml> --reports <rec.json> --
 - 只读输入（canonical + review-record），不写盘。
 - 判据是「`proposed` 能否直接落盘」，**不判 proposed 的语义对错**——语义裁决归主会话。
   一份 `proposed` 全可用的记录仍可能整条方向错，必须照常逐条回源文判读。
-- 回归用例 `test_check_review_proposed.py`（10 例 unittest，覆盖上述三形态 + `--allow-same` 边界）。
+- 回归用例 `test_check_review_proposed.py`（13 例 unittest，覆盖上述三形态 + `--allow-same` 边界 +
+  **记录无法解析**的报告路径）。
+- 记录本身坏掉时（`json.loads` 失败、文件不存在）**不算「本批没有缺陷」**，闸门会把该批标成
+  「视为未审」并退出 1。理由：坏 JSON 的批次如果被当成已审完，欠账统计就会凭空少一批。
+
+### 坏 JSON 的机械修复：`repair_json_escapes.py`
+
+子代理写 JSON 的高频坏点是**正则片段里的反斜杠只转义了一半**：
+
+```json
+"checks_run": ["正则 ^\\[\\d+\\] 命中 46"]
+```
+
+前两处 `\\` 合法，末尾 `\]` 只有**一个**反斜杠——JSON 里 `\]` 非法，`json.loads` 直接抛
+`Invalid \escape`，整份记录作废。真实事故：`RN-INFO-083` 的 9 条 findings 因此全部作废。
+
+```text
+py -3 .../repair_json_escapes.py --path <record.json> --dry-run
+py -3 .../repair_json_escapes.py --path <record.json>
+```
+
+- **逐字符扫描，不用正则替换**：正则会把 `\\` 里的第二个反斜杠误判成非法转义（已踩过）。
+- 只把「后面不跟合法转义字符」的反斜杠补成 `\\`，其余字节一律不动。
+- 修完**必须能 `json.loads` 才落盘**，并回读断言内容一致；仍失败则直接抛、不写。
+- 修完仍要用 `check_review_proposed.py --repair-hint` 复检 `proposed` 可用性——
+  JSON 合法不等于 findings 合格。
+
 
 ## adjudication_pack.py
 

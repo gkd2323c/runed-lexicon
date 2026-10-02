@@ -66,13 +66,23 @@ def main() -> int:
     ap.add_argument('--reports', nargs='+', required=True, help='review-record JSON，可多份')
     ap.add_argument('--allow-same', action='store_true',
                     help='容忍 SAME_AS_NOW（子代理本意就是「此处无需改动」时用）')
+    ap.add_argument('--repair-hint', action='store_true',
+                    help='记录无法解析时，附上 repair_json_escapes.py 的处置提示')
     args = ap.parse_args()
 
     xml = load_xml_index(args.xml)
     total = 0
     bad = []
+    unreadable = []
     for rp in args.reports:
-        rec = json.load(open(rp, encoding='utf-8-sig'))
+        try:
+            rec = json.load(open(rp, encoding='utf-8-sig'))
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+            # 坏 JSON 不是「本批没有缺陷」，是**记录本身作废**——不报出来的话，
+            # 上层会以为这个批已审完（真实事故：RN-INFO-083 因正则片段的 `\]`
+            # 半截转义而整份无法解析，9 条 findings 白写；闸门当时只抛 traceback）。
+            unreadable.append((rp, f'{type(exc).__name__}: {exc}'))
+            continue
         batch = rec.get('batch') or Path(rp).stem
         for n, item in enumerate(rec.get('findings') or [], 1):
             total += 1
@@ -80,16 +90,26 @@ def main() -> int:
             if kind and (kind != 'SAME_AS_NOW' or not args.allow_same):
                 bad.append((batch, n, item.get('xml_index'), kind, now))
 
-    print(f'findings={total}  proposed-unusable={len(bad)}')
+    for rp, err in unreadable:
+        print(f'!! 记录无法解析（该批视为未审，须重派或先修 JSON）: {rp}')
+        print(f'   {err}')
+        if args.repair_hint:
+            print(f'   常见成因：正则片段里的反斜杠只转义了一半（如 `\\]`）。'
+                  f'用 repair_json_escapes.py --path <该文件> 可机械修复。')
+    print(f'findings={total}  proposed-unusable={len(bad)}  unreadable={len(unreadable)}')
     for b, n, idx, kind, now in bad:
         print(f'  {b} #{n} idx={idx} {kind}  now={now[:70]}')
-    if not bad:
+    if unreadable:
+        print('\n=> 有记录无法解析：这些批次**不能**当作已审完，'
+              '\n   收口前必须重派或先用 repair_json_escapes.py 修复。')
+    if not bad and not unreadable:
         print('proposed 全部为可直接落盘的纯译文，可进 make_fixes_from_report.py。')
         return 0
-    print('\n=> 这些 finding 不能直接进 make_fixes_from_report.py：'
-          '\n   SAME_AS_NOW 说明改法只写在 rationale 散文里，字段留了现译。'
-          '\n   处置：主会话按 rationale 自己重写 proposed（逐条回源文判读），'
-          '\n   或确认该条本无缺陷、从 findings 里剔除。')
+    if bad:
+        print('\n=> 这些 finding 不能直接进 make_fixes_from_report.py：'
+              '\n   SAME_AS_NOW 说明改法只写在 rationale 散文里，字段留了现译。'
+              '\n   处置：主会话按 rationale 自己重写 proposed（逐条回源文判读），'
+              '\n   或确认该条本无缺陷、从 findings 里剔除。')
     return 1
 
 
