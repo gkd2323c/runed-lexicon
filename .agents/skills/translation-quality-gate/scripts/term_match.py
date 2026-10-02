@@ -331,6 +331,19 @@ CONTRACT_GLOBAL_BANS_KEY = 'global_bans'
 # 项目级全局 KEEP 清单嵌入契约后的字段名（KEEP002：全局 KEEP 源值被翻译）。
 CONTRACT_GLOBAL_KEEP_KEY = 'global_keep'
 
+# MOD 级全局禁用词白名单嵌入契约后的字段名（R21 豁免：TERM004 合法形态出口）。
+#
+# 为什么需要它：find_global_ban_hits 的中文侧是**子串检查**，而中文没有词边界。
+# 「之内」+「存在」在文本流里相邻，拼出的字面「内存」会被 anachronism 禁令硬拦——
+# 撞上就只剩两条路：改写措辞绕开（译文被迫变形），或从全局词库撤除该条（对别的
+# MOD 生效的真实误报也就没了）。白名单把「合法形态」显式声明出来，落在 MOD 级，
+# 不污染跨 MOD 词库。
+CONTRACT_GLOBAL_BAN_EXEMPTIONS_KEY = 'global_ban_exemptions'
+
+# 豁免 scope 内允许出现的键。未知键一律报错——拼错的键如果被静默忽略，
+# 豁免会退化成「无条件的白名单」，正是这个机制要防的反面。
+GLOBAL_BAN_EXEMPTION_SCOPE_KEYS = ('source_contains', 'dest_left', 'dest_right')
+
 
 def _iter_word_matches(text: str, needle: str):
     """Yield all start indices of needle in text as a whole word (case-insensitive).
@@ -470,6 +483,100 @@ def find_global_ban_hits(source: str, dest: str, ban: Dict) -> List[str]:
             hits.append(f)
             break  # one report per forbidden form (unchanged semantics)
     return hits
+
+
+# ---------------------------------------------------------------- R21: MOD-level ban whitelist
+
+def normalize_global_ban_exemptions(raw) -> List[Dict]:
+    """Normalize raw whitelist records from the compiled contract.
+
+    Tolerates a missing/!list payload (returns []) so an older compiled contract
+    without the key keeps working. Structural validation lives in
+    term-contract-compiler's load_global_ban_exemptions; this only reshapes for
+    the gate's hot path.
+    """
+    if not isinstance(raw, list):
+        return []
+    out = []
+    for e in raw:
+        if not isinstance(e, dict):
+            continue
+        f = str(e.get('forbidden') or '').strip()
+        if not f:
+            continue
+        scope = e.get('scope') if isinstance(e.get('scope'), dict) else {}
+        out.append({
+            'forbidden': f,
+            'english': str(e.get('english') or '').strip(),
+            'reason': str(e.get('reason') or '').strip(),
+            'scope': {k: [x for x in (scope.get(k) or [])
+                          if isinstance(x, str) and x]
+                      for k in GLOBAL_BAN_EXEMPTION_SCOPE_KEYS
+                      if scope.get(k)},
+        })
+    return out
+
+
+def index_global_ban_exemptions(exemptions: List[Dict]) -> Dict[str, List[Dict]]:
+    """Group exemptions by forbidden form once, outside the per-unit loop.
+
+    The gate evaluates this only on actual TERM004 hits, but building the index
+    per call would still be a linear scan of the whole whitelist per hit.
+    """
+    idx: Dict[str, List[Dict]] = {}
+    for ex in exemptions or []:
+        idx.setdefault(ex.get('forbidden') or '', []).append(ex)
+    return idx
+
+
+def _exemption_scope_matches(scope: Dict, source: str, dest: str, variant: str) -> bool:
+    """True when every scope condition holds for this forbidden-form hit.
+
+    source_contains — any-of, case-insensitive, matched against the tag-stripped
+    source. Scopes the exemption to lines that are about the right subject.
+
+    dest_left / dest_right — the characters immediately adjoining the hit. This
+    is the clause that separates a real banned word from a cross-word-boundary
+    artifact: 「…之内存在…」 matches 内存 only because 内 and 存 happen to
+    abut, and requiring 之 on the left / 在 on the right says exactly that.
+    EVERY occurrence of the form in dest must satisfy the constraint, so a line
+    that also contains a genuine bare 内存 keeps failing.
+    """
+    needles = scope.get('source_contains') or []
+    if needles:
+        low = source.lower()
+        if not any(n.lower() in low for n in needles):
+            return False
+    left = scope.get('dest_left') or []
+    right = scope.get('dest_right') or []
+    if left or right:
+        n = len(variant)
+        for p in _iter_matches(dest, variant):
+            if left and not any(dest[max(0, p - len(x)):p] == x for x in left):
+                return False
+            if right and not any(dest[p + n:p + n + len(x)] == x for x in right):
+                return False
+    return True
+
+
+def find_global_ban_exemption(source: str, dest: str, variant: str,
+                              ex_index: Dict[str, List[Dict]]) -> Optional[Dict]:
+    """Return the whitelist record that legalizes `variant` on this line, else None.
+
+    ex_index is the output of index_global_ban_exemptions. Returning the record
+    (rather than a bool) lets the gate echo the declared reason into the report,
+    so an exemption stays auditable instead of silently swallowing the finding.
+    """
+    if not ex_index or not variant:
+        return None
+    candidates = ex_index.get(variant)
+    if not candidates:
+        return None
+    clean = _strip_html_tags(source)
+    for ex in candidates:
+        if _exemption_scope_matches(ex.get('scope') or {}, clean, dest, variant):
+            return ex
+    return None
 
 
 def find_global_keep_hits(source: str, dest: str, gkeep: str) -> bool:

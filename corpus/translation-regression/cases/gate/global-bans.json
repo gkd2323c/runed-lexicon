@@ -698,6 +698,204 @@
    "golden": "他们穿着黑袍在城里。",
    "origin": "synthetic_guard",
    "note": "源文无任何精灵锚点时 unconditional 仍拦高精灵（无源文依据的精灵译名均禁）；交叉豁免不得泛化。"
+  },
+  {
+   "case_id": "global-bans.r21-exempt-crossword-boundary-001",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "A schism exists within the order, and no one will speak of it.",
+    "translation": "教团之内存在分裂，而谁也不会提起此事。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "anachronism:内存",
+       "forbidden": [
+        "内存"
+       ],
+       "target": "",
+       "reason": "现代计算机硬件禁令",
+       "category": "anachronism-computer",
+       "unconditional": true
+      }
+     ],
+     "global_ban_exemptions": [
+      {
+       "english": "anachronism:内存",
+       "forbidden": "内存",
+       "reason": "跨词边界字面巧合：「之内」+「存在」拼出「内存」",
+       "scope": {
+        "dest_left": [
+         "之"
+        ],
+        "dest_right": [
+         "在"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "WARNING"
+   },
+   "golden": "教团之内存在分裂，而谁也不会提起此事。",
+   "origin": "real_project_incident_rewritten",
+   "note": "R21 核心用例：「之内」+「存在」在 dest 里字面拼出「内存」，无条件禁令无条件触发。声明 dest_left=之 / dest_right=在 后该巧合形态被放行，TERM004 降为 WARNING 留档（不拦截，但仍出现在报告里）。golden 与被测译文同文——正是本用例的要点：命中豁免时译文不需要为门禁变形，这正是通道存在的意义。"
+  },
+  {
+   "case_id": "global-bans.r21-exempt-must-not-open-backdoor-001",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "The vessel had no more room in its memory than a sieve has in the sea.",
+    "translation": "那艘船的内存比筛子装海还少。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "anachronism:内存",
+       "forbidden": [
+        "内存"
+       ],
+       "target": "",
+       "reason": "现代计算机硬件禁令",
+       "category": "anachronism-computer",
+       "unconditional": true
+      }
+     ],
+     "global_ban_exemptions": [
+      {
+       "english": "anachronism:内存",
+       "forbidden": "内存",
+       "reason": "跨词边界字面巧合：「之内」+「存在」拼出「内存」",
+       "scope": {
+        "dest_left": [
+         "之"
+        ],
+        "dest_right": [
+         "在"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "那条船的记性，比筛子装海还少。",
+   "origin": "real_project_incident_rewritten",
+   "note": "白名单的反向闸门：同一条豁免在场，但这里的「内存」是真形态（左侧不是「之」、右侧不是「在」），必须继续硬拦。若这条挂了，说明 scope 只做了「该形态豁免」而没做上下文校验——白名单就成了万能后门。"
+  },
+  {
+   "case_id": "global-bans.r21-exempt-same-line-bare-use-001",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "The order argues that a schism exists within it, and the archive keeps its memory in stone.",
+    "translation": "教团之内存在分裂，而档案把它的内存刻在石上。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "anachronism:内存",
+       "forbidden": [
+        "内存"
+       ],
+       "target": "",
+       "reason": "现代计算机硬件禁令",
+       "category": "anachronism-computer",
+       "unconditional": true
+      }
+     ],
+     "global_ban_exemptions": [
+      {
+       "english": "anachronism:内存",
+       "forbidden": "内存",
+       "reason": "跨词边界字面巧合：「之内」+「存在」拼出「内存」",
+       "scope": {
+        "dest_left": [
+         "之"
+        ],
+        "dest_right": [
+         "在"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "教团之内存在分裂，而档案把它的记忆刻在石上。",
+   "origin": "real_project_incident_rewritten",
+   "note": "同一行内真假混用：前半句的巧合形态符合 dest_left/dest_right，后半句是真形态。豁免要求 dest 中该形态的每一次出现都满足上下文，因此整行仍 FAIL——一处巧合不能给同行的真用法开绿灯。"
+  },
+  {
+   "case_id": "global-bans.r21-exempt-source-contains-scope-001",
+   "test_layer": "gate",
+   "category": "term_forbidden",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "input": {
+    "source": "The ledger of days was kept in the memory of the machine.",
+    "translation": "日子的账册记在机器的内存里。",
+    "contract": {
+     "bindings": [],
+     "terms": {},
+     "global_bans": [
+      {
+       "english": "anachronism:内存",
+       "forbidden": [
+        "内存"
+       ],
+       "target": "",
+       "reason": "现代计算机硬件禁令",
+       "category": "anachronism-computer",
+       "unconditional": true
+      }
+     ],
+     "global_ban_exemptions": [
+      {
+       "english": "anachronism:内存",
+       "forbidden": "内存",
+       "reason": "仅放行源文谈 exists 的行",
+       "scope": {
+        "source_contains": [
+         "exists"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "expect": {
+    "verdict": "FAIL",
+    "codes": [
+     "TERM004"
+    ]
+   },
+   "golden": "日子的账册记在机器里。",
+   "origin": "real_project_incident_rewritten",
+   "note": "source_contains 作用域：豁免只覆盖源文谈 exists 的行，源文谈 memory 的行不获豁免——这一例说明 source_contains 与 dest_left/dest_right 是两类不同维度的限定，都必须在位时才放行。译文里的「内存」是真形态，因此无论哪一类 scope 都应继续硬拦。"
   }
  ]
 }

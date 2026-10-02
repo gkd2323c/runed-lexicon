@@ -153,3 +153,54 @@ source: `global-forbidden-words.json` (project root). It is a curated list of
 cross-MOD official-name error forms, NOT a full term dictionary — see
 GLOSSARY.md §7 for收录边界. The compiler only validates/normalizes it; the
 curation happens by editing the JSON (each term carries its reason).
+
+### MOD-level ban whitelist (`--global-ban-exemptions`, R21)
+
+`global_bans` is a **cross-MOD** list of wrong forms. It has no way to express
+"this banned shape has a legitimate form here" — and TERM004's Chinese side is a
+plain substring check, while Chinese has no word boundaries, so adjacent
+characters that merely *happen* to spell a banned word get flagged regardless of
+meaning. Real case: `... a schism exists within the order ...` →
+「教团**之内存在**分裂」 spells 「**内存」 and hits `anachronism:内存`
+(`unconditional`, so no English-anchor defence applies).
+
+Without a whitelist the only workarounds are both wrong: distort the wording to
+dodge the check, or retract the entry from the cross-MOD list (which disables
+the real detection every other MOD depends on). `--global-ban-exemptions` adds
+the third option — declare the legitimate form, scoped to one MOD.
+
+```bash
+py -3 .agents/skills/term-contract-compiler/scripts/compile_contract.py \
+  --terms mods/<plugin>/terms.json --output .work/<S>/contracts/<S>.compiled.json \
+  --keep-output .work/<S>/contracts/<S>.keep.json \
+  --global-bans global-forbidden-words.json \
+  --global-ban-exemptions mods/<plugin>/global-ban-exemptions.json
+```
+
+Input file (per MOD, **not** in the cross-MOD `global-forbidden-words.json`):
+
+```json
+{ "exemptions": [ {
+    "english": "anachronism:内存",
+    "forbidden": "内存",
+    "reason": "why this shape is legitimate here",
+    "scope": { "dest_left": ["之"], "dest_right": ["在"] }
+} ] }
+```
+
+`scope` accepts `source_contains` (any-of, case-insensitive, matched against the
+tag-stripped source) and `dest_left` / `dest_right` (characters immediately
+adjoining the hit — the clause that separates a cross-word artifact from a real
+word). **At least one scope key is required.** The result is embedded in the
+contract as `global_ban_exemptions`; the gate downgrades matching TERM004 hits to
+`WARNING` rather than dropping them, so exemptions stay auditable.
+
+**Validation is deliberately unforgiving** — `load_global_ban_exemptions` raises
+`SystemExit(1)` on: `forbidden` not present in any ban's forbidden list (with
+close-match suggestions), `english` inconsistent with the ban that owns the form,
+missing/empty `scope`, unknown key inside `scope`, or a duplicate
+`(forbidden, scope)` pair. A whitelist entry that silently never fires is worse
+than no entry at all — it reads as protection while providing none.
+
+`--global-ban-exemptions` requires `--global-bans` (exemptions are validated
+against the live ban table; supplying them alone would be meaningless).

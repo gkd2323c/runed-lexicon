@@ -560,6 +560,123 @@ def load_global_bans(path):
     return bans, keep
 
 
+# ---------------------------------------------------------------- MOD-level ban whitelist (R21)
+
+# 全局禁用词的「合法形态」白名单（MOD 级）。为什么要有这条通道：
+# TERM004 的中文侧是子串检查，而中文没有词边界。「之内」+「存在」相邻时字面拼出
+# 「内存」，会被 anachronism 禁令硬拦。没有白名单时只剩两条路——改写措辞绕开（译文
+# 被迫变形，牺牲准确度换门禁通过），或从全局词库撤除该条（对所有 MOD 生效，别的
+# MOD 的真实误报也一起没了）。声明式白名单把合法形态写进契约，落在 MOD 级可审计、
+# 可复算，且不污染跨 MOD 的词库。
+#
+# 文件形态：
+#   { "exemptions": [ { english, forbidden, reason,
+#                       scope: { source_contains[], dest_left[], dest_right[] } } ] }
+# scope 三个键语义见 term_match._exemption_scope_matches。
+#
+# 允许的 scope 键在此镜像定义（不跨 skill import：两个 skill 必须能各自独立运行；
+# 键集合变化时两边同步改，并由 selftest_corpus 里的白名单用例守住一致性）。
+GLOBAL_BAN_EXEMPTION_SCOPE_KEYS = ('source_contains', 'dest_left', 'dest_right')
+
+def load_global_ban_exemptions(path, bans):
+    """Load & validate the MOD-level global-ban whitelist.
+
+    Returns a normalized list of exemption records, embedded into the compiled
+    contract as `global_ban_exemptions` so the gate can honour them.
+
+    Unlike the rest of the compiler, this loader is deliberately unforgiving:
+    a whitelist entry that silently never fires is worse than no entry at all,
+    because it reads as protection while providing none. So every structural
+    problem, and every exemption that does not resolve to a live ban, is a
+    hard error (SystemExit(1)):
+      - forbidden not present in any ban's forbidden list  (typo guard, with
+        closest-match suggestions from the live ban forms)
+      - english given but inconsistent with the ban that owns the form
+      - no scope key at all (an unconditional whitelist entry is a hole with
+        no context; the mechanism exists for *scoped* legality)
+      - unknown key inside scope (a misspelled key would otherwise degrade
+        the entry into a context-free whitelist)
+      - duplicate entry with an identical (forbidden, scope) pair
+    """
+    try:
+        data = json.load(open(path, encoding='utf-8-sig'))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f'error: {path}: invalid JSON: {exc}') from exc
+    if not isinstance(data, dict):
+        raise SystemExit(f'error: {path}: expected an object with "exemptions"')
+    raw = data.get('exemptions')
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise SystemExit(f'error: {path}: "exemptions" must be an array')
+
+    import difflib
+    form_owner = {}   # forbidden form -> english anchor of the ban declaring it
+    for b in bans or []:
+        for f in b.get('forbidden') or []:
+            form_owner.setdefault(f, b.get('english') or '')
+
+    problems = []
+    out = []
+    seen = set()
+    for i, e in enumerate(raw):
+        if not isinstance(e, dict):
+            problems.append(f'  [{i}] exemption entry is not an object')
+            continue
+        f = str(e.get('forbidden') or '').strip()
+        if not f:
+            problems.append(f'  [{i}] missing "forbidden"')
+            continue
+        reason = str(e.get('reason') or '').strip()
+        if not reason:
+            problems.append(f'  [{i}] ({f}) missing "reason"（白名单条目必须写明为什么合法）')
+        owner = form_owner.get(f)
+        if owner is None:
+            near = difflib.get_close_matches(f, list(form_owner), n=3, cutoff=0.4)
+            hint = ('；库中相近形态: ' + ', '.join(repr(x) for x in near)) if near else \
+                   '（该形态不在任何 ban 的 forbidden 里，豁免永远不会生效）'
+            problems.append(f'  [{i}] forbidden {f!r} 不在全局禁用词库中{hint}')
+            continue
+        eng = str(e.get('english') or '').strip()
+        if eng and eng != owner:
+            problems.append(f'  [{i}] english {eng!r} 与 {f!r} 的实际归属 {owner!r} 不一致')
+            continue
+        scope_in = e.get('scope')
+        if not isinstance(scope_in, dict):
+            problems.append(f'  [{i}] ({f}) missing "scope"（必须给出至少一个作用域条件）')
+            continue
+        unknown = [k for k in scope_in if k not in GLOBAL_BAN_EXEMPTION_SCOPE_KEYS]
+        if unknown:
+            problems.append(f'  [{i}] ({f}) unknown scope key(s): {unknown}；'
+                            f'允许 {list(GLOBAL_BAN_EXEMPTION_SCOPE_KEYS)}')
+            continue
+        scope = {}
+        for k in GLOBAL_BAN_EXEMPTION_SCOPE_KEYS:
+            v = scope_in.get(k)
+            if v is None:
+                continue
+            if isinstance(v, str):
+                v = [v]
+            if not isinstance(v, list) or not all(
+                    isinstance(x, str) and x.strip() for x in v):
+                problems.append(f'  [{i}] ({f}) scope.{k} must be a list of non-empty strings')
+                continue
+            scope[k] = [x.strip() for x in v]
+        if not scope:
+            problems.append(f'  [{i}] ({f}) scope 为空——无条件白名单是暗箱，'
+                            f'必须写 source_contains / dest_left / dest_right 至少一项')
+            continue
+        sig = (f, json.dumps(scope, sort_keys=True, ensure_ascii=False))
+        if sig in seen:
+            problems.append(f'  [{i}] ({f}) 与前面的条目 scope 完全重复')
+            continue
+        seen.add(sig)
+        out.append({'english': owner, 'forbidden': f, 'reason': reason, 'scope': scope})
+    if problems:
+        raise SystemExit(f'error: {path}: invalid global ban exemptions:\n' + '\n'.join(problems))
+    return out
+
+
 # ---------------------------------------------------------------- 双轨一致性检查
 
 def _norm_source(s):
@@ -642,6 +759,11 @@ def main():
     ap.add_argument('--global-bans', default=None,
                     help='project-wide global-forbidden-words JSON; its bans/keep are embedded\n'
                          'into the compiled contract under global_bans / global_keep for the gate')
+    ap.add_argument('--global-ban-exemptions', default=None,
+                    help='MOD 级全局禁用词白名单 JSON（R21 豁免通道）：声明某个禁用形态在\n'
+                         '特定上下文里是合法形态（中文无词边界，子串检查会跨词误报）。\n'
+                         '嵌入契约为 global_ban_exemptions，命中时 TERM004 降为 WARNING。\n'
+                         '必须与 --global-bans 同用；forbidden 不在词库中会直接报错。')
     ap.add_argument('--check-terms', default=None,
                     help='双轨一致性检查：与 --dictionary 同用，编译 Markdown 表格后与指定\n'
                          'terms.json 做集合 diff（词条存在性 / target / forbidden / status），\n'
@@ -737,6 +859,21 @@ def main():
             compiled['global_keep'] = gkeep
         json.dump(compiled, open(args.output, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
         print(f'global bans: {len(gbans)} entries, global keep: {len(gkeep)} -> embedded in contract')
+
+    # MOD-level ban whitelist (R21): embedded so the gate can honour declared
+    # legal forms of a banned shape without touching the cross-MOD word list.
+    if args.global_ban_exemptions:
+        if not args.global_bans:
+            raise SystemExit('error: --global-ban-exemptions 需要与 --global-bans 同用'
+                             '（豁免条目要对照真实 ban 表校验，单独给会失去意义）')
+        gex = load_global_ban_exemptions(args.global_ban_exemptions, gbans)
+        compiled = json.load(open(args.output, encoding='utf-8'))
+        if gex:
+            compiled['global_ban_exemptions'] = gex
+            json.dump(compiled, open(args.output, 'w', encoding='utf-8'),
+                      ensure_ascii=False, indent=2)
+        print(f'global ban exemptions: {len(gex)} entries -> embedded in contract '
+              f'({args.global_ban_exemptions})')
 
     print(f'tables: {table_count}  rows: {entry_count}  terms: {len(terms)}  keep: {len(keep)}')
     if args.keep_output:

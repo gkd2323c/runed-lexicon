@@ -59,14 +59,28 @@ def gate_issues(source, translation, contract, case=None):
 
     # project-wide ban list (TERM004): enforced on every translated line
     if translation != source:
-        from term_match import resolve_global_bans, find_global_ban_hits, cross_target_covered
+        from term_match import (resolve_global_bans, find_global_ban_hits,
+                                cross_target_covered, normalize_global_ban_exemptions,
+                                index_global_ban_exemptions, find_global_ban_exemption)
         gbans = resolve_global_bans(contract)
+        # R21: whitelist entries are built per case here (corpus cases are tiny);
+        # the real gate builds this index once outside the per-unit loop.
+        gex = index_global_ban_exemptions(
+            normalize_global_ban_exemptions(contract.get('global_ban_exemptions')))
         for ban in gbans:
             for f in find_global_ban_hits(source, translation, ban):
                 # 跨条 target/forbidden 交叉豁免（与 quality_gate.global_ban_issue 一致）
                 if cross_target_covered(source, translation, f, gbans, ban.get('english') or ''):
                     continue
                 reason = ban.get('reason') or '项目级禁用词'
+                ex = find_global_ban_exemption(source, translation, f, gex)
+                if ex is not None:
+                    # 与 quality_gate.global_ban_issue 一致：命中声明豁免降 WARNING 留档
+                    issues.append({'code': 'TERM004', 'severity': 'WARNING',
+                                   'detail': (f'全局禁用词 {f!r}（{ban["english"]}）出现但命中 '
+                                              f'MOD 级声明豁免（不拦截，留档）: '
+                                              f'{ex.get("reason") or "未注明理由"}')})
+                    continue
                 issues.append({'code': 'TERM004', 'severity': 'FAIL',
                                'detail': f'全局禁用词 {f!r}（{ban["english"]}）出现: {reason}'})
 

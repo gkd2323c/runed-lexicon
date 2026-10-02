@@ -305,6 +305,63 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
 每处 TERM004 命中都带该条目的 `reason`，方便 Agent 判断是误报还是真回归。
 收录/维护边界见 GLOSSARY.md §7 与 `global-forbidden-words.json` 顶部 doc。
 
+#### 6. MOD 级声明式豁免（R21, v0.3.0）——「合法形态」白名单通道
+
+前五道防护都建立在「dest 里的这个中文形是/不是那根词」上。但 TERM004 的中文侧是
+**纯子串检查**（`find_global_ban_hits`：`Chinese side is a substring check`），而中文
+**没有词边界**——相邻两字只要字面拼成某个禁用形态就硬拦，与语义无关：
+
+> 源文 `... a schism exists within the order ...` 的自然译法「教团**之内存在**分裂」，
+> 字面拼出「**内存**」，被 `anachronism:内存`（`unconditional`）拦下。
+
+`unconditional` 条目更甚——不看源文，dest 出现即拦，所以连英文锚点这道防线也用不上。
+在豁免通道出现之前，编排者只有两条路，**两条都是错的**：
+
+1. 改写措辞绕开（「之内」→「内部」）——译文被迫变形，为门禁通过牺牲准确度。
+2. 从 `global-forbidden-words.json` 撤除该条——该表是**跨 MOD** 的，对所有项目生效，
+   别的 MOD 的真实误报也一起消失。
+
+现在有第三条：**把「合法形态」显式声明出来，落在 MOD 级**。
+
+契约字段 `global_ban_exemptions`（由编译器 `--global-ban-exemptions` 嵌入）。
+每条：`{ english, forbidden, reason, scope: { source_contains[], dest_left[], dest_right[] } }`
+
+- `source_contains` — any-of、不区分大小写，匹配**去标签后的源文**，把豁免限定在谈
+  正确对象的行。
+- `dest_left` / `dest_right` — 命中形态左右紧邻的字符。**这是区分「跨词边界拼出来的假
+  形态」与「真的成词」的关键**：上例要求左邻 `之`、右邻 `在`，等于声明「我说的就是
+  之内+存在这个巧合，不是硬件义」。
+- **三者至少填一个**（编译器对无 scope 的条目直接报错）。`dest_left`/`dest_right` 要求
+  **dest 中该形态的每一次出现都满足**上下文——同一行里若还有一个裸用的真形态，豁免
+  不成立，该行仍 FAIL。
+
+**命中豁免的 finding 降 `WARNING` 而不是被跳过**，并在 detail 里回显声明理由。理由：
+豁免必须**看得见**。静默跳过会让白名单退化成暗箱——你无法知道哪些行在靠声明吃饭，
+也就无法定期重判它们是否还成立。`WARNING` 不阻断写回，但会留在报告里。
+
+**反向闸门**（回归用例 `corpus/translation-regression/cases/gate/global-bans.json`
+的 4 条 R21 用例钉住）：
+
+| 用例 | 断言 |
+| --- | --- |
+| `r21-exempt-crossword-boundary-001` | 跨词巧合形态 → `WARNING`（放行但留档） |
+| `r21-exempt-must-not-open-backdoor-001` | 同一豁免在场，**真**形态仍 `FAIL` |
+| `r21-exempt-same-line-bare-use-001` | 同行内真假混用 → 整行仍 `FAIL` |
+| `r21-exempt-source-contains-scope-001` | `source_contains` 作用域外的行不获豁免 |
+
+**②③ 是这套机制的安全边界**：没有它们，白名单就是万能后门。有了它们，「声明某一处
+合法形态」才不会变成「宣布该词随便用」。
+
+**门的另一边（编译器侧）**：`term-contract-compiler` 的 `load_global_ban_exemptions`
+对**无效豁免一律 `SystemExit(1)`**——`forbidden` 不在 bans 词库里（带相近形态提示）、
+`english` 与该形态的实际归属不符、无 scope、scope 有未知键、重复条目。
+**一条静默不生效的豁免比没有豁免更危险：它读起来像保护，实际什么也没做。**
+
+维护面：白名单表按 MOD 建档在 `mods/<plugin>/global-ban-exemptions.json`，
+**不进 `global-forbidden-words.json`**——后者只收跨 MOD 官方名词的系统性坏形态。
+本项目全库有 166 个两字 `unconditional` 禁词，**只登记被真实译文证实过的合法形态，
+不做投机性放行**。
+
 **门禁是候选发现器，不是判决器**：命中后由编排者逐条核销，不得为了消警改动正确译文。
 
 **已知误报形态：同句并置。** TERM004 按 source 整词锚点触发，无法区分「同一源句中两个不同英文词各有正确译名」。

@@ -32,12 +32,16 @@ try:
     from term_match import (resolve_bindings, check_unit, match_required_present,
                             find_forbidden_hits, resolve_global_bans, find_global_ban_hits,
                             find_global_keep_hits, cross_target_covered, CONTRACT_GLOBAL_BANS_KEY,
-                            CONTRACT_GLOBAL_KEEP_KEY, _anchor_present, _cross_term_target_covered)
+                            CONTRACT_GLOBAL_KEEP_KEY, _anchor_present, _cross_term_target_covered,
+                            CONTRACT_GLOBAL_BAN_EXEMPTIONS_KEY, normalize_global_ban_exemptions,
+                            index_global_ban_exemptions, find_global_ban_exemption)
 except Exception:  # allow running from another cwd
     from .term_match import (resolve_bindings, check_unit, match_required_present,
                              find_forbidden_hits, resolve_global_bans, find_global_ban_hits,
                              find_global_keep_hits, cross_target_covered, CONTRACT_GLOBAL_BANS_KEY,
-                             CONTRACT_GLOBAL_KEEP_KEY, _anchor_present, _cross_term_target_covered)
+                             CONTRACT_GLOBAL_KEEP_KEY, _anchor_present, _cross_term_target_covered,
+                             CONTRACT_GLOBAL_BAN_EXEMPTIONS_KEY, normalize_global_ban_exemptions,
+                             index_global_ban_exemptions, find_global_ban_exemption)
 
 # CHAR001 uses the vendored zh-cn conversion table (scripts/zh_cn_conv.json);
 # no third-party dependency.
@@ -167,7 +171,8 @@ def truncation_issue(unit: dict) -> list:
              'expected': ''}]
 
 
-def global_ban_issue(source: str, dest: str, bans: list) -> list:
+def global_ban_issue(source: str, dest: str, bans: list,
+                     ex_index: dict = None) -> list:
     """TERM004: project-wide ban list (global_forbidden_words) — any forbidden
     form present in dest while the English anchor appears in source → FAIL.
 
@@ -178,6 +183,12 @@ def global_ban_issue(source: str, dest: str, bans: list) -> list:
 
     dest == source (KEEP / untranslated technical lines) never triggers — a
     line left in English contains no Chinese wrong form.
+
+    R21 (v0.3.0): a hit that matches a MOD-level declared exemption
+    (ex_index, from contract global_ban_exemptions) is downgraded FAIL →
+    WARNING and carries the declared reason. It is NOT skipped: the finding
+    stays in the report so a whitelist can't turn into an unaudited blind spot
+    — you can always see which lines rely on a declaration and re-judge them.
     """
     out = []
     for ban in bans:
@@ -204,12 +215,21 @@ def global_ban_issue(source: str, dest: str, bans: list) -> list:
             category = ban.get('category') or ''
             # pollution-agent（翻译/Agent 污染词）是事故信号：模型把系统提示/元数据翻进译文
             prefix = '[事故级] ' if category == 'pollution-agent' else ''
-            out.append({'code': 'TERM004', 'severity': 'FAIL',
-                        'term_id': 'global.' + _slug(eng),
-                        'detail': f'{prefix}全局禁用词 {f!r}（{eng}）出现: {reason}',
-                        'expected': ban.get('target') or f'不含 {f!r}',
-                        'variant': f,
-                        'category': category})
+            base = {'code': 'TERM004',
+                    'term_id': 'global.' + _slug(eng),
+                    'expected': ban.get('target') or f'不含 {f!r}',
+                    'variant': f,
+                    'category': category}
+            ex = find_global_ban_exemption(source, dest, f, ex_index)
+            if ex is not None:
+                out.append(dict(base, severity='WARNING',
+                                detail=(f'{prefix}全局禁用词 {f!r}（{eng}）出现但命中 '
+                                        f'MOD 级声明豁免（不拦截，留档）: '
+                                        f'{ex.get("reason") or "未注明理由"}'),
+                                exempted_by=CONTRACT_GLOBAL_BAN_EXEMPTIONS_KEY))
+                continue
+            out.append(dict(base, severity='FAIL',
+                            detail=f'{prefix}全局禁用词 {f!r}（{eng}）出现: {reason}'))
     return out
 
 
@@ -321,6 +341,10 @@ def run_gate(results: list, contract: dict, keep_list: list, xml_text=None,
     # term-contract-compiler from the root global-forbidden-words.json).
     global_bans = resolve_global_bans(contract)
     global_keep = contract.get(CONTRACT_GLOBAL_KEEP_KEY) or []
+    # R21 whitelist: built once here, not per unit — the gate only consults it
+    # on actual TERM004 hits, but a per-call scan would still be O(hits × rules).
+    global_ban_exemptions = index_global_ban_exemptions(
+        normalize_global_ban_exemptions(contract.get(CONTRACT_GLOBAL_BAN_EXEMPTIONS_KEY)))
 
     # build the <String> block index once for XML001 identity pre-checks;
     # rebuilding it per unit made the gate O(units × blocks) on large batches
@@ -369,7 +393,7 @@ def run_gate(results: list, contract: dict, keep_list: list, xml_text=None,
             # (FORBIDDEN_ONLY / risk-flagged terms never auto-bind).
             issues += standalone_forbidden_issues(
                 src, dst, term_index, {rt.term_id for rt in resolved})
-            g_issues = global_ban_issue(src, dst, global_bans)
+            g_issues = global_ban_issue(src, dst, global_bans, global_ban_exemptions)
             g_issues += global_keep_issue(src, dst, global_keep)
             # a concrete wrong form can be both a local term's forbidden variant
             # (TERM002, bound unit) and a project-wide ban (TERM004). Keep the
