@@ -3,7 +3,7 @@ name: same-source-convergence
 description: runed-lexicon 同源整族收敛工具集。判组（列出 canonical 与批次内全部同源多形组，含批内分裂与跨批副本）、表驱动收敛（裁决表外置为 JSON，脚本通用；写穿 map-part-*.json 防重合并冲掉；契约 target 机械核对；未裁决即中止防漏判）、分片合并与八条交卷门槛自检、按分片索引切分 readout、多批修正集合并与按盘面重同步、已写回批次按裁决表生成 close_round 修正集、批次侧产物与 canonical 的对齐与全库脱节扫描。Use when 翻译批次写回前需要把同源多形收敛成整族同形、把裁决表落成可复用的 JSON 而非一次性的按批号脚本、合并分片子代理交付、核对某批 map.json 与 translation.json 是否与 canonical 脱节、或已写回批次需要按裁决表收口。Do NOT trigger for 翻译语义裁决本身（那是人的判断）、契约编译（归 term-contract-compiler）、批次状态与覆盖率（归 translation-batch-ops）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # 同源整族收敛
@@ -106,6 +106,40 @@ py -3 $D/sync_batch_artifacts.py --stem $S --scan               # 全库脱节�
 | `exempt_prompt_fix` 单独通道 | 豁免前提是 prompt 不同；同 prompt 漂移要单收，不能靠豁免放行 |
 | 合并时按 canonical 复核 `expected_current` | 拿旧结论改新行；或重复收口撞 CAS |
 | 落盘后 `json.loads` 读回断言 | 写出自认为成功、实际损坏的 JSON |
+| 收口前 `same_source_family.py` 核族 | 只改同源族里一行——净效果为零，且照样触发 `same_source_split` 拦截（本轮实测一族跨 596/597/598 三批 8 行） |
+| 收口前 `anchor_overlap.py` 核锚 | 把「跨锚撞形」当同源漂移处理。本轮实测「权柄」36 行里 authority 26 + power 10，只看中文形票数会把两类混作一次替换、方向就错了 |
+| 子代理普查必须核到全库口径 | 拿批内普查当全库用，方向整个反了（本轮实测：要求把回指改成批内多数形「重担」，而全库 `burden` 是 重负 251:负担 93:重担 37，重担是最稀形） |
+
+## 收口前的两个前置核（比判组更早跑）
+
+`same_source_groups.py` 按**批次**列组；收口一条 finding 前还需要两个全库口径的核，
+它们各自防住一类会被 `close_round` 的 `same_source_split` 拦下、但原因不同的问题。
+
+### `same_source_family.py`：这个 idx 的同源族到底有几行
+
+```text
+py -3 same_source_family.py --stem <STEM> --batches-dir .work/<STEM>/batches --idx 41291,41296
+py -3 same_source_family.py --stem <STEM> --idx-file _tmp/data/idx.txt     # 大批时
+```
+
+逐个 idx 列出全库同 `Source` 的全部行（带所属批次与现译），并标「孤例 / 同源族 N 行」。
+**只改族里一行，净效果为零**，且会当场触发 `same_source_split` 硬拦截。
+族可以跨批（本轮实测一族横跨 596/597/598 三批 8 行），所以不能只看本批。
+
+### `anchor_overlap.py`：这个中文形在渲染哪些英文锚
+
+```text
+py -3 anchor_overlap.py --xml <canonical.xml> --form 权柄 --anchors authority,authoritative,power
+```
+
+按**源文**命中的锚把某个中文形的行分组，标出「同一形跨多个英文锚」的行。
+词形普查（`adjudicate.py census`）只给中文形分布，看不出跨锚撞形——
+本轮实测「权柄」36 行里 authority 26、power 10，混着两个锚。
+
+**跨锚撞形直接改变裁决方向**：一个同时服务两个锚的形不该当主形，而这次普查正是
+把 `authority` 从「权威 63 / 威权 24 / 权柄 26 的三向乱局」收敛成
+「权威（认知制度位）62 行不动 + 威权（裁断位）收编权柄 26 行 + 权柄让出给 power 的 10 行归位为权力」
+的唯一依据。只看中文形票数会把这两类混作一次替换，方向就错了。
 
 ## 边缘情况
 
