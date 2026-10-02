@@ -66,7 +66,53 @@ def _case_mismatch_note(en: str, source: str) -> str:
     return ""
 
 
-def _fmt_mod(hits, source: str = "") -> str:
+# ------------------------------------------------------------------ 判据型 note
+# 为什么需要：2026-10-02 整轮术语漂移（machinery 实物义、virtue、cause、
+# curse、vessel 各 1~2 处，以及「神龛」「教团」只能等门禁 FAIL 才发现）的
+# 根因就是本函数只打 `en→zh (STATUS)`、**把词条的 note 整条丢掉**。译者
+# 看到主形就无条件套用，`machinery→机械` 于是盖掉了 note 里写明的
+# 「实物装置＝机械／抽象体系＝机制」。
+#
+# 为什么不全量带出：全库 1,471 词条都有 note，但绝大多数是取证过程记录
+# （哪几行实证、什么时候回正的），与「这一行该怎么判」无关。全量带出会把
+# digest 从紧凑派单材料撑成 context 的复刻，重新制造本工具要解决的读不完问题。
+# 只挑**带语义判据**的那几十条 —— 判据型 = note 含下列任一标记。
+_JUDGE_MARKERS = (
+    "分域", "两义", "判据", "绑定", "勿强并", "不作同锚合并", "分立",
+    "不是无条件", "勿混", "不是同一", "勿作",
+)
+_JUDGE_MAX = 180
+# 点名了本行的 note 不按 180 截断。
+# 事故（2026-10-02 INFO-511 idx 34842）：`communion` 的 note 写明「③**34842 未译**
+# …按②取「共融」」，是对该行的**逐行预裁**，却正好落在 180 字截断线之后。digest
+# 表头写着「先读它再定译文」，实际只递了残句，译者看不到预裁就自行取了「共食」并
+# 标 REVIEW。判据：note 里出现本行 xml_index（独立数字）＝ 它含针对本行的裁决，
+# 截掉等于把裁决藏起来；这类 note 全文带出。
+_JUDGE_MAX_ROW_CITED = 4000
+
+# main() 可用 --no-judge-notes 关掉（默认开：判据不到译者眼前就是缺陷）
+_SHOW_JUDGE = True
+
+
+def _judge_note(h: dict, idx=None) -> str:
+    """带出判据型 note，让译者看到主形不是无条件替换指令。"""
+    if not _SHOW_JUDGE:
+        return ""
+    note = (h.get("note") or "").strip()
+    if not note:
+        return ""
+    if not any(m in note for m in _JUDGE_MARKERS):
+        return ""
+    flat = re.sub(r"\s+", " ", note)
+    limit = _JUDGE_MAX
+    if idx is not None and re.search(r"(?<!\d)%d(?!\d)" % int(idx), flat):
+        limit = _JUDGE_MAX_ROW_CITED
+    if len(flat) > limit:
+        flat = flat[:limit].rstrip() + "…"
+    return f"〔判据:{flat}〕"
+
+
+def _fmt_mod(hits, source: str = "", idx=None) -> str:
     if not hits:
         return "-"
     seen = []
@@ -79,7 +125,8 @@ def _fmt_mod(hits, source: str = "") -> str:
         if not en:
             continue
         item = (f"{en}→{zh}" + (f" ({st})" if st else "")
-                + _case_mismatch_note(en, source))
+                + _case_mismatch_note(en, source)
+                + _judge_note(h, idx))
         if item not in seen:
             seen.append(item)
     return "; ".join(seen) if seen else "-"
@@ -182,7 +229,7 @@ def digest(context: dict, registry: dict | None = None) -> str:
             if isinstance(dup, int) and dup > 1:
                 head += f" | dup={dup}"
             lines.append(head)
-            lines.append("    MOD: " + _fmt_mod(t.get("mod_terms_hits"), src))
+            lines.append("    MOD: " + _fmt_mod(t.get("mod_terms_hits"), src, idx))
             lines.append("    OFF: " + _fmt_off(t.get("official_dictionary_hits"), src))
             ctx = _fmt_ctx(e)
             if ctx:
@@ -191,7 +238,51 @@ def digest(context: dict, registry: dict | None = None) -> str:
     if sec:
         lines.append("")
         lines.extend(sec)
-    return "\n".join(lines) + ("\n" if lines else "")
+    return "\n".join(_legend() + lines) + ("\n" if lines else "")
+
+
+def _legend() -> list:
+    """派单材料自带读法说明——译者不必回查本脚本源码才知道标记含义。"""
+    if not _SHOW_JUDGE:
+        return []
+    return [
+        "== 读法 ==",
+        "  MOD 的 en→zh 只是该词条的**主形记录**，不是无条件替换指令。",
+        "  〔判据:…〕= 词条 note 里的语义判据（分域/两义/绑定），**先读它再定译文**。",
+        "  ⚠源文小写 = 该专名在本行是普通名词，走普通义。",
+        "",
+    ]
+
+
+def discover_spell_registry(context_path: Path, explicit: str | None = None) -> str | None:
+    """定位法术名统一表 markdown；显式路径优先，否则从 context 路径推导。
+
+    抽成独立函数是为了让 `read_batch.py` 的 digest 新鲜度检查复用同一套发现
+    逻辑——重生成 digest 时必须和 `main()` 用完全一样的规则，否则「新鲜」只是
+    换了个样子（历史上 digest 与 read_batch 各写一套，正是陈旧 digest 长期
+    存在的间接原因）。
+    """
+    if explicit:
+        return explicit
+    parts = Path(context_path).resolve().parts
+    if "notes" not in parts and ".work" in parts:
+        wi = parts.index(".work")
+        if wi + 1 < len(parts):
+            notes_dir = Path(*parts[:wi + 2]) / "notes"
+            if notes_dir.is_dir():
+                cands = sorted(notes_dir.glob("*-spell-name-registry.md"))
+                if cands:
+                    return str(cands[0])
+    return None
+
+
+def build_digest(context_path: str | Path, spell_registry: str | None = None) -> str:
+    """context.json 路径 → digest 文本。CLI 与新鲜度检查共用这一条路径。"""
+    p = Path(context_path)
+    data = json.loads(p.read_text(encoding="utf-8"))
+    reg_path = discover_spell_registry(p, spell_registry)
+    registry = load_spell_registry(reg_path) if reg_path else {}
+    return digest(data, registry)
 
 
 def main() -> int:
@@ -200,29 +291,21 @@ def main() -> int:
     ap.add_argument("--spell-registry", default=None,
                     help="法术名统一表 markdown（默认自动探测 .work/<plugin>/notes/*-spell-name-registry.md）")
     ap.add_argument("--out", help="write digest here instead of stdout")
+    ap.add_argument("--no-judge-notes", action="store_true",
+                    help="不带出判据型 note（默认带出；关掉等于把分域判据藏回词表）")
     a = ap.parse_args()
+
+    global _SHOW_JUDGE
+    _SHOW_JUDGE = not a.no_judge_notes
 
     p = Path(a.context)
     if not p.exists():
         print(f"error: context not found: {p}", file=sys.stderr)
         return 2
-    data = json.loads(p.read_text(encoding="utf-8"))
 
-    # 统一表：显式路径优先；否则从 context 路径推导 .work/<plugin>/notes/
-    reg_path = a.spell_registry
-    if not reg_path:
-        parts = p.resolve().parts
-        if "notes" not in parts and ".work" in parts:
-            wi = parts.index(".work")
-            if wi + 1 < len(parts):
-                notes_dir = Path(*parts[:wi + 2]) / "notes"
-                if notes_dir.is_dir():
-                    cands = sorted(notes_dir.glob("*-spell-name-registry.md"))
-                    if cands:
-                        reg_path = str(cands[0])
+    reg_path = discover_spell_registry(p, a.spell_registry)
     registry = load_spell_registry(reg_path) if reg_path else {}
-
-    text = digest(data, registry)
+    text = digest(json.loads(p.read_text(encoding="utf-8")), registry)
 
     if a.out:
         out = Path(a.out)

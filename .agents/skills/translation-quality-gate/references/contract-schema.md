@@ -50,6 +50,7 @@ truth; a compiled contract is a deterministic machine-readable derivative.
     "blocked_suffixes": ["尼亚", "尼亚人"]
   },
   "risk_flags": [],
+  "case_sensitive": true,
   "origin": "OFFICIAL",
   "evidence": "official dictionary record",
   "note": ""
@@ -72,6 +73,35 @@ truth; a compiled contract is a deterministic machine-readable derivative.
 - `match.accepted`: accepted target forms.
 - `match.blocked_suffixes`: suffixes that turn an otherwise accepted substring into
   a disallowed derived form (`TERM003`).
+- `case_sensitive`: **optional, opt-in per term, default absent = false.** When
+  `true`, the English anchor only matches `source` with exactly the registered
+  casing. Use it when source casing is itself semantic and case-insensitive
+  matching produces false `TERM001` reports on ordinary lowercase usage.
+  Real incident (TheKalpicAnomaly_GLENMORIL, two independent instances): the
+  `Command` term declares in its note that only capital `C` denotes the
+  「掌权者」 sense, but the matcher hardcoded `re.IGNORECASE`, so lowercase
+  `command` (ordinary verb/noun sense) triggered the required-target check and
+  blocked a correct 「指挥链」 translation of `a chain of command`. The first
+  instance was `the eye` vs `the Eyes` (26848).
+  **Why not the alternatives:** widening `match.accepted` (`additional_accepted`)
+  to cover the lowercase forms would drop the capital-`C` main-form constraint;
+  downgrading `enforcement` to `FORBIDDEN_ONLY` would drop it too. Only a real
+  matching flag keeps both. Setting the field is purely additive — every term
+  without it keeps byte-identical behavior, and the pattern cache key includes
+  the flag so the two modes never contaminate each other.
+- `substring_match`: **optional escape hatch, default absent = auto.** A term whose
+  `source` ends in sentence punctuation (`.`, `!`, `?`) is treated as a *whole
+  sentence* and only matches when the stripped source **is** that sentence.
+  Without this, a literal case-insensitive match of a sentence-shaped term fires on
+  the tail of a longer sentence. Real incident (TheKalpicAnomaly_GLENMORIL): the
+  `He did.` term (`target` 「他照做了。」) matched the tail of
+  `It does not rewrite what he did.` and reported `TERM001` on a fully correct
+  translation (idx 33438). Auto-detection is safe here — a census of that
+  vocabulary found only 4 sentence-shaped entries (`He did.`, `There it is.`,
+  `Timing matters.`, `Unknown.`), all genuine sentences and no abbreviations.
+  Set `substring_match: true` to opt an abbreviation-shaped term (`U.S.`, `Jr.`)
+  back into loose substring matching. 15 tests:
+  `scripts/test_standalone_sentence.py`.
 - `risk_flags`: semantic hazards such as `alias`, `knowledge_boundary`,
   `naming_level`, or `spoiler`. Non-empty risk flags prohibit automatic/global
   required binding; those units need explicit semantic binding.

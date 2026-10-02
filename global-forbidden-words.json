@@ -8187,10 +8187,11 @@
   {
    "english": "heaven / paradise (real-world)",
    "forbidden": [
-    "天堂"
+    "天堂",
+    "天国"
    ],
    "target": "",
-   "reason": "现实宗教禁令：TES 死后世界是松加德/灵魂石冢等；建议改写：松加德/湮灭/死后世界按 TES 语境",
+   "reason": "现实宗教禁令：TES 死后世界是松加德/灵魂石冢等；建议改写：松加德/湮灭/死后世界按 TES 语境。**2026-10-02 补「天国」**：原表只列「天堂」，同语域的「天国」从同义词缝里漏了过去——TheKalpicAnomaly 20188 `because heaven is waiting on the other side`→「因为天国就在彼方等候」一路沉到 canonical，而该 MOD 全库 `heaven` 的既定形是「乐土」（约 27 行，天堂 0 行）。禁令列的是一个形，坏形态是一族。",
    "category": "anachronism-religion",
    "unconditional": true
   },

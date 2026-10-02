@@ -3,7 +3,7 @@ name: translation-batch-ops
 description: runed-lexicon 批次流水线的状态、覆盖、验收、对账重建与进度工具集。覆盖一轮收口的唯一串行入口（round_pipeline：consume→charset→check→write→verify→snapshot 单进程顺序执行 + 独占锁防并行覆盖）、批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次文件对账与重建（batch_sync）、批次 context 单批重建（rebuild_context）、同源继承预填与折叠（inherit_prefill）。Use when 把验收批次收口至写回快照（一律走 round_pipeline）、验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、派单前继承 canonical 既有译文并折叠批内重复句、处理批次文件与 canonical 的漂移或缺失（判向/拉平/补全，不逐条修补）、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、契约编译（归 term-contract-compiler）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.7.0"
+  version: "1.8.0"
 ---
 
 # Translation Batch Ops
@@ -78,6 +78,20 @@ py -3 .agents/skills/translation-batch-ops/scripts/check_batch_coverage.py \
 
 **`VERIFIED` 不等于已写回**：`VERIFIED` 的定义只是「translation.json 已填充」，它会盖住「三查 PASS 但 writeback 从没跑」的批次——按「已验收」口径统计时它们看起来像已完成。因此**必须带 `--xml` 跑**：工具会把每批 idx 与 canonical 逐行对照，报出「译文已填、但 canonical 仍与 Source 相同」的批与行数（KEEP 行不计）。声明批次收敛前，未写回行数必须为 0。
 
+**`VERIFIED` 的两条通路（纯 KEEP 批的已消费性）**：`VERIFIED` 的定义是“consume 已落盘”，有两条互不替代的通路——① `translation.json` 里 ≥1 条 `TRANSLATED`（旧口径，行为不变）；② **消费痕迹**：`translation.json` 每条都有非空译文且 `status ∈ {TRANSLATED, KEEP}`，无 PENDING 残留。第二条是为**纯 KEEP 批**准备的：它的 Dest 变更恒为 0、`Dest == Source` 本来就成立，canonical 里没有任何痕迹，而它又永远拿不到通路 ①，于是状态机停在 TRANSLATED、快照每轮报同一条假滞留（事故锚定：TheKalpicAnomaly_GLENMORIL 2026-10-02 `NI-TES4-001`，consume 与 round_pipeline 早已 `PIPELINE PASS` / `0 Dest change(s)`，快照仍报“滞留 1 批（253min→270min）”）。
+
+判据为什么落在 `translation.json` 上：`fill_translations` 只由 consume / round_pipeline / close_round 触发，能落满就证明交付确实被消费过。它也骗不过同源预填——`inherit_prefill` 只写 `map.json`，未派单批的 `translation.json` 始终是 PENDING 骨架。
+
+`map.filled.json`（consume 第 2 步的归一化产物）只作**旁证，单独不成立**：
+
+- 它写在五步链的第 2 步、fill 之前就落盘，链在中途挂掉时它照样存在；
+- **空对象 `{}` 不算已消费**——它只说明归一化后没有任何条目可 fill，fill 因此什么都没落盘；
+- 因此“文件存在”不能当充分条件，否则会把“consume 崩在步 2/3”与“子代理交了空 map”两类真洞永久藏成已验收，丢洞比假告警更严重。
+
+`status=REVIEW` 刻意**不**计入已消费：它是“值已定稿、状态待转正”的中间态（§4 的口径交叉校验会因它报不一致），转正前不算。
+
+**残余风险（已知、不掩盖）**：`rebuild_context` 重生成骨架时只保留 `status=TRANSLATED` 的译文，KEEP 条目会被清空。因此对一个**已消费过的纯 KEEP 批**跑过 `rebuild_context` 后，该批会退回 TRANSLATED 并重新触发滞留告警——这是有意的：译文确实不在 `translation.json` 里了，重跑 `consume_batch` 即可恢复。判据不会把“已消费但被重置/回滚”的批次误判成 VERIFIED。
+
 ## 3. 计划覆盖缺口扫描（`scan_plan_gaps.py`）
 
 报出「未译（Source==Dest 且含非空白内容）且不在任何批次计划内」的行。它是与前两个工具互补的第三个盲区：`check_batch_coverage` 只看计划内批次，批次计划只认领「生成时收集到的行」，两条流水线（INFO 计划只收 linked NAM1、非 INFO 计划排除 INFO 前缀）之间可能存在从未被任何计划收走的行（玩家对话与非链接 INFO 行是常见形态）。这类行不被常规覆盖率工具看见，不专门扫描就会一直停留在未译集合里。
@@ -131,6 +145,8 @@ py -3 .agents/skills/translation-batch-ops/scripts/progress_snapshot.py \
 | `批次备料警告: 部分备料` | PARTIAL（三件套不齐） | 备料不完整，不可派单 |
 | `!! 滞留` | TRANSLATED 超 180 分钟未 consume | 产出侧：交付可能丢失 |
 | `!! 已验收但未写回` | VERIFIED 但 canonical 仍 == Source | 产出侧：写回遗漏 |
+
+**滞留告警的边缘情况**：`TRANSLATED` 的判定依赖 consume 落盘痕迹（通路与依据见 §2“`VERIFIED` 的两条通路”），所以已消费的**纯 KEEP 批**不再进滞留列表——它的 Dest 变更恒为 0，在 canonical 里本就无痕。真正没被消费的纯 KEEP 批（translation.json 仍是 PENDING 骨架）依旧按滞留报出；`consume_batch` 崩在 fill 之前、或 `map.filled.json` 是空 `{}` 的批次同样不算已消费。另一侧的反向风险：对已消费的纯 KEEP 批跑 `rebuild_context` 会清掉 KEEP 条目（它只保留 TRANSLATED），该批退回 TRANSLATED 并重新告警——译文确实丢了，重跑 `consume_batch` 恢复即可，这是有意的保守侧倒。
 
 主状态行的「已备料 N」**后面直接跟成员 ID**（最多 12 个，溢出显示 `+N`），按「躺了多久」降序——已备料待派就是下一轮的开工清单，只给计数会让人无从判断下一批派什么。事故锚定：TheKalpicAnomaly 2026-10-02，INFO-368/369 备料后整轮无人派单、canonical 里 93 行始终未译，摘要只打印「已备料 6」这个计数，直到审查器逐行读出未译才暴露；补上成员清单与本告警后首次实跑即额外抓出躺了 37 小时的 `NI-QUST-001` / `NI-TES4-001`。**开工顺序取本告警列表里最久未派的批次，不是按批号顺推。**
 
@@ -379,9 +395,16 @@ py -3 .../make_patch_from_maps.py --canonical <translated.xml> --out <patch.json
 
 ```text
 cd .agents/skills/translation-batch-ops/scripts
-py -3 -m unittest test_batch_coverage test_scan_plan_gaps test_batch_sync \
-  test_close_round test_prune_close_patch test_progress_snapshot_scope
+py -3 -m unittest test_batch_coverage test_batch_coverage_consumed test_scan_plan_gaps \
+  test_batch_sync test_close_round test_prune_close_patch test_progress_snapshot_scope
 ```
+
+`test_batch_coverage_consumed.py`（22 项）锁定 consume 痕迹判定（§2“`VERIFIED` 的两条通路”）：
+已消费纯 KEEP 批判 VERIFIED 且不进滞留列表、告警行本身不渲染、KEEP 行不进未写回计数；
+反向护栏——真没被消费的纯 KEEP 批仍报 TRANSLATED/滞留、预填（inherit_prefill 只写 map.json）不算消费、
+consume 崩在 fill 前不算、`map.filled.json` 空 `{}` 与损坏都不成立、REVIEW 不算、PENDING 残留不算、
+translation.json 缺失/损坏/空列表都不算；既有判定不变（TRANSLATED→VERIFIED、KEEP+TRANSLATED 混合批
+`filled` 语义、三件套齐 PREPPED / 缺一 PARTIAL、MISSING），另含无 `map.filled.json` 的早期消费批。
 
 测试覆盖：覆盖率分类的未写回检测（含 KEEP 行不计）、缺口扫描的未认领行检测（含空白行排除）、补遗批次装批（同源不拆）、gaps 计划幂等与保护、活跃批次目录拒写、机械匹配孤儿的检测/清单落盘/核验清单两种形态扣除/--fail-on-orphans 卡点；
 batch_sync 的双文件同步/已就位/缺失/mismatch 仍同步/dry-run、CLI check 方向判定、

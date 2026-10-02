@@ -24,6 +24,7 @@ READOUT = HERE / "longtext_readout.py"
 NORMALIZE = HERE / "normalize_charset.py"
 VIEW = HERE / "make_review_view.py"
 FIXGEN = HERE / "make_fixes_from_report.py"
+ARTIFACT = HERE / "artifact_scan.py"
 
 
 def build_xml(rows) -> str:
@@ -85,11 +86,36 @@ def main() -> int:
             "batches": [{"id": "B1", "idx": [0, 1]}],
         }, ensure_ascii=False, indent=2), encoding="utf-8")
 
+        # ---------- artifact_scan：裁决说明规则的收窄回归 ----------
+        # 真实事故（TheKalpicAnomaly_GLENMORIL idx 33499）：「权力会在拒绝的四周显出原形。」
+        # 被裸词 `原形` 判成 HIT 并硬拦写回，而「显出原形」是完全正常的汉语。
+        art_xml = tmp / "art_english_chinese.xml"
+        art_xml.write_text(build_xml([
+            {"rec": "INFO:NAM1", "source": "Power reveals itself around refusal.",
+             "edid": "[R]", "dest": "权力会在拒绝的四周显出原形。"},
+            {"rec": "INFO:NAM1", "source": "The shape returns to its original form.",
+             "edid": "[S]", "dest": "那形状恢复原形。"},
+        ]), encoding="utf-8")
+        res = run(ARTIFACT, "--xml", str(art_xml))
+        if res.returncode != 0 or "裁决说明" in res.stdout:
+            failures.append(
+                "artifact_scan false positive on legitimate 原形 usage: "
+                f"rc={res.returncode} out={res.stdout[:300]}")
+        # 收窄后仍须能抓到真正的注记形态
+        art_bad = tmp / "art_bad_english_chinese.xml"
+        art_bad.write_text(build_xml([
+            {"rec": "INFO:NAM1", "source": "X", "edid": "[T]", "dest": "原形：改成 X"},
+        ]), encoding="utf-8")
+        res = run(ARTIFACT, "--xml", str(art_bad))
+        if res.returncode == 0 or "裁决说明" not in res.stdout:
+            failures.append(
+                "artifact_scan lost real 原形 leak detection: "
+                f"rc={res.returncode} out={res.stdout[:300]}")
+
         # ---------- read_batch ----------
         res = run(READ_BATCH, "--stem", "T", "--batch", "B1", "--work-root", str(work))
         if res.returncode != 0 or "赛伊克品脱酒馆" not in res.stdout or "斯罗尔森林" not in res.stdout:
             failures.append(f"read_batch basic failed: rc={res.returncode} out={res.stdout[:200]}")
-
         res = run(READ_BATCH, "--stem", "T", "--batch", "B1", "--work-root", str(work),
                   "--status", "WAITING")
         if res.returncode != 0 or "0 条" not in res.stdout:
@@ -830,6 +856,49 @@ def main() -> int:
         if res.returncode != 0:
             failures.append(
                 f"allow_collapse 应放行: rc={res.returncode} err={res.stderr[:200]}")
+
+        # 判据型 note：点名了本行的必须全文带出（不按 180 截断）
+        sys.path.insert(0, str(HERE))
+        try:
+            import term_digest as _td
+        finally:
+            sys.path.pop(0)
+
+        long_note = ("两义分域（锚级普查 4 行后定形，取代仅凭反证悬置的旧注）："
+                     "①本作那条食人仪式，底座实证 共食い => 自噬：共食いの儀礼 => 自噬仪式、"
+                     "共食いの丘 => 自噬之丘，＝自噬，全库 1 行（11969 The communion choice "
+                     "is near enough to touch，INFO-052 定形的那处）。"
+                     "②共享/交融义，与 possession/unity 对立而用，保留他者之真实＝共融，"
+                     "全库 2 行（13985 Its unity is possession, not communion、"
+                     "30795 Communion preserves the reality of the other）。"
+                     "③34842 未译（The communion with Ja'bal is where the question becomes "
+                     "personal），按②取「共融」——与神明的交融不是自我吞食。"
+                     "门禁警示：本条是契约 REQUIRED，只登记「自噬」一个 target 时，30795 "
+                     "写回当场报 TERM001: required target 未出现，而「共融」正确。"
+                     "修法是补 additional_accepted 登记②的中形，不是改译文。")
+        assert len(long_note) > _td._JUDGE_MAX * 2, "合成 note 必须远超截断线"
+        hit = {"english": "communion", "zh": "自噬", "status": "PROVISIONAL",
+               "note": long_note}
+
+        cited = _td._judge_note(hit, 34842)
+        if "③34842" not in cited or "共融" not in cited:
+            failures.append(
+                f"点名本行的判据被截断: 34842 预裁不可见 -> {cited[:160]}")
+        if cited.endswith("…"):
+            failures.append(f"点名本行的判据仍带截断标记: {cited[-40:]!r}")
+
+        # 未被点名的行仍按 180 截断（防 digest 膨胀回 context 复刻）
+        other = _td._judge_note(hit, 40000)
+        if len(other) > _td._JUDGE_MAX + 12:
+            failures.append(
+                f"未点名行未按 _JUDGE_MAX 截断: len={len(other)}")
+        if "③34842" in other:
+            failures.append("未点名行不应看到别行的预裁")
+
+        # 数字子串不得误判为点名：348421 / 134842 都不是本行
+        for bogus in (348421, 134842, 3484):
+            if "③34842" in _td._judge_note(hit, bogus):
+                failures.append(f"idx={bogus} 被误判为点名本行")
 
         if failures:
             for failure in failures:

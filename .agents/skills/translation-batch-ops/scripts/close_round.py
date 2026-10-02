@@ -60,7 +60,12 @@ def load_fixes(paths: list[str], batches: list[str]) -> dict[str, dict[str, dict
     merged: dict[str, dict[str, dict]] = {}
     for p in paths:
         data = json.loads(Path(p).read_text(encoding="utf-8"))
-        if any(k.isdigit() for k in data):  # 裸格式 {idx: fix}
+        if not isinstance(data, dict):
+            raise SystemExit(
+                f"fixes 顶层格式错误: {p} 是 {type(data).__name__}，"
+                f"应为 {{batch: {{idx: fix}}}} 或裸格式 {{idx: fix}}"
+            )
+        if any(str(k).isdigit() for k in data):  # 裸格式 {idx: fix}
             if len(batches) != 1:
                 raise SystemExit("裸格式 fixes 只能配一个 --batch")
             merged.setdefault(batches[0], {}).update(data)

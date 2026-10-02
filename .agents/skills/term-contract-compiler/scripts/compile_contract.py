@@ -372,6 +372,16 @@ def build_terms_json(raw_terms, conf=None, id_prefix='', source_tag='', source_h
         }
         if risk:
             definition['risk_flags'] = risk
+        # 大小写敏感（v0.4.2）：源文大小写是语义的一部分时，词条显式登记。
+        # 默认 False（大小写不敏感），保持既有行为不变；门禁侧由
+        # term_match.find_source_hit_spans 消费。详见 contract-schema.md。
+        if item.get('case_sensitive') is True or ov.get('case_sensitive') is True:
+            definition['case_sensitive'] = True
+        # 子串匹配逃生口（v0.4.3）：默认按英文形状自动判定——英文以句末标点
+        # 结尾视为整句词条，只在源文整句就是它时命中。缩写型词条（U.S. / Jr.）
+        # 显式登记 substring_match=true 退回宽松子串匹配。
+        if item.get('substring_match') is True or ov.get('substring_match') is True:
+            definition['substring_match'] = True
         terms[definition['term_id']] = definition
     return terms, keep
 
@@ -460,6 +470,13 @@ def build_terms(entries, conf_overrides=None, source_tag='', source_hash=''):
         }
         if risk:
             definition['risk_flags'] = risk
+        # 大小写敏感（v0.4.2）：源文大小写是语义的一部分时，词条显式登记。
+        # 默认 False（大小写不敏感），保持既有行为不变。
+        if e.get('case_sensitive') is True or ov.get('case_sensitive') is True:
+            definition['case_sensitive'] = True
+        # 子串匹配逃生口（v0.4.3）：见 build_terms 路径的同名注释。
+        if e.get('substring_match') is True or ov.get('substring_match') is True:
+            definition['substring_match'] = True
         terms[tid] = definition
     return terms, keep_sources
 

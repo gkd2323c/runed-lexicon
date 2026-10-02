@@ -314,6 +314,9 @@ def run_gate(results: list, contract: dict, keep_list: list, xml_text=None,
 
     term_index = contract.get('terms') or {}
     auto_strict = set(auto_strict_terms or [])
+    # auto-bind candidate list is contract-constant: build it once here instead of
+    # re-filtering term_index for every unit (R21 hot path).
+    auto_candidates = _auto_candidate_list(term_index) if auto_bind else None
     # project-wide ban list + KEEP list (compiled into the contract by the
     # term-contract-compiler from the root global-forbidden-words.json).
     global_bans = resolve_global_bans(contract)
@@ -345,7 +348,7 @@ def run_gate(results: list, contract: dict, keep_list: list, xml_text=None,
             # no explicit bindings and dest was actually translated: auto-bind no-risk
             # REQUIRED terms found in source. Units where dest == source are KEEP/
             # untranslated technical strings and must not be auto-checked.
-            resolved = _resolve_auto(term_index, src)
+            resolved = _resolve_auto(term_index, src, auto_candidates)
             unit_auto = bool(resolved)
         chk = check_unit(src, dst, resolved, term_index)
         if unit_auto:
@@ -463,6 +466,10 @@ def standalone_forbidden_issues(src: str, dst: str, term_index: dict,
     as the TERM004 exemption path — plural/punctuation tolerant) keeps
     lookalike substrings on unrelated lines from firing; cross-term target
     coverage exemption mirrors check_unit's TERM002 path.
+
+    v0.4.4：`case_sensitive` 必须透传给锚点闸门。本函数**不经过** _resolve_auto，
+    所以是 case_sensitive 的第二条独立执行路径——漏传就会让该字段在本路径上
+    完全失效（真实事故 idx 9039 the Serpent / 巨蟒，详见 _anchor_present 文档）。
     """
     out = []
     if not term_index:
@@ -472,7 +479,8 @@ def standalone_forbidden_issues(src: str, dst: str, term_index: dict,
             continue
         if not (term.get('forbidden') or []):
             continue
-        if not _anchor_present(src, term.get('source') or ''):
+        if not _anchor_present(src, term.get('source') or '',
+                               bool(term.get('case_sensitive'))):
             continue
         for f in find_forbidden_hits(dst, term):
             if _cross_term_target_covered(src, dst, f, term_index, tid):
@@ -498,20 +506,51 @@ def _resolve(term_index, bindings):
     return out
 
 
-def _resolve_auto(term_index, src):
+def _auto_candidate_list(term_index):
+    """Auto-bind candidate list, built once per gate run: [(tid, term)] in term_index order."""
+    from term_match import auto_bind_candidates
+    return [(tid, term) for tid, term in term_index.items()
+            if isinstance(term, dict) and auto_bind_candidates(term)]
+
+
+def _resolve_auto(term_index, src, candidates=None):
     """Auto-bind every no-risk REQUIRED term whose English form appears in source.
     Returns the resolved binding list. Actual dest conformance is checked by
     check_unit (TERM001), which the caller downgrades to WARNING in auto mode.
+
+    R21（v0.4.1）：同一行若某个更长的、契约里已登记的专名锚点整段包住了短锚的命中，
+    该次命中不算短锚的有效出现（真实事故 TheKalpicAnomaly_GLENMORIL：源文
+    "Is the Eyes of Hinnom here with me now?" 只含全形专名，裸形词条 the Eyes
+    仍被整词边界命中，于是 6 行误报 TERM001 required target 未出现: '眼线'——
+    译文「欣嫩之眼」完全正确）。豁免按**区间包含**判定而非整行豁免：同一行里
+    并存的裸形命中不在任何长锚区间内，仍会绑定、仍会触发（防止漏报）。
     """
-    from term_match import auto_bind_candidates, find_source_hits, ResolvedTerm
+    from term_match import ResolvedTerm, find_source_hit_spans, is_shadowed, maximal_spans
+    if candidates is None:
+        candidates = _auto_candidate_list(term_index)
+    # 一次遍历收集所有候选锚点在本行的命中区间
+    hits = []          # [(tid, term, span)]
+    all_spans = []     # 全部命中区间（用于构造覆盖方）
+    for tid, term in candidates:
+        for span in find_source_hit_spans(src, term.get('source') or '',
+                                          bool(term.get('case_sensitive'))):
+            hits.append((tid, term, span))
+            all_spans.append(span)
+    if not hits:
+        return []
+    covering = maximal_spans(all_spans)
+    # 保持原顺序（term_index 顺序），与旧实现逐项 append 的行为一致
+    order = {tid: i for i, (tid, _) in enumerate(candidates)}
+    kept = [(tid, term) for tid, term, span in hits
+            if not is_shadowed(span, covering)]
     resolved = []
-    for tid, term in term_index.items():
-        if not auto_bind_candidates(term):
+    seen = set()
+    for tid, term in kept:
+        if tid in seen:
             continue
-        hits = find_source_hits(src, term)
-        if not hits:
-            continue
+        seen.add(tid)
         resolved.append(ResolvedTerm(tid, term, True, term.get('target'), ''))
+    resolved.sort(key=lambda rt: order.get(rt.term_id, 0))
     return resolved
 
 

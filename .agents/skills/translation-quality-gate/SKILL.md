@@ -3,7 +3,7 @@ name: translation-quality-gate
 description: Deterministic, read-only pre-writeback quality gate for Skyrim mod translation batches. Verifies that completed translation-result JSON satisfies a compiled Translation Contract (term bindings, KEEP list, protected placeholders, simplified-Chinese charset) before the xTranslator XML writer runs, plus a TypeSafe semantic gate (semantic_gate.py) for context-sensitive term applicability, semantic mistranslation, and register judgments the mechanical layer cannot make. Use whenever a completed translation batch must be validated before XML writeback, when terminology regressions like Argonian/Blades/sweetroll need mechanical enforcement, or when a contract/regression change must be checked against the incident-derived synthetic regression corpus. Gate only checks declared unit bindings and never re-derives entity identity, and it never modifies translations.
 compatibility: Python 3.10+; standard library only. CHAR001 simplified-Chinese detection uses a vendored zh-cn conversion table (scripts/zh_cn_conv.json) — no third-party dependency, deterministic across environments. The tracked Translation Contract interface is documented in references/contract-schema.md.
 metadata:
-  version: "0.3.0"
+  version: "0.4.4"
 ---
 
 > 性能基线（见 `skyrim-tool-dev-rules` §2）：
@@ -16,8 +16,9 @@ metadata:
 > 已内建的三层预筛（改动匹配逻辑时不得回退）：
 >
 > 1. 正则缓存：`_compiled_literal` / `_compiled_word` / `_strip_html_tags_cached`（原实现对每个 unit × 每个 term 重新 `re.compile`，实测 2200 万次）
-> 2. 字面预筛：`find_source_hits` / `_iter_word_matches` 在进正则前先用 `in` 检查锚点
+> 2. 字面预筛：`find_source_hit_spans` / `_iter_word_matches` 在进正则前先用 `in` 检查锚点
 > 3. ban 层预筛：`global_ban_issue` 先查 forbidden 是否出现在 dest，再调 `find_global_ban_hits`
+> 4. 候选集复用：`run_gate` 把 auto-bind 候选表算一次传进 `_resolve_auto`（R21），不在每行重扫 `term_index`；实测 1411 候选 / 0.52ms 每行，略快于修复前的 0.64ms
 
 # Translation Quality Gate
 
@@ -134,15 +135,138 @@ Anchor gating keeps lookalike substrings on unrelated lines from firing
 The `selftest_corpus.py` gate path now calls the real `standalone_forbidden_issues`
 from `quality_gate` instead of replicating it, so gate and selftest cannot drift.
 
+### 短锚被长专名覆盖时的豁免（R21, v0.4.1）
+
+auto-bind 的整词边界判断有个结构性盲区：**短词条锚点会命中以它为前缀的更长专名**。
+
+事故（TheKalpicAnomaly_GLENMORIL，已复现）：契约里 `the Eyes`（裸形，译“眼线”，指贾'泽尔的
+情报网）与 `the Eyes of Hinnom`（实体专名，译“欣嫩之眼”）是两条严格分立的词条。源文
+`Is the Eyes of Hinnom here with me now?` 只含全形专名，译文“欣嫩之眼”完全正确，但
+`the Eyes` 落在 `the Eyes of Hinnom` 内部、被整词边界判为命中，于是报
+`TERM001 WARN: required target 未出现: '眼线'`——纯假阳性，6 行
+（2869 / 2870 / 13102 / 14343 / 29180 / 31831）。
+
+规则：**短锚的某次命中若完整落在某个更长的、契约里已登记的专名锚点区间内，该次命中不算
+短锚的有效出现**。长锚照常按自己的规则绑定与检查（不放过长锚的缺失）。
+
+| 环节 | 做法 |
+| --- | --- |
+| 长锚从哪来 | **检查期**从契约 `terms[*].source` 推导（`_resolve_auto` 收集本行所有候选锚点的命中区间）。不硬编码专名列表，也不需要改编译期或重编译契约——已有 `.compiled.json` 直接生效 |
+| 豁免判定 | 区间**完整包含**（`term_match.maximal_spans` / `is_shadowed`）：`be-bs > e-s` 且 `bs<=s and e<=be`。相邻、部分重叠、同区间都不豁免 |
+| 只作用于 auto-bind | `_resolve_auto` 内部完成。`global_bans`（`_iter_word_matches` / `find_global_ban_hits`）与 `cross_target_covered` 走各自的锚点逻辑，**行为不变**；R19 的 `standalone_forbidden_issues` 也不变 |
+| 不作用于显式绑定 | `unit_bindings` 路径（`_resolve`）不经过本规则：显式 binding 是分析 Agent 的语义声明，门禁不二次解释 |
+
+**防漏报（关键）**：按**区间**豁免而非按整行豁免。同一句里裸形与全形并存时，裸形那次不在
+任何长锚区间内，仍会绑定、仍会触发 TERM001。同一行两次裸形锚点时，被长专名吞掉的那次豁免、
+独立的那次照常。回归用例见 `scripts/test_anchor_shadow.py`
+（`test_bare_short_anchor_alongside_long_name_still_triggers` /
+`test_two_occurrences_one_shadowed_one_not`）。
+
+**已知漏报边界（不粉饰）**：若契约把一个普通名词短语也登记成更长锚点，而该长锚其实是
+长词条的一部分而非独立专名，则长锚区间内的短锚命中会一并豁免。代价是该行不再要求短锚的
+target 出现——但长锚自身的 required target 仍会检查，所以不会出现整条无人管的情况。
+反之，若短锚在长锚之外另有独立出现则不受影响。`FORBIDDEN_ONLY` / 带 risk_flags 的词条
+从不进 auto-bind 候选集，因此不会成为覆盖方。
+
 ### Auto-bind substring guard (R6 fix, v0.1.3)
 
-`find_source_hits()` uses word-boundary detection and HTML-tag stripping to prevent
-substring false positives reported by R6 (dg04bjornfollower.esp rest audit):
+`find_source_hit_spans()` uses word-boundary detection and HTML-tag stripping to prevent
+substring false positives reported by R6 (dg04bjornfollower.esp rest audit). It returns
+`(start, end)` spans so R21 can test containment against longer anchors;
+`find_source_hits()` is the offsets-only wrapper (`term_match.py`, also used directly by
+callers that don't need the R21 shadowing).
 
 - **"Rathis" won't match "Athis"** — the char before "Athis" is a word char (`a`)
 - **"Imperial" won't match "Ria"** — the char before "Ria" is a word char (`I`); same for "Ritual" containing "Ria"
 - **HTML tags are stripped first** — `<font face="Adielle">` won't match "Adielle"` because
   the attribute value is inside a tag and gets removed before matching
+
+### 整句词条只认整句（v0.4.3）
+
+锚点匹配是**字面量匹配**，所以一个**整句词条**（英文以 `.` / `!` / `?` 结尾）会命中更长句子
+尾部的同形子串。匹配默认大小写不敏感，`He did.` 于是逐字等于 `...what he did.` 的尾部。
+
+**真实事故（TheKalpicAnomaly_GLENMORIL INFO-480 idx 33438）**：
+`It does not rewrite what he did.` → 「它改写不了他做过的事。」译文**完全正确**，却被
+`He did.` 词条报 `TERM001: required target 未出现: '他照做了。'`。
+
+**规则**：`is_standalone_sentence(source)` 为真时，命中必须覆盖源文**去掉空白与成对引号后的
+全部内容**——即「源文整句就是这条词条」才命中。自动判定，不需要逐词条登记。
+
+**为什么自动判定是安全的**：对 MOD 词表普查，英文以句末标点结尾的只有 4 条
+（`He did.` / `There it is.` / `Timing matters.` / `Unknown.`），**全是真整句，
+没有 `U.S.` / `Jr.` 这类缩写**。
+
+**逃生口**：缩写型词条写 `substring_match: true` 退回宽松子串匹配
+（`find_source_hits` 传 `standalone=False`）。缺省不传，走自动判定。
+
+**与 `case_sensitive` 的关系**：两条规则正交、都进 `find_source_hit_spans` 的关键字参数，
+`case_sensitive` 管匹配时的比较方式、`standalone` 管命中范围。**注意别把 `standalone`
+的默认值写成布尔值**——写成 `term.get('x') is None` 会给**每个**词条都打开「必须覆盖整句」，
+全库普通词条（`command`、`master` 嵌在长句里）会集体失配（`test_case_sensitive` 会红）。
+正确写法是「缺省传 `None`，只有逃生口显式传 `False`」。
+
+**与 §5.1 第七类的区别**：`scene` / `identity` 那类是**词表漏登义位**（改词表）；
+本类是**匹配精度缺陷**（改工具）。`He did.` 的 4 行整句定形本身完全正确，不该降
+`FORBIDDEN_ONLY`——那会丢掉整句锁。**判别信号：若译文正确且源文并非整句，就是匹配问题。**
+
+15 项测试见 `scripts/test_standalone_sentence.py`（含与 `case_sensitive` 的交互护栏）。
+
+### 大小写敏感词条（`case_sensitive`, v0.4.2）
+
+锚点匹配**默认大小写不敏感**（`_compiled_literal` 用 `re.IGNORECASE`）。当**源文大小写本身
+承载语义**时，逐词条开 `case_sensitive: true`，锚点只按登记的大小写命中。
+
+**为什么需要这个字段**：契约里原本**没有任何机制能表达大小写敏感**，词条 note 写了
+「本条只走大写 C」也拦不住小写触发。两个真实事故（TheKalpicAnomaly_GLENMORIL）：
+
+| 事故 | 词条 | 源文 | 症状 |
+| --- | --- | --- | --- |
+| 第一例（26848） | `the Eyes`→眼线 | 小写 `the eye` | 普通义误触发专名 REQUIRED |
+| 第二例（31517） | `Command`→掌权者 | `a chain of command` | 门禁报 `TERM001: required target 未出现: '掌权者'`，而译文「指挥链」**完全正确** |
+
+第二例的小写 `command` 源行中形分布是 命令 63 : 指挥 34 : 指挥链 5 : 发号施令 2 : 掌权者 1，
+主形「掌权者」只对应大写 C 的 3 行。
+
+**两条绕过方案都不采用**：
+- 往 `match.accepted`（`additional_accepted`）塞「指挥链/指挥/命令」→ 丢掉大写 C 的主形约束；
+- 降 `FORBIDDEN_ONLY` → 把大写 C 的约束一并丢掉。
+
+只有真匹配开关能同时保住两者。**纯增量**：没有该字段的词条行为与修复前逐字节一致；
+`_compiled_literal` 的缓存键含该标志，两种模式互不污染；`auto_bind_candidates` 的候选资格
+判定不看该标志。字段契约与详细取舍见 `references/contract-schema.md`。
+
+#### ⚠ `case_sensitive` 有两条执行路径，漏一条 = 字段完全失效（v0.4.4）
+
+`case_sensitive` 不是只在 `_resolve_auto` 里生效。判定「这条词条适不适用于本行」的闸门
+一共有**两处**，两处都必须透传该字段：
+
+| 路径 | 位置 | 用途 |
+| --- | --- | --- |
+| 主路径 | `_resolve_auto` → `find_source_hit_spans` | 词条绑定（TERM001 required / TERM002 bound） |
+| **独立路径** | `standalone_forbidden_issues` → `_anchor_present` | **未绑定词条的 forbidden 强制**（TERM002 unbound） |
+
+`_anchor_present` 的匹配器 `_iter_word_matches` 硬编码 `re.IGNORECASE`——那是**豁免侧**
+的有意宽松（跨条 target 覆盖、派生词、连字符变体）。独立路径原本不传 `case_sensitive`，
+于是该字段在第二条路径上**静默失效**。
+
+**真实事故（TheKalpicAnomaly_GLENMORIL idx 9039，`the Serpent`）**：词条已开
+`case_sensitive: true`，全库普查证明大小写与中文形一对一——大写 `Serpent` 12 行 → 巨蛇，
+小写 `serpent` 仅 9038/9039 两行 → 巨蟒（蜕皮铁皮喻）。修词表、加 note、跑 lint 全过，
+**全库门禁照报 `TERM002 the-serpent: forbidden 变体出现: '巨蟒'`**。译文是对的，是工具在说谎。
+
+> **判据**：开 `case_sensitive` 后**必须重跑全库门禁**确认消解。只跑 lint 或逐批门禁
+> 看不到它——那只查当批，而这条 9039 属于早已写回的历史批。词表治理的「已修」结论
+> 在全库门禁 PASS 之前不成立。
+>
+> **另一个坑**：同一批两行小写只报一行是正常的。9038 源文是 `the whole serpent`，
+> 压根不含 `the Serpent` 锚点。别把「只报一条」误当成漏检。
+
+`_cross_term_target_covered` 的**覆盖方**锚点同样按覆盖方词条自己的标志判定，
+避免「不区分大小写地豁免」——只认大写的词条被小写源文豁免掉。
+
+`test_case_sensitive.py` 共 **29 项**（原 20 + 新增 `TestStandaloneForbiddenIssuesHonorsFlag`
+6 项复现 9039 事故、`TestCrossTermCoverageHonorsFlag` 3 项），含新旧行为对照护栏。
 
 This prevents auto-bind from flagging units where the English term only appears as a
 substring of a longer word or inside markup attributes. These fixes are covered by

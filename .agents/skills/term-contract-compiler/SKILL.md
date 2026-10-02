@@ -3,7 +3,7 @@ name: term-contract-compiler
 description: Deterministically compile Markdown terminology tables (MOD DICTIONARY.md, optionally GLOSSARY.md) into the machine-readable `terms` section of a Translation Contract consumed by translation-quality-gate, with a mechanical terminology lint (quote pairing / direction slips / invisible chars / width mixing / traditional chars) enforced before every compile. Use whenever a DICTIONARY.md / GLOSSARY.md / terms.json decision must become executable term definitions with forbidden variants and risk flags, when building the gate input for a MOD, when a terminology decision changed and the compiled contract must be regenerated, or when terminology data needs a mechanical character-level health check (lint_terms.py). The compiler never infers unit bindings (those are semantic, produced by the analysis Agent) and never auto-binds ambiguous terms; terms with alias/knowledge-boundary risk default to FORBIDDEN_ONLY. 触发词：词表 lint、引号配对、禁词库检查、编译前检查。
 compatibility: Python 3.10+. Standard library only. Consumes Markdown tables in the project's DICTIONARY.md format (English | 中文 | 状态 | 来源 | 备注).
 metadata:
-  version: "0.3.0"
+  version: "0.3.2"
 ---
 
 # Term-Contract Compiler
@@ -47,14 +47,16 @@ python .agents/skills/term-contract-compiler/scripts/compile_contract.py \
 {
   "id_prefix": "sb1.",
   "terms": [
-    { "english": "Neethmarin", "zh": "尼思马林", "status": "PROVISIONAL", "note": "...", "enforcement": "REQUIRED", "risk_flags": ["alias"], "forbidden": ["..."] }
+    { "english": "Neethmarin", "zh": "尼思马林", "status": "PROVISIONAL", "note": "...", "enforcement": "REQUIRED", "risk_flags": ["alias"], "forbidden": ["..."] },
+    { "english": "Command", "zh": "掌权者", "status": "CONFIRMED", "case_sensitive": true, "note": "note 声明本条只走大写 C 的义位" }
   ]
 }
 ```
 
 Rules:
 - `enforcement` / `risk_flags` declared in JSON are authoritative and are **not** overridden by the ambiguous-word heuristic (unlike Markdown, where `Companions` / `Dragonborn` etc. are auto-downgraded to `FORBIDDEN_ONLY` unless a conf file forces them). This lets a term like `the Guild` (REQUIRED + alias-risk in this MOD's context) stay REQUIRED when it is genuinely unambiguous in context.
-- Missing optional fields fall back to documented defaults: status → PROVISIONAL, enforcement → REQUIRED (FORBIDDEN_ONLY for REVIEW), risk_flags → none, forbidden → [], additional_accepted → [].
+- Missing optional fields fall back to documented defaults: status → PROVISIONAL, enforcement → REQUIRED (FORBIDDEN_ONLY for REVIEW), risk_flags → none, forbidden → [], additional_accepted → [], case_sensitive → absent (false).
+- `case_sensitive: true` is passed through verbatim to the compiled definition and is consumed by the gate's anchor matcher. Set it only when **source casing is itself semantic** and case-insensitive matching produces false `TERM001` reports. Both the JSON path (`build_terms_json`) and the Markdown path (`build_terms`) support it; only the literal `true` enables it, so `false` / `0` / `null` / `"false"` all stay off. See `translation-quality-gate/references/contract-schema.md` for the field contract and the two real incidents behind it.
 - `status: KEEP` or `enforcement: KEEP` routes the term to the keep list (not emitted as a term).
 - The validator rejects (exit 1) missing `english` / `zh`, an `english` that is a bare status word, and unknown `status` / `enforcement` values — it never silently emits a garbage term.
 

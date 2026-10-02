@@ -3,7 +3,7 @@ name: translation-review-tools
 description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
-  version: "0.8.0"
+  version: "0.10.1"
 ---
 
 # Translation Review Tools
@@ -186,7 +186,36 @@ py -3 .agents/skills/translation-review-tools/scripts/read_batch.py \
 # 只看待决条目 / 输出到文件
 py -3 .../read_batch.py --stem Artaeum --batch INFO-023 --status WAITING,KEEP
 py -3 .../read_batch.py --stem Artaeum --batch NI-NPC-001 --out _tmp/data/readout.txt
+
+### term-digest 新鲜度门（默认开启）
+
+产出读本**之前**先检查同批 `term-digest.md` 是否带 `== 读法 ==` 图例；缺图例就从
+`context.json` 自动重生成，并在 stdout 打一行 `digest: 重生成 …`。派审查实例**必须先跑
+本脚本**，就是为了拿到新鲜料——手工「记得先重生成」记一次漏一次。
+
+```text
+# 只想要读本、不想触发重生成（例如比对历史行为）
+py -3 .../read_batch.py --stem Artaeum --batch INFO-023 --no-digest-check
 ```
+
+为什么必须有这道门：2026-10-02 全库普查发现 **585 批** digest 缺图例（KalpicAnomaly 551 /
+VIGILANT 34），全部是判据型 note 机制上线前生成的。而〔判据:…〕正是为了根治整轮术语漂移
+（`machinery` / `virtue` / `cause` / `curse` / `vessel`）才加的——译者看不到判据，等于把
+分域判据藏回词表。检查按需自愈，不做全库批量重写：VIGILANT 等不在推进的批次不必为此产生
+文件churn，真要复审时那一批会自动补上。
+
+判定只看「图例在不在」，不比对正文：正文会随词表变动而变，逐字比对会让这道门退化成
+「永远陈旧」的噪声源。边缘情况：
+
+| 情况 | 行为 |
+| --- | --- |
+| digest 新鲜 | 不动文件 |
+| digest 缺图例 / 不存在，`context.json` 在 | 重生成并覆盖，打印提示行 |
+| digest 缺图例但无 `context.json` | 警告到 stderr，**不覆盖原文件**（旧料比没料强），读本照常产出 |
+| `context.json` 损坏 | 警告到 stderr（`digest WARN [failed]`），不抛异常、不阻断读本 |
+| 重生成结果仍无图例 | 判 `failed` 且不写回，避免制造下一轮「不新鲜」 |
+
+读本产出**永不**因 digest 不新鲜而失败：审查者宁可看带警告的读本，也不要拿不到读本。
 
 ## term_digest.py
 
@@ -221,6 +250,27 @@ MOD = 项目契约命中（`mod_terms_hits`）；OFF = 官方词典命中（`off
 判据只看大小写（词条去冠词后取词干，两侧都加词边界），**不猜语义**。动机是实测事故：2026-10-02 INFO-370 的译者看到「官方词条 `Familiar=使魔[NPC_:FULL]`」自然以为 `familiar shapes`（熟悉的形状）必须译成召唤法术，只能靠人工识破；同批还查出 `The Companions`（`the companions`=同行者）与 `Confidence`（`confidence`=对自身感官的笃信）两处同类误绑。**大小写是专名判别的第一信号，必须在派单材料里显式给出**，不该让每个译者实例各自踩一次。
 
 同源同批已收敛的形态：`engineering` 一律「工程」；`history` 主形「历史」，「来历」是既有的「出身」义形。
+
+### 判据型 note（主形不是无条件替换指令）
+
+MOD 命中项若其词条 `note` 带**语义判据**，会在该词条后附 `〔判据:…〕`：
+
+```text
+[30162] INFO:NAM1 | Someone wants the frame narrow here.
+    MOD: frame→框子 (CONFIRMED)〔判据:影像语境指画面框；与抽象义「框架」（全库 6 处）分域。…〕
+```
+
+摘要**开头**固定带一段 `== 读法 ==` 图例，明说 `en→zh` 只是主形记录、不是无条件替换指令——译者不必回查本脚本源码才知道标记含义。
+
+**为什么必须带出**：2026-10-02 整轮术语漂移的根因就是 `_fmt_mod()` 只打 `en→zh (STATUS)`、把 note 整条丢掉。译者看不到分域判据，于是 `machinery→机械` 盖掉了 note 里写明的「实物装置＝机械／抽象体系＝机制」，`vessel`／`frame`／`change` 各漂 1~2 处，「神龛」「教团」这类坏形只能等门禁 FAIL 才发现。**判据不到译者眼前就是缺陷，不是可选增强。**
+
+**为什么不全量带出**：全库 1,471 词条都有 note，但绝大多数是取证过程记录（哪几行实证、什么时候回正的），与「这一行该怎么判」无关。全量带出会把摘要从紧凑派单材料撑成 context.json 的复刻，重新制造本工具要解决的「一次读不完」问题。所以只挑带判据标记的：`分域`／`两义`／`判据`／`绑定`／`勿强并`／`不作同锚合并`／`分立`／`不是无条件`／`勿混`／`不是同一`／`勿作`。判据**内联**在 MOD 行尾，不另起行，所以行数几乎不变（实测 INFO-414 193→198，增量全是 5 行图例）。
+
+**⚠ 截断的例外：note 点名了本行 `xml_index` 就不截断**（2026-10-02 加）。note 压掉换行后默认截断到 180 字并加省略号——但事故证明这个上限会切掉**针对本行的逐行预裁**：`communion` 的 note 写明「③**34842 未译**（`The communion with Ja'bal…`），按②取『共融』」，而这句正好落在 180 字之后；摘要表头明明写着「〔判据:…〕**先读它再定译文**」，实际只递了残句，译者看不到预裁就自行取「共食」并标 REVIEW。**判据：note 里出现本行 `xml_index`（独立数字）＝ 它含针对本行的裁决，截掉等于把裁决藏起来，这类 note 全文带出。** 实现是 `_judge_note(h, idx)` 收到本行 index 时把上限提到 `_JUDGE_MAX_ROW_CITED`（4000，实际等于不截）；未点名的行仍按 180 截断，防摘要膨胀回 context 复刻。数字匹配用 `(?<!\d)<idx>(?!\d)`，所以 348421 / 134842 / 3484 不会被误判成点名 34842（`test_term_digest_case.py` 与 `test_review_tools.py` 两侧都有回归覆盖）。
+
+`--no-judge-notes` 可关掉判据与图例（默认开）。**关掉等于把分域判据藏回词表**，只在需要与旧版摘要逐字节对照时用。
+
+`global_bans` 不由本工具带出：它属于编译契约（`global-forbidden-words.json`）而非词条，不在 `context.json` 的 `terminology` 块里，且由门禁以 TERM004 机械执行；把全局禁词表复制进每份摘要只会制造噪声。**本工具的职责边界是「让译者看见词条级语义判据」，不是「复述门禁」。**
 
 ### 法术名统一表附带（`--spell-registry`，默认自动探测）
 
@@ -489,6 +539,19 @@ apply_fixes 的更新/校验中止/KEEP 转换/幂等/patch 生成/跨批自动�
 整句覆盖守卫（G1 裸词拦截 / G2 同值批拦截 / 正常修正放行 / allow_collapse 显式放行）、
 term_digest 的 MOD/OFF/CTX 格式化与空命中标注、dup 阈值、`--out` 落盘、
 make_review_view 一致性守卫（一致生成 / 漂移拒绝 / --allow-drift）。
+
+`test_term_digest_case.py`（unittest 风格，CI 的 `unittest discover` 步骤自动收集）覆盖
+大小写警示与判据型 note 两条派单判据：分域 note 被带出、纯取证 note 不带出（保持摘要紧凑）、
+note 截断与换行压平、**note 点名本行 `xml_index` 时不截断（含未点名行仍截断、以及
+348421/134842/3484/48420 这类数字子串不得误判为点名）**、
+`note` 缺失时安全、`--no-judge-notes` 同时关掉判据与图例且不影响主形、
+`== 读法 ==` 图例默认存在。
+
+`test_digest_freshness.py`（unittest 风格，CI 自动收集）覆盖 `read_batch.py` 的
+term-digest 新鲜度门：图例判定（有无图例、半旧版、文件版与文本版一致）、
+新鲜 digest 不被触碰、旧 digest 与缺失 digest 的重生成并确认判据真的回到材料里、
+无 `context.json` 时只警告不覆盖、`context.json` 损坏时返回 `failed` 而非抛错，
+以及 `term_digest.build_digest()` 与 `digest()` 输出一致、注册表发现显式路径优先。
 
 `test_make_fixes_grouping.py`（unittest 风格，CI 的 `unittest discover` 步骤自动收集）
 覆盖 `make_fixes_from_report.py` 的分组通道：idx→批次归属映射、缺 `index.txt` 失败、

@@ -3,7 +3,9 @@
 """批次覆盖率核查：对批次计划与批次目录做全量状态扫描，输出缺口清单。
 
 状态定义（逐批次）：
-- VERIFIED  ：translation.json 已填充（≥1 条 TRANSLATED 译文）——已验收（或已写回）
+- VERIFIED  ：translation.json 已填充（≥1 条 TRANSLATED 译文）——已验收（或已写回）；
+               纯 KEEP 批没有 TRANSLATED 条目，改由 consume 落盘痕迹判定（见
+               consume_evidence）
 - TRANSLATED：map.json 存在但 translation.json 未填充——子代理已交卷，待主会话消费
 - PREPPED   ：context.json / translation.json 存在但无产出——已备料待翻译
 - MISSING   ：批次目录不存在或无任何工作文件——未备料
@@ -19,6 +21,47 @@ import json
 import os
 import sys
 from collections import Counter
+
+
+def consume_evidence(d, entries):
+    """批次是否已被 consume（消费链已落盘）的证据。返回 (consumed, resolved, map_filled)。
+
+    事故锚定（TheKalpicAnomaly_GLENMORIL 2026-10-02，NI-TES4-001）：该批是纯 KEEP
+    批（TES4:CNAM "DEFAULT"），Dest 变更恒为 0、`Dest == Source` 本来就成立，canonical
+    里没有任何痕迹能证明它被消费过；而 VERIFIED 旧口径只认“≥1 条 TRANSLATED”，
+    纯 KEEP 批永远拿不到，状态机于是停在 TRANSLATED，快照每轮报同一条假滞留告警
+    （实测 253→270 分钟，而 round_pipeline 早已 PIPELINE PASS、0 Dest change）。纯 KEEP
+    批的已消费性只能看 consume 自己的落盘痕迹。
+
+    - resolved  ：translation.json 中「译文非空且 status ∈ {TRANSLATED, KEEP}」的条目
+      数。**判据本身**——fill_translations 只由 consume / round_pipeline / close_round
+      触发，能落满即证明交付确实被消费过。它不会被同源预填骗过：inherit_prefill 只写
+      map.json，未派单批的 translation.json 始终是 PENDING 骨架。
+    - map_filled：`map.filled.json`（consume 第 2 步写的归一化 map）是否存在且非空。
+      **只作旁证，单独不成立**：它写在五步链的第 2 步、fill 之前就落盘，链在中途挂掉时
+      它照样存在；空对象 `{}` 更只能证明「交付是空的」，fill 因此什么都没落盘。把
+      存在性当充分条件，会把「consume 崩在步 2/3」和「子代理交了空 map」两类真洞永久
+      藏成已验收——比原缺陷更危险。
+    - status=REVIEW 刻意**不**计入 resolved：REVIEW 是「值已定稿、状态待转正」的中间态
+      （progress_snapshot §4 的口径交叉校验会因它报不一致），转正前不算已消费。
+    - entries 为空（含 translation.json 缺失/解析失败）时一律不算消费，保守侧倒。
+    """
+    resolved = 0
+    for t in entries:
+        if (t.get('translation') or '').strip() and t.get('status') in ('TRANSLATED', 'KEEP'):
+            resolved += 1
+    map_filled = False
+    mfp = os.path.join(d, 'map.filled.json')
+    if os.path.isfile(mfp):
+        try:
+            with open(mfp, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            # 空对象不算：它只说明归一化后没有任何条目可消费。
+            map_filled = isinstance(data, dict) and bool(data)
+        except (OSError, json.JSONDecodeError):
+            map_filled = False
+    consumed = bool(entries) and resolved == len(entries)
+    return consumed, resolved, map_filled
 
 
 def classify(batch, batches_dir, canonical=None):
@@ -51,6 +94,7 @@ def classify(batch, batches_dir, canonical=None):
             )
         except Exception:
             filled = -1
+    consumed, resolved, map_filled = consume_evidence(d, entries)
     # "filled" means the batch was translated and verified; it does NOT mean the
     # rows reached the canonical XML. Cross-check when a canonical map is given,
     # otherwise a batch that passed verification but was never written back looks
@@ -69,7 +113,10 @@ def classify(batch, batches_dir, canonical=None):
                 unwritten += 1
                 if len(unwritten_idx) < 12:
                     unwritten_idx.append(i)
-    if filled > 0:
+    if filled > 0 or consumed:
+        # filled>0：至少一条 TRANSLATED 译文已落 translation.json（旧口径，行为不变）。
+        # consumed 且 filled==0：纯 KEEP 批——canonical 天然无痕，只能靠 consume 落盘
+        # 痕迹判已消费（见 consume_evidence）。
         state = 'VERIFIED'
     elif has_map:
         state = 'TRANSLATED'
@@ -92,6 +139,10 @@ def classify(batch, batches_dir, canonical=None):
         'unwritten_idx': unwritten_idx,
         'map_mtime': map_mtime,
         'prep_mtime': prep_mtime,
+        # 消费痕迹（consume 落盘证据）：纯 KEEP 批据此判 VERIFIED，见 consume_evidence
+        'consumed': consumed,
+        'resolved': resolved,
+        'map_filled': map_filled,
     }
 
 

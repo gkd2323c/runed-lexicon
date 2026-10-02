@@ -52,16 +52,22 @@ def _strip_html_tags_cached(text: str) -> str:
 
 
 @lru_cache(maxsize=8192)
-def _compiled_literal(needle: str):
-    """Cache a case-insensitive literal pattern.
+def _compiled_literal(needle: str, case_sensitive: bool = False):
+    """Cache a literal pattern (case-insensitive by default).
 
     原实现对每个 unit × 每个 term 都重新 re.compile（实测 500 万次以上），
-    是 gate 最热的开销。"""
-    return re.compile(re.escape(needle), re.IGNORECASE)
+    是 gate 最热的开销。
+
+    case_sensitive=True 时精确匹配大小写（v0.4.2）：源文大小写本身承载语义
+    （大写 Command＝掌权者层级 / 小写 command＝普通动词「命令」）时由词条显式
+    登记，门禁不再让小写普通义误触发大写专名的 REQUIRED 约束。
+    标志进缓存键，两种模式互不污染。"""
+    return re.compile(re.escape(needle), 0 if case_sensitive else re.IGNORECASE)
 
 
 @lru_cache(maxsize=8192)
 def _compiled_word(needle: str):
+
     """Cache the whole-word pattern built by _iter_word_matches."""
     forms = [needle]
     if needle.endswith('f') and len(needle) > 1:
@@ -71,7 +77,117 @@ def _compiled_word(needle: str):
         re.IGNORECASE)
 
 
-def find_source_hits(source: str, term: Dict):
+_SENTENCE_TAIL = ('.', '!', '?')
+_QUOTE_PAIRS = (('"', '"'), ('“', '”'), ('‘', '’'), ('「', '」'), ('『', '』'))
+
+
+def is_standalone_sentence(eng: str) -> bool:
+    """True when the registered English *is* a whole sentence (ends in . ! ?).
+
+    整句词条（`He did.`、`There it is.`、`Unknown.`）按字面量匹配时会命中更长句子里的
+    同形子串：`It does not rewrite what he did.` 的尾部 `he did.` 逐字等于词条
+    `He did.`，而匹配默认大小写不敏感，于是这行完全正确的译文也被报
+    `TERM001: required target 未出现`。实测该词表只有 4 条英文以句末标点结尾，
+    且全是真整句、无 `U.S.` / `Jr.` 这类缩写，故按「英文以句末标点结尾 ⇒ 登记的是
+    一整句 ⇒ 只在源文整句就是它时命中」自动判定。
+
+    逃生口：词条写 `"substring_match": true` 可退回宽松子串匹配，供将来的缩写型
+    词条使用（见 find_source_hits）。
+    """
+    e = (eng or '').strip()
+    return len(e) > 1 and e.endswith(_SENTENCE_TAIL)
+
+
+def _core_span(text: str) -> tuple:
+    """(lo, hi) of `text` stripped of surrounding whitespace and quote pairs.
+
+    Iterative with a depth cap: a pathological nest of alternating quote pairs
+    must not blow the stack on what is a hot path (called per unit per term).
+    """
+    lo, hi = 0, len(text)
+    for _ in range(4):
+        while lo < hi and text[lo].isspace():
+            lo += 1
+        while hi > lo and text[hi - 1].isspace():
+            hi -= 1
+        inner = text[lo:hi]
+        for op, cl in _QUOTE_PAIRS:
+            if len(inner) > 1 and inner[0] == op and inner[-1] == cl:
+                lo, hi = lo + 1, hi - 1
+                break
+        else:
+            return lo, hi
+    return lo, hi
+
+
+def find_source_hit_spans(source: str, eng: str, case_sensitive: bool = False,
+                          standalone: bool = None) -> List[tuple]:
+    """Return (start, end) spans of `eng` in `source` as whole words.
+
+    Case-insensitive by default. `case_sensitive=True` (v0.4.2, opt-in per term)
+    requires the anchor to appear with exactly the registered casing — used when
+    source casing is itself semantic and the contract says so via
+    definition['case_sensitive'].
+
+    Same two R6 guards as before — HTML tag stripping and word-boundary check —
+    but returns spans rather than bare start offsets so callers can test whether a
+    hit is *contained* in a longer anchor. Offsets are into the HTML-stripped
+    source, i.e. the same coordinate space the span math runs in.
+    """
+    if not eng:
+        return []
+    # 快速预筛：子串检查不命中时直接返回，避免进正则
+    if case_sensitive:
+        if eng not in source:
+            return []
+    elif eng not in source and eng.lower() not in source.lower():
+        return []
+    # Strip HTML tags to avoid matching inside markup attributes
+    source_clean = _strip_html_tags(source)
+    pat = _compiled_literal(eng, case_sensitive)
+    spans = []
+    for m in pat.finditer(source_clean):
+        start, end = m.start(), m.end()
+        # Word boundary check: preceding/following char must not be a word char
+        if start > 0 and _is_word_char(source_clean[start - 1]):
+            continue
+        if end < len(source_clean) and _is_word_char(source_clean[end]):
+            continue
+        spans.append((start, end))
+    # 整句词条只认整句：命中必须覆盖源文去掉空白与成对引号后的全部内容
+    if spans and (is_standalone_sentence(eng) if standalone is None else standalone):
+        lo, hi = _core_span(source_clean)
+        spans = [s for s in spans if s[0] <= lo and s[1] >= hi]
+    return spans
+
+
+def maximal_spans(spans) -> List[tuple]:
+    """Keep only the spans that are not strictly contained in another span.
+
+    Input order is irrelevant; output is sorted by (start, longest first) so the
+    containment test in `is_shadowed` can look at a short, stable covering list
+    instead of every hit on the line.
+    """
+    out: List[tuple] = []
+    for s, e in sorted(spans, key=lambda x: (x[0], -(x[1] - x[0]))):
+        if any(bs <= s and e <= be and (be - bs) > (e - s) for bs, be in out):
+            continue
+        out.append((s, e))
+    return out
+
+
+def is_shadowed(span: tuple, covering: List[tuple]) -> bool:
+    """True when `span` lies entirely inside a strictly longer `covering` span.
+
+    This is the "short anchor swallowed by a longer registered proper name" rule
+    (R21). It only ever fires on *containment*, never on mere adjacency or on a
+    shared prefix, so a bare short anchor sitting next to a long one still hits.
+    """
+    s, e = span
+    return any(bs <= s and e <= be and (be - bs) > (e - s) for bs, be in covering)
+
+
+def find_source_hits(source: str, term: Dict, covering_spans=None):
     """Return the term's English source form occurrences inside `source`.
     Only direct word/phrase occurrences count; caller already narrowed to
     auto-bind-safe terms whose English form is unambiguous.
@@ -82,26 +198,25 @@ def find_source_hits(source: str, term: Dict):
        "Ria" (preceded by 'I').
     2. HTML tag stripping — <font face="Adielle"> won't match "Adielle" because
        the attribute value is inside a tag and gets removed before matching.
+
+    `covering_spans` (optional) are the spans of *longer* registered anchors on the
+    same line. A hit swallowed whole by one of them is not a valid hit of this term
+    (R21): the text there is part of the longer proper name, not this term. Pass
+    them only from the multi-anchor resolution path; a lone single-term call keeps
+    the original whole-word semantics untouched.
+
+    v0.4.2: honors definition['case_sensitive'] — an opt-in per term, absent means
+    the historical case-insensitive behavior.
     """
-    eng = term.get('source') or ''
-    if not eng:
-        return []
-    # 快速预筛：大小写敏感的子串检查不命中时直接返回，避免进正则
-    if eng not in source and eng.lower() not in source.lower():
-        return []
-    # Strip HTML tags to avoid matching inside markup attributes
-    source_clean = _strip_html_tags(source)
-    pat = _compiled_literal(eng)
-    hits = []
-    for m in pat.finditer(source_clean):
-        start, end = m.start(), m.end()
-        # Word boundary check: preceding/following char must not be a word char
-        if start > 0 and _is_word_char(source_clean[start - 1]):
-            continue
-        if end < len(source_clean) and _is_word_char(source_clean[end]):
-            continue
-        hits.append(start)
-    return hits
+    # standalone=None → 按词条形状自动判定（整句词条只认整句）；
+    # substring_match=true 是逃生口，显式退回宽松子串匹配（供缩写型词条）。
+    spans = find_source_hit_spans(source, term.get('source') or '',
+                                  bool(term.get('case_sensitive')),
+                                  standalone=False if term.get('substring_match') else None)
+    if covering_spans:
+        covering = maximal_spans(covering_spans)
+        spans = [sp for sp in spans if not is_shadowed(sp, covering)]
+    return [s for s, _ in spans]
 
 
 # ---------------------------------------------------------------- matching
@@ -365,7 +480,7 @@ def find_global_keep_hits(source: str, dest: str, gkeep: str) -> bool:
     return dest.strip() != gkeep
 
 
-def _anchor_present(source: str, anchor: str) -> bool:
+def _anchor_present(source: str, anchor: str, case_sensitive: bool = False) -> bool:
     """跨条豁免用的锚点存在性检查：整词匹配优先，其次允许专名形容词派生
     （Altmer → Altmeri / Altmeris）。官方行会用形容词形态（"noble Altmeri
     blood"），而锚点只登记名词形；不放宽就会把合法覆盖判成未覆盖。
@@ -377,7 +492,20 @@ def _anchor_present(source: str, anchor: str) -> bool:
     （Altmer → alt-mer）。仅豁免侧生效，不影响 TERM004 主检查。
 
     仅用于豁免侧判断，不影响 TERM004 主检查的严格整词语义。
+
+    v0.4.4：`case_sensitive=True` 时走精确大小写的整词判定。这是**必需**的——
+    本函数是唯一被 standalone_forbidden_issues（TERM002 独立路径）用来判断
+    「这条词条适不适用于本行」的闸门，而它的匹配器 _iter_word_matches 硬编码
+    re.IGNORECASE。真实事故 TheKalpicAnomaly_GLENMORIL idx 9039：词条
+    `the Serpent` 已开 case_sensitive（源文含 serpent 共 14 行，大写 Serpent
+    12 行 → 巨蛇，小写 serpent 仅 9038/9039 两行 → 巨蟒，一对一），但
+    standalone_forbidden_issues 不传本参数，仍按大小写不敏感命中，把正确的
+    「巨蟒」误报成 TERM002 forbidden 变体——**开字段不管用，全库门禁照报**。
+    派生/连字符放宽分支只对大小写不敏感的主路径有意义，敏感路径直接精确判定。
     """
+    if case_sensitive:
+        # standalone=False：豁免闸门保持历史的整词语义，不套「整句词条只认整句」
+        return bool(find_source_hit_spans(source, anchor, True, standalone=False))
     if list(_iter_word_matches(source, anchor)):
         return True
     if not anchor or not anchor[0].isupper():
@@ -501,8 +629,15 @@ def _cross_term_target_covered(source: str, dest: str, variant: str,
         if otarget != variant:
             continue
         osrc = (oterm.get('source') or '').strip()
-        if osrc and not list(_iter_word_matches(source, osrc)):
-            continue  # 覆盖方锚点不在源文：没有合法依据，命中保留
+        if osrc:
+            # v0.4.4：覆盖方词条自己声明了 case_sensitive 就必须按精确大小写判锚点，
+            # 否则会出现「不区分大小写地豁免」——只认大写的词条被小写源文豁免掉。
+            if oterm.get('case_sensitive'):
+                covered = bool(find_source_hit_spans(source, osrc, True, standalone=False))
+            else:
+                covered = bool(list(_iter_word_matches(source, osrc)))
+            if not covered:
+                continue  # 覆盖方锚点不在源文：没有合法依据，命中保留
         return True
     return False
 
