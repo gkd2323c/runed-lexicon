@@ -26,6 +26,8 @@ metadata:
 | `artifact_scan.py` | 审查工件与流程元语言泄漏扫描（HIT/WEAK 两级机制） | 各种一次性泄漏排查脚本 |
 | `formula_scan.py` | 公式句多译法扫描与修正集生成（按标点切句，对位比对首尾句分裂） | 各种公式句对账脚本 |
 | `check_review_proposed.py` | 收口前核 review-record 的 `proposed` 是否真是可落盘译文（防「改法只写在 rationale、字段留原样」的静默空转） | 每次收口手写 `proposed == 现译` 比对 |
+| `dump_review_findings.py` | 审查记录 → 裁决视图（每条 finding 连同源文 / canonical 现译 / proposed / rationale 一屏打出，`--full` 附未报项与风险注） | 每轮手拼「读报告 → 查 canonical 取现值」转录 |
+| `append_adjudication_note.py` | 总档定点追加 notes + 刷新 `canonical_at_adjudication` / `totals.verification`（同 topic 替换不堆重复），落盘后回读断言 | 几十万字符的总档手工 Edit |
 
 ## make_fixes_from_report.py
 
@@ -575,6 +577,44 @@ py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --fixes _tmp/data/charset
 ```
 
 边界：长度不等的转换（罕见）不自动替换、列 manual review 输出；不修改任何输入文件，只写 `--fixes-out` 指定的路径。
+
+## dump_review_findings.py
+
+把一份 review-record 拉成**裁决视图**——每条 finding 一个块，把「源文 / canonical 现译 /
+proposed / rationale / 置信度」并排打出。这是主会话逐条裁决时的实际阅读面：
+
+```text
+py -3 .../dump_review_findings.py --report .work/<plugin>/reports/<plugin>-INFO-600-review-record.json \
+  --xml mods/<plugin>/<plugin>_english_chinese_translated.xml
+
+py -3 .../dump_review_findings.py --report <rec.json> --xml <canonical.xml> --only 41422,41448   # 只看几条
+py -3 .../dump_review_findings.py --report <rec.json> --xml <canonical.xml> --full              # 附未报项 / 风险注 / validation
+```
+
+- 现译取自 `--xml` 指向的 **canonical**（不是批次 `map.json`）：裁决要对着真正生效的那份判。
+- `--only` 用于已裁决一部分、只想复核剩余几条时省上下文。
+- 只读，不写盘。
+
+## append_adjudication_note.py
+
+总档（`<plugin>-review-adjudication.json`，几十万字符）**禁止手工 Edit**——整份读改写。
+本脚本只做三件事，不碰 `decisions` / `totals.close_rounds`：
+
+```text
+py -3 .../append_adjudication_note.py --stem <plugin> \
+  --note-topic "待裁词族 authority：确立义位分立 + 裁断位二合一" \
+  --note-body "<多行正文，\n 用字面 \n>" \
+  --verification "canonical xxxxxxxx。门禁 PASS（...）。"
+```
+
+1. 追加 `notes`（**同 topic 已存在则替换**，不堆重复条目）
+2. 刷新 `canonical_at_adjudication`（现读现算，不接受手填）
+3. 刷新 `totals.verification`
+4. 写盘后回读断言 note 存在、canonical 一致
+
+- `notes` 数组里**混有字符串条目**（早期手写记录），遍历时必须 `isinstance(n, dict)` 守卫，
+  否则回读断言会在 `.get()` 上炸——这个坑已踩过一次。
+- 中文正文用 `--note-body` 传参时不要在 PowerShell 里手拼长串；Write 落盘或参数数组更稳。
 
 ## 安全边界
 
