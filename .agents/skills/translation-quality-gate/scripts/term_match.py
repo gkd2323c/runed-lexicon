@@ -39,6 +39,12 @@ def _strip_html_tags(text):
 
     结果按文本内容缓存：gate 会对同一个 source 在 849 条 ban 上反复调用，
     实测这层重复清洗是热点之一。
+
+    v0.3.1：maxsize 从 4096 提到 65536。**4096 装不下单元数**——全库门禁有
+    39,163 条已译行，每行一个不同的 source key，在 unit × term 双层循环里
+    每条 source 被连着查 1,495 次，命中率本应接近 1494/1495。缓存一旦装不下，
+    命中率归零、5,854 万次全部真跑正则 sub。容量对齐单元数量级后，这层清洗
+    从热点退化成常数。内存代价约 10MB（key+value 各约 100 字符 × 39,163）。
     """
     return _strip_html_tags_cached(text)
 
@@ -46,7 +52,7 @@ def _strip_html_tags(text):
 _STRIP_HTML_RE = re.compile(r'<[^>]*>')
 
 
-@lru_cache(maxsize=4096)
+@lru_cache(maxsize=65536)
 def _strip_html_tags_cached(text: str) -> str:
     return _STRIP_HTML_RE.sub('', text)
 
@@ -357,12 +363,36 @@ def _iter_word_matches(text: str, needle: str):
     triggers the High Elf anchor)."""
     text_clean = _strip_html_tags(text)
     # 快速预筛：锚点首词不出现时直接返回（避免为每条 ban 跑完整正则）
-    head = needle.split()[0] if needle.split() else needle
-    if head not in text_clean and head.lower() not in text_clean.lower():
+    head, head_lc = _anchor_head(needle)
+    if head not in text_clean and head_lc not in _lower_cached(text_clean):
         return
     pat = _compiled_word(needle)
     for m in pat.finditer(text_clean):
         yield m.start()
+
+
+@lru_cache(maxsize=8192)
+def _anchor_head(needle: str):
+    """(首词, 首词小写) —— 原先每次调用都做两次 needle.split()。
+
+    v0.3.1：_iter_word_matches 处在 unit × term 双层循环里（全库 5,854 万次），
+    每次重新 split 锚点字符串是纯浪费——锚点种类只有契约词条数那么多。
+    """
+    parts = needle.split()
+    head = parts[0] if parts else needle
+    return head, head.lower()
+
+
+@lru_cache(maxsize=65536)
+def _lower_cached(text: str) -> str:
+    """text.lower() 缓存。
+
+    v0.3.1：预筛里 `head.lower() not in text_clean.lower()` 会在每次调用时对
+    **整行**做一次 lower()。同一行在 unit × term 循环里被查 1,495 次，于是同一
+    行被 lower 1,495 次。缓存按行内容索引，命中后每行只 lower 一次。
+    容量对齐单元数量级（全库 39,163），内存约 5~10MB。
+    """
+    return text.lower()
 
 
 def resolve_global_bans(contract: Dict) -> List[Dict]:
@@ -619,10 +649,34 @@ def _anchor_present(source: str, anchor: str, case_sensitive: bool = False) -> b
         return False
     stripped = _strip_html_tags(source)
     # 形容词派生（原有分支）：Altmer → Altmeri
-    pat = re.compile(r'(?<![A-Za-z0-9_])' + re.escape(anchor) + r'(?=[a-z])', re.IGNORECASE)
-    if pat.search(stripped):
+    if _compiled_derived(anchor).search(stripped):
         return True
     # 连字符变体（v0.1.8）：词间或词内由 '-' 连接
+    if _compiled_hyphen(anchor).search(stripped):
+        return True
+    return False
+
+
+@lru_cache(maxsize=4096)
+def _compiled_derived(anchor: str):
+    """Compiled pattern for the adjective-derivation branch of _anchor_present.
+
+    性能（v0.3.1）：本函数原先在函数体内直接 re.compile，而调用方
+    standalone_forbidden_issues 是 **unit × term 双层循环**——1,495 词条 ×
+    39,163 行 = 5,854 万次调用。`re.compile` 自带的 `_cache` 只有 512 项，
+    1,495 个不同 pattern 必然击穿它，每次都真编译。实测该路径是全库门禁
+    52.78s（不带 auto-bind）的主要构成。lru_cache 把编译次数降到锚点种类数。
+    语义不变：同一 anchor 永远编译出同一 pattern。
+    """
+    return re.compile(r'(?<![A-Za-z0-9_])' + re.escape(anchor) + r'(?=[a-z])', re.IGNORECASE)
+
+
+@lru_cache(maxsize=4096)
+def _compiled_hyphen(anchor: str):
+    """Compiled pattern for the hyphen-variant branch of _anchor_present (v0.1.8).
+
+    缓存理由同 _compiled_derived：这是 unit × term 双层循环里的热点编译点。
+    """
     words = anchor.split()
     if len(words) == 1 and '-' not in anchor:
         alts = [re.escape(anchor)]
@@ -631,11 +685,10 @@ def _anchor_present(source: str, anchor: str, case_sensitive: bool = False) -> b
         core = '(?:' + '|'.join(alts) + ')'
     else:
         core = r'[\s\-]+'.join(re.escape(w) for w in words)
-    pat2 = re.compile(
+    return re.compile(
         r'(?<![A-Za-z0-9_])' + core + r'(?=[a-z]|[^A-Za-z0-9_]|$)',
         re.IGNORECASE,
     )
-    return bool(pat2.search(stripped))
 
 
 def cross_target_covered(source: str, dest: str, variant: str, bans: list, self_eng: str) -> bool:

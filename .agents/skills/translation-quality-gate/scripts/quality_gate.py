@@ -501,7 +501,17 @@ def standalone_forbidden_issues(src: str, dst: str, term_index: dict,
     for tid, term in term_index.items():
         if tid in bound_ids or not isinstance(term, dict):
             continue
-        if not (term.get('forbidden') or []):
+        forbidden = term.get('forbidden') or []
+        if not forbidden:
+            continue
+        # 廉价预筛（v0.3.1）：本条的坏形态一个都不在 dest 里时，它绝无可能命中，
+        # 后面那个 _anchor_present（正则在整行 source 上跑）就是纯浪费。与
+        # global_ban_issue 里对 1002 条 ban 用的预筛同一形状，R19 路径此前没套用。
+        # 命中条件是「forbidden 出现在 dest」，所以「都不在」是严格必要条件——
+        # 剪掉的一定不会命中，语义零变化。
+        # 实测：1,495 词条 × 39,163 行 = 5,854 万次 _anchor_present 调用，
+        # 其中绝大多数本条坏形态根本没在这行译文里出现过。
+        if not any(f in dst for f in forbidden):
             continue
         if not _anchor_present(src, term.get('source') or '',
                                bool(term.get('case_sensitive'))):
