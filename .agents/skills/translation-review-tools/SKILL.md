@@ -3,7 +3,7 @@ name: translation-review-tools
 description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
-  version: "0.11.0"
+  version: "0.12.0"
 ---
 
 # Translation Review Tools
