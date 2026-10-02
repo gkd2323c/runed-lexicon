@@ -184,6 +184,14 @@ py -3 fill_table_rationale.py --dir _tmp/data/authtabs \
 ## 边缘情况
 
 - **契约 `terms` 可能是 dict 也可能是 list**：`adjudicate.py` 与 `converge_batch.py` 两种都收，不要假设只有一种。
+- **契约 `terms` 的 key 是 `term_id`、不是源词形**：真实数据里 key 长这样
+  `kalpic.glen.distinction`，源词形 `distinction` 在词条的 `source` 字段里。
+  按 key 查源词会对**任何**词都返回「契约无此词条」——`adjudicate.py` 曾因此空转了很久，
+  `distinction` / `transformation` 这两个恰恰是「契约 target 优先于多数形」最该被看见的词
+  却一直查不到。已修为 `source_index()` 按 `source` 字段建索引（见 `test_adjudicate.py`）。
+  **看到「契约无此词条」时先确认是真没有，还是查法又错了**；`converge_batch.py` 走
+  `contract_index()` 按源词匹配，它的 `CONTRACT_MISSING` 语义是对的（源句命中了 REQUIRED
+  词条但裁决形不含 `match.accepted`），别把它和 `adjudicate` 的「查不到」混为一谈。
 - **英文屈折**：契约写词元（`harvest` / `maker`），源句写屈折形（`harvests` / `makers`）。
   两边都做后缀还原（`'s / s / es / ed / ing` + 双写辅音），否则契约核对会**静默漏检**——
   看起来查过了，其实没生效，这是最危险的一种漏。
