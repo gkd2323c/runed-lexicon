@@ -228,13 +228,19 @@ def main() -> int:
     mod = mod_dir_for(stem)
     canonical = Path(f"mods/{mod}/{stem}_english_chinese_translated.xml")
     work = Path(".work") / stem
-    if not canonical.is_file():
-        print(f"error: canonical 不存在: {canonical}", file=sys.stderr)
-        return 2
     phases = [p.strip() for p in args.phases.split(",") if p.strip()]
     bad = [p for p in phases if p not in ALL_PHASES]
     if bad or not phases:
         print(f"error: 非法 phases {bad}；可选 {ALL_PHASES}", file=sys.stderr)
+        return 2
+    # 首次写回（canonical 尚未建立）：writer 走 full rebuild 引导，baseline = 源 XML，
+    # 输出直接落 canonical 路径。这是新 MOD 的唯一合法入口——此前该步骤散落在主会话
+    # 手工拼命令、SKILL 未记载，每次新 MOD 都要现场推导（2026-10-03 BecomeKingofSkyrimTNG
+    # 首次踩坑：round_pipeline 报 canonical 不存在，主会话在外面手跑了 writer 才建起来）。
+    first_write = not canonical.is_file()
+    if first_write and "write" not in phases:
+        print(f"error: canonical 不存在且本轮不含 write 步骤（无法引导）: {canonical}",
+              file=sys.stderr)
         return 2
 
     lock = Lock(work / "reports" / "pipeline.lock")
@@ -295,15 +301,22 @@ def main() -> int:
                             raise Stop(f"{b} charset 修复后重 consume 仍 FAIL")
 
         results = [work / "batches" / b / "translation.json" for b in args.batches]
-        writer_common = ["--xml", str(canonical), "--source-xml", args.xml,
-                         "--report", str(work / "reports" / f"{stem}-writeback-report.json"),
-                         "--force"]
+        if first_write:
+            # 首次：baseline 是源 XML，--output 指向 canonical（writer 的 full rebuild 模式）。
+            writer_common = ["--xml", args.xml, "--output", str(canonical),
+                             "--report", str(work / "reports" / f"{stem}-writeback-report.json"),
+                             "--force"]
+        else:
+            writer_common = ["--xml", str(canonical), "--source-xml", args.xml,
+                             "--report", str(work / "reports" / f"{stem}-writeback-report.json"),
+                             "--force"]
 
         # ---- check-only 预检 ----
         if "check" in phases:
             lock.phase("check-only")
-            cmd = [sys.executable, WRITER, *writer_common, "--in-place",
-                   "--archive-to", str(work / "archive"), "--check-only"]
+            cmd = [sys.executable, WRITER, *writer_common, "--check-only"]
+            if not first_write:
+                cmd += ["--in-place", "--archive-to", str(work / "archive")]
             for r in results:
                 cmd += ["--result", str(r)]
             if run(cmd, "check") != 0:
@@ -319,9 +332,11 @@ def main() -> int:
         if "write" in phases:
             for b, rj in zip(args.batches, results):
                 lock.phase(f"write {b}")
-                cmd = [sys.executable, WRITER, *writer_common, "--in-place",
-                       "--archive-to", str(work / "archive"),
-                       "--archive-keep", str(args.archive_keep), "--result", str(rj)]
+                cmd = [sys.executable, WRITER, *writer_common]
+                if not first_write:
+                    cmd += ["--in-place", "--archive-to", str(work / "archive"),
+                            "--archive-keep", str(args.archive_keep)]
+                cmd += ["--result", str(rj)]
                 if run(cmd, "write") != 0:
                     raise Stop(f"{b} 写回失败；已停，后续批未写")
                 written.append(b)
@@ -370,7 +385,8 @@ def main() -> int:
         digest = sha256_file(canonical)
         print("=" * 60)
         print(f"PIPELINE PASS  canonical={digest[:8]}  batches={','.join(args.batches)}"
-              + (f"  written={','.join(written)}" if written else ""))
+              + (f"  written={','.join(written)}" if written else "")
+              + ("  first-write" if first_write else ""))
         return 0
     except Stop as e:
         print(f"PIPELINE STOP: {e}", file=sys.stderr)

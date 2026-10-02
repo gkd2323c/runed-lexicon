@@ -251,6 +251,14 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
 6. `verify`：段核对（各批 idx 在 canonical 中 Source==Dest 计数必须为 0）；
 7. `snapshot`：progress_snapshot `--record`（同进程内写回落定后执行，hash 必然一致）。
 
+**首次写回（canonical 引导，工具内置）**：新 MOD 第一次收口时 canonical 尚不存在，`round_pipeline` 自动切到 writer 的 full rebuild 模式（baseline = 源 XML，`--output` 指向 canonical 路径），无需主会话手工拼命令；PASS 行会标 `first-write`。约束与边界：
+
+- 只有含 `write` 步骤的调用才能引导（`--phases` 不含 write 而 canonical 缺失时直接报错退出 2）。
+- 首次不做 `--archive-to`（无旧版本可归档），也不做写回前同源预检（canonical 为空，无既有形可比）；从第二次写回起恢复常规增量与预检。
+- 此前该步骤散落在主会话手工拼命令、SKILL 未记载，每次新 MOD 都要现场推导（2026-10-03 BecomeKingofSkyrimTNG 首次踩坑：round_pipeline 报 canonical 不存在，主会话在外面手跑了 writer 才建起来）；现固化为工具行为，唯一入口自洽。
+
+**写回前同源预检与合法分层**：预检把 canonical 全部已译行与本批 map 合并按 source 分组，>1 形即停。官方**行政层次分层**（城市名 vs 领名，如 Whiterun→白漫城/白漫领）与 **REC 语用分层**（DIAL 选项 vs INFO 台词）不是漂移，属合法差异，登记 `.work/<plugin>/contracts/<plugin>-same-source-exemptions.json`（格式 `{"<source>": {"idxs": [...], "reason": "..."}}`）后放行；未登记的仍一律拦截。
+
 锁语义：acquire 用 O_EXCL 创建（token/pid/phase/started）；子进程经 env `RUNED_PIPELINE_TOKEN` 继承 token；**write_translations 与 progress_snapshot 内置同锁守卫**，外部无 token 的独立命令一律拒绝（rc=2）——手动快照/写回撞上 pipeline 直接报错，不再产生写前态。stale 锁（进程崩溃遗留）用 `--break-lock` 清除。`--phases` 可选子集（如裁决后只补 `charset,check,write,verify,snapshot`）。
 
 退出码：0 全链 PASS（尾行 `PIPELINE PASS canonical=<hash8>`）/ 1 某步失败 / 2 用法或锁冲突。
