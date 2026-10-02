@@ -37,7 +37,7 @@ Two deterministic, read-only commands over the official dictionary tree:
   official evidence and tier. This is the discovery step for turning "the
   people/place names have a stable organization in the official dictionary"
   into an explicit inventory the Agent adjudicates into the MOD's
-  `DICTIONARY.md` / `terms.json`.
+  `terms.json` (machine source) and `DICTIONARY.md` (human doc).
 
 Reuse contract: tokenization, stop/verb heads, strong-record families,
 normalization and trailing-punctuation merging are imported from
@@ -48,7 +48,8 @@ denylist. This tool adds no separate matching rules of its own.
 
 - Before starting a new MOD translation: after reading CONTEXT.md/DICTIONARY.md,
   run `scan` on the source XML to see the full set of official names the MOD
-  will touch, then adjudicate each into DICTIONARY.md / terms.json.
+  will touch, then adjudicate each into `terms.json` (machine source) and
+  `DICTIONARY.md` (human doc).
 - Before a terminology pass / convergence claim: confirm which official names
   are present and whether their official forms carry context variants
   (e.g. Whiterun -> 白漫城 / 白漫领) or alias risk.
@@ -107,15 +108,18 @@ Adjudication is the Agent's job (this tool never decides):
 3. Alias-risk entries (`ambiguous_hint`) — Blades, Companions, Jarl, Thane,
    Dragonborn, the Guild — stay FORBIDDEN_ONLY or get explicit per-unit
    bindings; never auto-REQUIRED.
-4. Confirmed rulings land in the MOD `DICTIONARY.md` / `terms.json`, then the
-   normal contract workflow continues (compile -> bind -> gate -> writeback).
+4. Confirmed rulings land in the MOD `terms.json` (machine source) and
+   `DICTIONARY.md` (human doc), then the normal contract workflow continues
+   (compile -> bind -> gate -> writeback).
 
 ## Relationship to the other skills
 
 - `dictionary-noun-audit`: audit is the Dest-side checker (does the translation
   contain the official form?). This scan is the Source-side inventory (which
   official names does the MOD contain?). Same matching logic, same dictionary.
-- `term-contract-compiler`: consumes DICTIONARY.md / terms.json. This tool's
+- `term-contract-compiler`: consumes the MOD's structured `terms.json` (machine
+  source; `DICTIONARY.md` stays a human-facing document and is never read by the
+  pipeline). This tool's
   inventory is a candidate list that feeds that adjudication; it does not emit
   terms and never writes DICTIONARY.md / terms.json.
 - `translation-quality-gate`: enforced after terms exist. This tool adds no
