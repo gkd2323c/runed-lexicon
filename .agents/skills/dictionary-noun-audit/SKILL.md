@@ -141,9 +141,9 @@ zero-flag run is never read as "everything is checked".
 
 ## Relationship to the other skills
 
-- `term-contract-compiler` turns DICTIONARY.md into a machine contract; this audit is the discovery step that finds which official nouns actually appear and are missing before binding.
+- `term-contract-compiler` turns the MOD's structured `terms.json` (machine source) into a machine contract; this audit is the discovery step that finds which official nouns actually appear and are missing before binding.
 - `translation-quality-gate` enforces declared bindings mechanically before writeback; this audit complements it by finding undeclared misses the gate (by design) will not check.
-- Recommended flow: audit draft → fix confirmed misses in DICTIONARY.md / translation JSON → compile contract → bind → gate → write back → re-audit to confirm 0 flags.
+- Recommended flow: audit draft → fix confirmed misses in `terms.json` / translation JSON → compile contract → bind → gate → write back → re-audit to confirm 0 flags.
 
 ## Safety boundaries
 

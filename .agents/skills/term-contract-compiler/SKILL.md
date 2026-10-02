@@ -1,14 +1,16 @@
 ---
 name: term-contract-compiler
-description: Deterministically compile Markdown terminology tables (MOD DICTIONARY.md, optionally GLOSSARY.md) into the machine-readable `terms` section of a Translation Contract consumed by translation-quality-gate, with a mechanical terminology lint (quote pairing / direction slips / invisible chars / width mixing / traditional chars) enforced before every compile. Use whenever a DICTIONARY.md / GLOSSARY.md / terms.json decision must become executable term definitions with forbidden variants and risk flags, when building the gate input for a MOD, when a terminology decision changed and the compiled contract must be regenerated, or when terminology data needs a mechanical character-level health check (lint_terms.py). The compiler never infers unit bindings (those are semantic, produced by the analysis Agent) and never auto-binds ambiguous terms; terms with alias/knowledge-boundary risk default to FORBIDDEN_ONLY. 触发词：词表 lint、引号配对、禁词库检查、编译前检查。
-compatibility: Python 3.10+. Standard library only. Consumes Markdown tables in the project's DICTIONARY.md format (English | 中文 | 状态 | 来源 | 备注).
+description: Deterministically compile the MOD's structured `terms.json` into the machine-readable `terms` section of a Translation Contract consumed by translation-quality-gate, with a mechanical terminology lint (quote pairing / direction slips / invisible chars / width mixing / traditional chars) enforced before every compile. Use whenever a terms.json decision must become executable term definitions with forbidden variants and risk flags, when building the gate input for a MOD, when a terminology decision changed and the compiled contract must be regenerated, or when terminology data needs a mechanical character-level health check (lint_terms.py). The compiler never infers unit bindings (those are semantic, produced by the analysis Agent) and never auto-binds ambiguous terms; terms with alias/knowledge-boundary risk default to FORBIDDEN_ONLY. 触发词：词表 lint、引号配对、禁词库检查、编译前检查。
+compatibility: Python 3.10+. Standard library only. Machine term source: the MOD's structured `mods/<plugin>/terms.json` (canonical). Human-facing `DICTIONARY.md` is never consumed by the pipeline (AGENTS.md §2.0); a deprecated `--dictionary` Markdown path remains only for pre-migration MODs (MVF1 / evgSIRENROOT).
 metadata:
   version: "0.3.2"
 ---
 
 # Term-Contract Compiler
 
-Compiles the human-readable terminology decision (DICTIONARY.md / GLOSSARY.md) into the `terms` section of a machine contract. The contract is the input to `translation-quality-gate`.
+Compiles the MOD's structured terminology source (`terms.json`) into the `terms` section of a machine contract. The contract is the input to `translation-quality-gate`.
+
+人类文档不进机器链路（`AGENTS.md` §2.0）：`DICTIONARY.md` / `CONTEXT.md` / `PROGRESS.md` 是给人与 Agent 直接阅读的文档，任何代码不得读取、解析、嵌入或对其哈希做校验。因此本编译器的机器侧输入只有 `mods/<plugin>/terms.json`；`DICTIONARY.md` 记录同一批决策的依据与取舍、供人读，两者由 Agent 同步维护。
 
 The compiler is deterministic and faithful: it converts rows and extracts declared forbidden variants. It does **not** decide semantics. In particular:
 
@@ -18,10 +20,10 @@ The compiler is deterministic and faithful: it converts rows and extracts declar
 
 ## When to use
 
-- Before gating a batch: compile the MOD's DICTIONARY.md (and GLOSSARY.md if cross-MOD terms are needed).
-- **New MODs and any MOD that needs machine-clean term definitions: prefer the structured `--terms <MOD>/terms.json` source.** The JSON path is the canonical machine form — every field (`english` / `zh` / `status` / `enforcement` / `risk_flags` / `forbidden`) is explicit, so the compiler does no column guessing and cannot silently mis-parse a term (e.g. `Neeth & His Past`, `Mercenaries Needed!`, or a Chinese first column). The Markdown path is kept only for backward compatibility with legacy MODs (MVF1 / evgSIRENROOT) and for human-readable documentation.
-- After a terminology decision changes: update the JSON (or Markdown), then recompile so the gate enforces the new decision.
-- The compiled contract is a derived artifact; **the JSON (or Markdown) stays the source of truth**. Never edit the compiled JSON by hand as the canonical version (only ephemeral overrides via the confirmation file).
+- Before gating a batch: compile the MOD's `terms.json` (add `--glossary` only when a cross-MOD project decision must enter this MOD's contract).
+- **所有 MOD 一律使用结构化 `--terms mods/<plugin>/terms.json`。** JSON 是唯一机器源——每个字段（`english` / `zh` / `status` / `enforcement` / `risk_flags` / `forbidden`）都显式声明，编译器不做列猜测，也不会静默误解析（如 `Neeth & His Past`、`Mercenaries Needed!` 或以中文开头的行）。已废弃的 Markdown 路径仅为尚未迁移的历史 MOD（MVF1 / evgSIRENROOT）保留，新 MOD 不得使用。
+- After a terminology decision changes: update `terms.json`, then recompile so the gate enforces the new decision.
+- The compiled contract is a derived artifact; **`terms.json` stays the source of truth**. Never edit the compiled JSON by hand as the canonical version (only ephemeral overrides via the confirmation file).
 
 ## Usage
 
@@ -60,7 +62,9 @@ Rules:
 - `status: KEEP` or `enforcement: KEEP` routes the term to the keep list (not emitted as a term).
 - The validator rejects (exit 1) missing `english` / `zh`, an `english` that is a bare status word, and unknown `status` / `enforcement` values — it never silently emits a garbage term.
 
-### Markdown source (legacy / backward compatible)
+### Markdown source (deprecated — 迁移期遗留，仅历史 MOD)
+
+> **不得用于新 MOD。** 该路径读取 `DICTIONARY.md`，与 `AGENTS.md` §2.0「人类文档不进机器链路」冲突，仅为尚未迁移的历史 MOD（MVF1 / evgSIRENROOT）保留。新 MOD 的术语决策落 `terms.json`；`DICTIONARY.md` 继续作为人读文档承载依据与取舍。
 
 ```text
 python .agents/skills/term-contract-compiler/scripts/compile_contract.py \
@@ -88,7 +92,7 @@ Optional `--conf <file>.json` supplies per-term overrides:
 
 ## What it extracts
 
-- **Terms** from Markdown table rows (English + 中文 columns), with `decision_status` from the 状态 column.
+- **Terms**（仅 legacy Markdown 路径做表行解析；JSON 路径直接读 `terms` 数组）from Markdown table rows (English + 中文 columns), with `decision_status` from the 状态 column.
 - **Forbidden variants** from 备注 clauses containing 严禁/不得/禁止/不要/不许 (e.g. `严禁使用"亚龙人/阿戈尼安"`), cleaned of parentheses/quotes/connective noise. `错认成/误认成/混淆` clauses are skipped (they name an entity to avoid confusing, not a wrong translation).
   - Parsing guards (v0.2.0): only quoted spans and free text **after** the first ban keyword in a segment are treated as bans (descriptive quotes before it, e.g. `统一为"护甲"，严禁"盔甲"`, are usage notes and never become forbidden); unquoted free text stops at the first comma (commas start a new descriptive clause; variant lists use `/` `、` `或`); `或` is treated as a variant separator (`白漫城或斯凯尔姆` → both); any part that overlaps the target (substring in either direction) is dropped, so a forbidden variant can never make the gate's TERM002 fire on a correct translation.
 - **Additional accepted variants** from 备注 clauses containing `additional_accepted: X, Y, Z` — these are appended to the term's `match.accepted` list, allowing natural shorthand (e.g., "白望塔" for "Whitewatch Tower") to satisfy the gate's TERM001 check. This prevents false positives when translators use abbreviated but correct forms.
@@ -107,6 +111,7 @@ Optional `--conf <file>.json` supplies per-term overrides:
 
 ## Safety boundaries
 
+- 不把 `DICTIONARY.md` / `CONTEXT.md` / `PROGRESS.md` 当机器源：本工具只在已废弃的 `--dictionary` 历史路径下读 Markdown；新 MOD 一律走 `--terms mods/<plugin>/terms.json`（AGENTS.md §2.0）。
 - Never add `unit_bindings` automatically. The gate only enforces explicit bindings.
 - Never emit REQUIRED for an ambiguous English form without explicit confirmation (the structured JSON path honors an explicit `enforcement` declaration instead).
 - Never edit DICTIONARY.md / terms.json / global-forbidden-words.json from this tool; it is read-only over its inputs.

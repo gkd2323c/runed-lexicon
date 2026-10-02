@@ -23,7 +23,7 @@ Enforcement resolution (never guessed):
          ordinary words) MUST be flagged risk_flags=alias / knowledge_boundary by
          the confirmation file, which forces FORBIDDEN_ONLY and forbids auto bindings.
 
-Term rows are parsed from Markdown tables with columns containing English and 中文.
+Term rows are parsed from Markdown tables with columns containing English and 中文 — legacy/deprecated path only (pre-migration MODs); the structured terms.json path is the machine source.
 
 Output:
   - term index JSON (terms section)
@@ -749,7 +749,7 @@ def main():
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser(description='Term-Contract Compiler (deterministic)')
     src = ap.add_mutually_exclusive_group(required=True)
-    src.add_argument('--dictionary', default=None, help='DICTIONARY.md path (Markdown source)')
+    src.add_argument('--dictionary', default=None, help='DEPRECATED (pre-migration MODs only): DICTIONARY.md Markdown source. New MODs must use --terms (terms.json); human docs stay out of the machine pipeline (AGENTS.md §2.0).')
     src.add_argument('--terms', default=None, help='MOD terms JSON path (structured canonical source)')
     ap.add_argument('--glossary', default=None, help='optional GLOSSARY.md path')
     ap.add_argument('--output', default=None, help='output term-index JSON（check 模式外必需）')

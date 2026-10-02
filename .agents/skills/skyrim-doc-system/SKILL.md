@@ -44,8 +44,7 @@ ANACHRONISM-CANDIDATE 候选层人工判定后再决定是否词典化。
 判定某个禁用词该放哪：
 
 - 跨 MOD 官方名词的系统性坏形态 → `global-forbidden-words.json`（需 reason）。
-- 单个 MOD 专有词的错误形态 / 正确译法 → 该 MOD `DICTIONARY.md`（表格内 严禁 备注
-  会经 compiler 变成局部 term 的 forbidden，走 TERM002）。
+- 单个 MOD 专有词的错误形态 / 正确译法 → 该 MOD `terms.json` 的 `forbidden` 字段（由 compiler 编译进契约，走 TERM002）；`DICTIONARY.md` 同步记录依据与取舍，供人读，不入机器链路。
 - 正确的跨 MOD 译法决策（非错误形态）→ GLOSSARY.md。
 - 官方词对 → `dictionary/`，不复制。
 
