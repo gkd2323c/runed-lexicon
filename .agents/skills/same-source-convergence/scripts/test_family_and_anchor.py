@@ -26,7 +26,7 @@ ROWS = [
     ('INFO:NAM1', '[D]', 'Power changes hands.', '权柄易手。'),
     ('INFO:NAM1', '[E]', 'Power changes hands more readily.', '权柄易手，更易转移。'),
     ('INFO:NAM1', '[F]', 'A lone authority stands.', '孤零零的威权。'),
-    ('INFO:NAM1', '[G]', 'Nobody said anything about it.', '没人说过什么。'),
+    ('INFO:NAM1', '[G]', 'Nobody said anything about it.', '没人提过那份权柄。'),
 ]
 
 
@@ -94,9 +94,11 @@ class TestSameSourceFamily(Base):
         self.assertIn('canonical XML 不存在', out)
 
     def test_summary_counts(self):
+        # idx 0 族 2 行；idx 3 与 idx 4 源句不同（'Power changes hands.' vs
+        # '...more readily.'），彼此不是同源族，idx 5 也是孤例
         rc, out = self.family('--idx', '0,5,3')
         self.assertEqual(rc, 0, out)
-        self.assertIn('孤例 1 个 / 多行族 2 个', out)
+        self.assertIn('孤例 2 个 / 多行族 1 个', out)
 
 
 class TestAnchorOverlap(Base):
