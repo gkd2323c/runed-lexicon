@@ -73,8 +73,16 @@ jobs:
           done
 
       - name: Syntax floor check (whole repo)
-        # Mirrors tools/pre-push-check.py [4/4]. Runs on every supported
+        # Mirrors tools/pre-push-check.py [4/5]. Runs on every supported
         # version: the 3.10/3.11 legs are what catch syntax that only parses
         # on 3.12+ (PEP 701 f-string quote reuse), which a 3.14 dev box cannot
         # see. Compiles first-party .py only; git decides the file set.
         run: python tools/pre-push-check.py --syntax-only
+
+      - name: Shell redirect artefacts (repo hygiene)
+        # Mirrors tools/pre-push-check.py [5/5]. Catches shell accident
+        # products that got committed: an unquoted `> $null` writes stdout to
+        # a real file named $null, and `git add .` then ships it. Also fires
+        # on artefacts already in history, which is the case that matters once
+        # someone force-pushed or bypassed the local hook.
+        run: python tools/pre-push-check.py --hygiene-only

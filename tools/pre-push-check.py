@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""本地 pre-push 校验：复刻 .github/workflows/ci.yml 的四个步骤。
+"""本地 pre-push 校验：复刻 .github/workflows/ci.yml 的五个步骤。
 
 与 ci.yml 保持同步：改 CI 时同步改这里，改这里时同步检查 CI。
-四个步骤（与 CI 同名同序）：
+五个步骤（与 CI 同名同序）：
   1. Unit tests (unittest discover per skill)
   2. Standalone regression scripts
   3. Skill quick validation (all skills)
   4. Syntax floor check (whole repo)
+  5. Shell redirect artefacts (repo hygiene)
 
 第 4 步的具体版本由运行环境决定，语义恒定：编译全库 .py，回答
 「这个解释器版本能不能解析仓库里所有 Python」。CI 每条支持版本的腿
@@ -14,8 +15,9 @@
 把高版本语法在推送前就挡下来。
 
 用法：
-  python tools/pre-push-check.py            # 跑全部四步，失败 exit 1
+  python tools/pre-push-check.py            # 跑全部五步，失败 exit 1
   python tools/pre-push-check.py --syntax-only    # 只跑第 4 步（CI 调用入口）
+  python tools/pre-push-check.py --hygiene-only   # 只跑第 5 步（CI 步骤入口）
   python tools/pre-push-check.py --install-hook   # 安装 .git/hooks/pre-push
 
 环境变量 SYNTAX_FLOOR_PY 可指定用于第 4 步的解释器路径。
@@ -52,6 +54,15 @@ STANDALONE_SCRIPTS = [
 # so a 3.10/3.11 leg is what actually catches that class of regression.
 FLOOR_MAX = (3, 12)
 
+# A repo path whose basename starts with this is a shell accident, not an
+# asset: an unquoted PowerShell redirection target writes stdout to a real
+# file named after the variable. `> $null` is the void device in everyone's
+# memory but a path on disk; only `>$null` (no space) is the null device.
+# Incident: a committed `$null` file at the repo root, holding the stdout of
+# a mavis-trash call, shipped in 085cbb7. `$` is legal in a filename but
+# never legitimate here, so the match stays as narrow as the accident.
+ARTEFACT_PREFIX = "$"
+
 # Fallback-only: used when git is unavailable, since git normally supplies the
 # exact first-party file list (tracked + untracked, ignored excluded).
 SYNTAX_SKIP_DIRS = {".git", "_tmp", "__pycache__", "node_modules", ".venv",
@@ -63,7 +74,7 @@ SYNTAX_SKIP_REL = {os.path.join("tools", "xEdit"),
 HOOK_PATH = os.path.join(ROOT, ".git", "hooks", "pre-push")
 HOOK_BODY = """#!/bin/sh
 # auto-installed by tools/pre-push-check.py --install-hook
-# push 前复刻 CI 三步，失败则阻断推送。
+# push 前复刻 CI 五步，失败则阻断推送。
 python tools/pre-push-check.py
 """
 
@@ -75,7 +86,7 @@ def run(cmd, cwd=ROOT):
 
 
 def step_unittest(failures):
-    print("=== [1/4] Unit tests (unittest discover per skill)")
+    print("=== [1/5] Unit tests (unittest discover per skill)")
     found = 0
     pattern = os.path.join(ROOT, ".agents", "skills", "*", "scripts")
     for d in sorted(glob.glob(pattern)):
@@ -104,7 +115,7 @@ def step_unittest(failures):
 
 
 def step_standalone(failures):
-    print("=== [2/4] Standalone regression scripts")
+    print("=== [2/5] Standalone regression scripts")
     for script in STANDALONE_SCRIPTS:
         rel = os.path.relpath(script, ROOT)
         print(f"--- {rel}")
@@ -116,7 +127,7 @@ def step_standalone(failures):
 
 
 def step_quick_validate(failures):
-    print("=== [3/4] Skill quick validation (all skills)")
+    print("=== [3/5] Skill quick validation (all skills)")
     checked = 0
     pattern = os.path.join(ROOT, ".agents", "skills", "*")
     for d in sorted(glob.glob(pattern)):
@@ -265,7 +276,7 @@ def run_syntax_only():
 
 
 def step_syntax_floor(failures):
-    print("=== [4/4] Syntax floor check (whole repo)")
+    print("=== [4/5] Syntax floor check (whole repo)")
     exe, ver = find_floor_interpreter()
     ver_str = ".".join(str(x) for x in ver) if ver else "?"
     if exe is None:
@@ -281,6 +292,67 @@ def step_syntax_floor(failures):
     print(f"    rc={rc} ({dt:.1f}s)")
     if rc != 0:
         failures.append(f"syntax floor (Python {ver_str})")
+
+
+def find_redirect_artefacts():
+    """Repo paths whose basename starts with ARTEFACT_PREFIX, sorted.
+
+    The file set is git-defined (tracked plus untracked-but-not-ignored), the
+    same contract as iter_repo_py_files: ignored runtime trees such as _tmp/
+    and .work/ stay out, so the check matches what a fresh clone would see.
+    An unstaged artefact still counts, because that is exactly the state the
+    next `git add .` sweeps into history.
+    """
+    names = None
+    try:
+        p = subprocess.run(
+            ["git", "ls-files", "-z", "--cached", "--others",
+             "--exclude-standard"],
+            cwd=ROOT, capture_output=True, timeout=60)
+        if p.returncode == 0:
+            names = [n for n in p.stdout.decode("utf-8", "replace").split("\0")
+                     if n]
+    except (OSError, subprocess.SubprocessError):
+        pass
+    if names is None:
+        # git unavailable: fall back to a plain walk, same skip rules as
+        # _walk_py_files so a fresh clone without git still gets checked.
+        names = []
+        for dirpath, dirnames, filenames in os.walk(ROOT):
+            dirnames[:] = [d for d in dirnames if d not in SYNTAX_SKIP_DIRS]
+            rel = os.path.relpath(dirpath, ROOT)
+            if rel != "." and any(rel == q or rel.startswith(q + os.sep)
+                                  for q in SYNTAX_SKIP_REL):
+                dirnames[:] = []
+                continue
+            for name in filenames:
+                names.append(name if rel == "." else os.path.join(rel, name))
+    return sorted(n for n in names
+                  if os.path.basename(n).startswith(ARTEFACT_PREFIX))
+
+
+def run_hygiene_only():
+    """Repo hygiene only: the check CI runs as its own step."""
+    bad = find_redirect_artefacts()
+    for rel in bad:
+        print(rel)
+    print(f"hygiene check: {len(bad)} shell redirect artefact(s)")
+    return 1 if bad else 0
+
+
+def step_hygiene(failures):
+    print("=== [5/5] Shell redirect artefacts (repo hygiene)")
+    bad = find_redirect_artefacts()
+    if not bad:
+        print("    none")
+        return
+    for rel in bad:
+        print(f"    suspicious: {rel}")
+    print("    PowerShell: `> $null` (with a space) writes stdout to a real "
+          "file named $null; the null device is `>$null`.")
+    print("    Delete the artefact, then `git rm --cached` it if tracked, so "
+          "a later `git add .` cannot sweep it back in.")
+    failures.append(f"shell redirect artefacts: {len(bad)} path(s)")
 
 
 def install_hook():
@@ -303,6 +375,8 @@ def main():
         return install_hook()
     if len(sys.argv) > 1 and sys.argv[1] == "--syntax-only":
         return run_syntax_only()
+    if len(sys.argv) > 1 and sys.argv[1] == "--hygiene-only":
+        return run_hygiene_only()
     t0 = time.time()
     failures = []
     try:
@@ -315,6 +389,7 @@ def main():
     step_standalone(failures)
     step_quick_validate(failures)
     step_syntax_floor(failures)
+    step_hygiene(failures)
     dt = time.time() - t0
     print(f"=== done in {dt:.1f}s")
     if failures:
