@@ -3,7 +3,7 @@ name: same-source-convergence
 description: runed-lexicon 同源整族收敛工具集。判组（列出 canonical 与批次内全部同源多形组，含批内分裂与跨批副本）、表驱动收敛（裁决表外置为 JSON，脚本通用；写穿 map-part-*.json 防重合并冲掉；契约 target 机械核对；未裁决即中止防漏判）、分片合并与八条交卷门槛自检、按分片索引切分 readout、多批修正集合并与按盘面重同步、已写回批次按裁决表生成 close_round 修正集、批次侧产物与 canonical 的对齐与全库脱节扫描。Use when 翻译批次写回前需要把同源多形收敛成整族同形、把裁决表落成可复用的 JSON 而非一次性的按批号脚本、合并分片子代理交付、核对某批 map.json 与 translation.json 是否与 canonical 脱节、或已写回批次需要按裁决表收口。Do NOT trigger for 翻译语义裁决本身（那是人的判断）、契约编译（归 term-contract-compiler）、批次状态与覆盖率（归 translation-batch-ops）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # 同源整族收敛
@@ -140,6 +140,46 @@ py -3 anchor_overlap.py --xml <canonical.xml> --form 权柄 --anchors authority,
 把 `authority` 从「权威 63 / 威权 24 / 权柄 26 的三向乱局」收敛成
 「权威（认知制度位）62 行不动 + 威权（裁断位）收编权柄 26 行 + 权柄让出给 power 的 10 行归位为权力」
 的唯一依据。只看中文形票数会把这两类混作一次替换，方向就错了。
+
+### `gen_form_convergence_tables.py`：按「中文形 + 锚」批量生成裁决表
+
+跨锚撞形收敛（见上）的成规模做法——一次几十行、跨几十个批次，人工逐行建表不现实：
+
+```text
+# dry-run 先看计划（不落盘）
+py -3 gen_form_convergence_tables.py --stem <STEM> --batches-dir .work/<STEM>/batches \
+    --rule "权柄:authority,authoritative->威权" --rule "权柄:power->权力" \
+    --out-dir _tmp/data/authtabs
+# 核完再加 --apply 生成表
+py -3 ... --out-dir _tmp/data/authtabs --apply
+```
+
+规则语法 `<现形>:<锚,锚>-><目标形>`；同一现形可给多条规则（不同锚 → 不同目标形），
+命中时第一条匹配生效。**同一现形给两条规则正是跨锚撞形的用法**。
+
+三条关键性质（都有测试盯）：
+
+- **以源句为键，不是以行为键**：同源族跨批时，每个相关批次都拿到同一条 `源句 -> 目标` 映射，
+  不会「只改一族里一半行」。实测 authority 收敛 37 行跨 25 批就靠这条。
+- **锚不匹配则跳过而不是硬替换**：形在但源文不含指定锚的行会单列出来让你核，不会被顺手改掉。
+- **同一源句现有两形即中止**：注意这**不是**「规则自相矛盾」——同一源句必然匹配同一条规则
+  （命中即 break）。真正触发条件是该源句现有两形，机械替换会忠实地把这个分裂保留下来，
+  那不叫收敛，须先人工定主形。
+
+### `fill_table_rationale.py`：给生成的表补判据
+
+裁决表 `rationale` 必填（只写「按规则替换」等于把判断留给运气）。**判据文本由调用方提供**
+（`--rationale-file`，规则名 -> 正文）——裁决是人的判断，把它硬编码进脚本等于把脚本变成
+穿工具外衣的一次性脚本（本脚本的第一版就是这么写的，被自己的测试逼改了）。
+
+```text
+py -3 fill_table_rationale.py --dir _tmp/data/authtabs \
+    --rationale-file _tmp/data/authtabs-rationale.json
+```
+
+三条机械校验：判据为空即拒；目标译文找不到任何已知目标形即拒；**目标译文同时命中多条判据
+即拒**（同名目标形被多条规则指向时无法判该用哪条——这里必须存成 `目标形 -> [规则]` 列表，
+用 dict 存单值会静默互相覆盖、歧义判据形同虚设）。
 
 ## 边缘情况
 
