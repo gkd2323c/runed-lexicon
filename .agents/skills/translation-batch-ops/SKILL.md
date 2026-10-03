@@ -16,6 +16,8 @@ metadata:
 | 批次推进到哪了？         | `scripts/check_batch_coverage.py`  | 每批状态（VERIFIED / TRANSLATED / PREPPED / MISSING）+ 未写回告警 |
 | 还有未译行没有归属吗？   | `scripts/scan_plan_gaps.py`        | 缺口清单 + 补遗批次（GAP- 前缀）+ 机械匹配孤儿清点与核验卡点       |
 | 整体进度如何？           | `scripts/progress_snapshot.py`     | 快照日志 `.work/<plugin>/reports/<plugin>-progress-log.json`      |
+| 待审还有多少？           | `scripts/review_pending.py`          | 已写回批 − 有报告批的**集合差**（written / reviewed / PENDING 三个数 + 清单） |
+| 哪些批真译了？           | `scripts/batch_status.py`         | **以 canonical 为准**逐批报 已全译/部分译/未译（Dest≠Source 行数）；**派单前先跑**，不拿派生物状态当结论 |
 | 批次太大怎么派？         | `scripts/shard_batch.py`           | 按字符权重的 index 分片与 map 合并                                |
 | 子代理交付怎么消费？     | `scripts/consume_batch.py`         | map 归位 → 展平 → immutable 同步 → fill → verify 一键链           |
 | context 备料坏了怎么修？ | `scripts/rebuild_context.py`       | 单批模式重建 context + 骨架重生成（保留已有译文）                 |
@@ -52,7 +54,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/verify_subagent_batch.py \
   [--contract <compiled.json>] [--keep-list <keep.json>] [--report <report.json>] [--repair]
 ```
 
-三段：A. 完整性（`set(map) == set(idx)`，缺/多/重合率 < 0.5 判键错位整批不可用）；B. 内容初筛（WAITING/空译、非法状态、KEEP≠原文需 `--xml`、英文残留需 `--xml`）；C. gate 段（`--result` 时跑 executor 的 validate 需 `--context`，加 quality_gate `--auto-bind`；不写 gate 报告——gate 的 `--report` 受命名契约限制只认 `*-gate-report.json`，验收不借用）。
+三段：A. 完整性（`set(map) == set(idx)`，缺/多/重合率 < 0.5 判键错位整批不可用）；B. 内容初筛（WAITING/空译、非法状态、KEEP≠原文需 `--xml`、英文残留需 `--xml`）；C. gate 段（`--result` 时跑 executor 的 validate 需 `--context`，加 quality_gate `--auto-bind`）。C 段**不写 gate 的 `--report`**（受命名契约限制只认 `*-gate-report.json`，而那是个全库单文件、内容可能与本次批次对不上），改为把 gate stdout 的 FAIL/WARN 明细行**直接内联**进验收报告：FAIL 行走 `gate_fail_detail` 进 `fails[].detail`，同时全量留在 `gate.fail_lines`；WARN 行进顶层 warnings 与 `gate.warn_lines`。**明细不得只留计数**——早先只写「用 *-gate-report.json 重跑取明细」，而那个固定路径报告里躺着的是上一次全库 gate 的旧结果，Agent 拿不到「到底哪条被拦、什么码」，只能手工重跑才看得见（事故锚定：INFO-088 的 CHAR001 直角引号）。
 
 **gate WARN 可见性（必读）**：gate 在 `--auto-bind` 模式下把「required target 未出现」报为 review candidate（WARNING 而非 FAIL）；C 段会把 WARN 明细行并入顶层 warnings 输出（`warnings=N` 与 `WARN <batch> GATE_WARN ...` 行同屏显示），报告在 `gate.warn_lines` 留全量。**验收纪律：`warnings>0` 时逐条核 WARN 明细**，不得只看 verdict；漏读即可放过真漂移：契约词条与 DICTIONARY 的 target 不一致时，gate 的 WARN 是机械暴露点，被吞掉则全库用错形直写回。术语裁决落盘时两处同步核一遍。
 
@@ -179,9 +181,9 @@ py -3 .agents/skills/translation-batch-ops/scripts/progress_snapshot.py \
 
 `--plan` 可重复：主计划与补遗计划（存在时）一并传入合并统计——只传主计划会使缺口批写回的译文不进流水线口径，战役交叉校验持续报「口径不一致」（差值恰为缺口批行数）。
 
-四段输出：① 全库已译/总数与分类分布（INFO/DIAL/QUST/NPC_/BOOK/其他——让未开工类别可见）；② INFO 战役口径（canonical 与流水线双口径交叉校验，不一致时显式告警）；③ 批次状态（已验收/待消费/已备料/未备料）+ 四道欠账告警；④ 较上次快照增量。性能基线：约 1.5 万条（4.6MB）规模的全量统计 **~0.8s**。
+四段输出：① 全库已译/总数与分类分布（INFO/DIAL/QUST/NPC_/BOOK/其他——让未开工类别可见）；② INFO 战役口径（canonical 与流水线双口径交叉校验，不一致时显式告警）；③ 批次状态（已验收/待消费/已备料/未备料）+ 四道待审告警；④ 较上次快照增量。性能基线：约 1.5 万条（4.6MB）规模的全量统计 **~0.8s**。
 
-**③ 的四道欠账告警**——派单侧与产出侧各两道，缺一道就会静默漏译：
+**③ 的四道待审告警**——派单侧与产出侧各两道，缺一道就会静默漏译：
 
 | 告警 | 触发 | 指向 |
 | --- | --- | --- |

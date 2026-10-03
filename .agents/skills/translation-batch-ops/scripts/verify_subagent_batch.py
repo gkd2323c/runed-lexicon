@@ -69,6 +69,22 @@ def semgate_uncheck_reason(stdout):
             '（rc 输出异常；见 %s 的 semantic_gate 段）')
 
 
+def gate_fail_detail(verdict, fail_count, warning_count, fail_lines):
+    """把 gate 的 FAIL 明细行内联进验收报告的 fails.detail。
+
+    事故锚定（2026-10-03）：早先这里只写
+    「verdict=FAIL fails=1（用 *-gate-report.json 重跑取明细）」，而那个固定路径
+    报告里躺着的是上一次**全库** gate 的旧结果（PASS / 别的 units），与本次批次的
+    FAIL 对不上；Agent 拿不到「到底哪条被拦、什么码」，只能手工重跑 gate 才看得见。
+    明细其实一直打在 gate 的 stdout 里（`FAIL [unit] CODE : detail`），抓下来即可，
+    无需第二次调用、也不该把人支去一个内容对不上的文件。
+    """
+    detail = 'verdict=%s fails=%s warnings=%s' % (verdict, fail_count, warning_count)
+    if fail_lines:
+        detail += ' | ' + ' ; '.join(fail_lines[:8])
+    return detail[:2000]
+
+
 def default_report_path(a):
     """默认验收报告落点：.work/<plugin>/reports/<BID>-verify-report.json。
     插件名从 --xml / --map / --plan 路径推导；推导失败时回退 .work/<BID>-verify-report.json。"""
@@ -182,8 +198,6 @@ def main():
             if r.returncode:
                 fail(fails, a.batch, 'VALIDATE', out['validate']['tail'][-200:])
         if a.contract:
-            # gate 的 --report 受命名契约限制（只认 *-gate-report.json），验收不借用：
-            # gate 段只取 stdout verdict 计数；FAIL 时 Agent 用合规报告名重跑取明细。
             r = subprocess.run([sys.executable, GATE, '--result', result,
                                 '--contract', a.contract]
                                + (['--keep-list', a.keep_list] if a.keep_list else [])
@@ -196,17 +210,21 @@ def main():
                                'units': gv.get('units_checked'),
                                'fails': gv.get('fail_count'),
                                'warnings': gv.get('warning_count')}
+                # gate 的 FAIL/WARN 明细行本来就打在 gate 的 stdout 里，直接抓进报告：
+                # Agent 不必为了看「到底拦了什么」再手工重跑一遍 gate。
+                g_lines = [l.strip() for l in (r.stdout or '').splitlines()]
+                gw_lines = [l for l in g_lines if l.startswith('WARN')]
+                gf_lines = [l for l in g_lines if l.startswith('FAIL')]
                 # gate 的 review candidate（auto-bind 术语缺目标等）必须对 Agent 可见：
                 # 抓取 WARN 明细行并入顶层 warnings，顶层计数与 WARN 行同步显示
-                gw_lines = [l.strip() for l in (r.stdout or '').splitlines()
-                            if l.strip().startswith('WARN')]
                 for wl in gw_lines:
                     warnings.append({'where': a.batch, 'code': 'GATE_WARN', 'detail': wl[:220]})
                 out['gate']['warn_lines'] = gw_lines[:30]
+                out['gate']['fail_lines'] = gf_lines[:30]
                 if gv.get('verdict') != 'PASS':
-                    fail(fails, a.batch, 'GATE',
-                         'verdict=%s fails=%s warnings=%s（用 *-gate-report.json 重跑取明细）'
-                         % (gv.get('verdict'), gv.get('fail_count'), gv.get('warning_count')))
+                    fail(fails, a.batch, 'GATE', gate_fail_detail(
+                        gv.get('verdict'), gv.get('fail_count'),
+                        gv.get('warning_count'), gf_lines))
             except Exception:
                 fail(fails, a.batch, 'GATE', tail[-200:])
         # D. TypeSafe 语义门（机械 gate 之后的语义层；无 key 时显式记 UNCHECKED）
@@ -291,7 +309,7 @@ def main():
           % (a.batch, verdict, len(missing), len(extra), len(waiting),
              len(keep_bad), len(fails), len(warnings)))
     for f in fails[:20]:
-        print('  FAIL', f['where'], f['code'], f['detail'][:100])
+        print('  FAIL', f['where'], f['code'], f['detail'][:300])
     for w in warnings[:10]:
         print('  WARN', w['where'], w['code'], w.get('detail', '')[:100])
     if a.report or a.contract:
