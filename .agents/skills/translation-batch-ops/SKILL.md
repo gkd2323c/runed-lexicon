@@ -3,7 +3,7 @@ name: translation-batch-ops
 description: runed-lexicon 批次流水线的状态、覆盖、验收、对账重建与进度工具集。覆盖一轮收口的唯一串行入口（round_pipeline：consume→charset→check→write→verify→snapshot 单进程顺序执行 + 独占锁防并行覆盖）、批次产出机械验收（verify_subagent_batch）、批次状态覆盖率核查（check_batch_coverage）、计划覆盖缺口扫描与补遗批次切分（scan_plan_gaps）、整体进度快照（progress_snapshot）、大批次字符权重分片与合并（shard_batch）、翻译产出一键消费链（consume_batch）、批次文件对账与重建（batch_sync）、批次 context 单批重建（rebuild_context）、同源继承预填与折叠（inherit_prefill）。Use when 把验收批次收口至写回快照（一律走 round_pipeline）、验收翻译批次产出、核对批次状态/覆盖率、扫描未译行的计划归属缺口、切补遗批次、记录进度快照、拆分超大批次、合并翻译子代理分片交付、把子代理交付的 map 一键消费至验收就绪、派单前继承 canonical 既有译文并折叠批内重复句、处理批次文件与 canonical 的漂移或缺失（判向/拉平/补全，不逐条修补）、或修复备料 context 多批结构缺陷。Do NOT trigger for 翻译与词表裁决本身、契约编译（归 term-contract-compiler）。
 compatibility: Requires Python 3.10+. Uses only the Python standard library. Expects the runed-lexicon project layout (.work/<plugin>/, mods/<plugin>/).
 metadata:
-  version: "1.8.0"
+  version: "1.10.0"
 ---
 
 # Translation Batch Ops
@@ -81,6 +81,50 @@ py -3 .agents/skills/translation-batch-ops/scripts/check_batch_coverage.py \
 **`VERIFIED` 的两条通路（纯 KEEP 批的已消费性）**：`VERIFIED` 的定义是“consume 已落盘”，有两条互不替代的通路——① `translation.json` 里 ≥1 条 `TRANSLATED`（旧口径，行为不变）；② **消费痕迹**：`translation.json` 每条都有非空译文且 `status ∈ {TRANSLATED, KEEP}`，无 PENDING 残留。第二条是为**纯 KEEP 批**准备的：它的 Dest 变更恒为 0、`Dest == Source` 本来就成立，canonical 里没有任何痕迹，而它又永远拿不到通路 ①，于是状态机停在 TRANSLATED、快照每轮报同一条假滞留（事故锚定：TheKalpicAnomaly_GLENMORIL 2026-10-02 `NI-TES4-001`，consume 与 round_pipeline 早已 `PIPELINE PASS` / `0 Dest change(s)`，快照仍报“滞留 1 批（253min→270min）”）。
 
 判据为什么落在 `translation.json` 上：`fill_translations` 只由 consume / round_pipeline / close_round 触发，能落满就证明交付确实被消费过。它也骗不过同源预填——`inherit_prefill` 只写 `map.json`，未派单批的 `translation.json` 始终是 PENDING 骨架。
+
+## 2.1 审查覆盖率（`review_coverage.py`）
+
+与上一节的**翻译覆盖率是两回事**：那个管「译文填了没、写回了没」，这个管「**已写回的批次有没有被逐行审过**」。
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/review_coverage.py --stem <plugin>
+py -3 ... review_coverage.py --stem <plugin> --json
+```
+
+输出按批 / 按行双口径 + 分族表（`INFO` / `RN-INFO` / `NI-DIAL` … 各自的已审批次与已审行数）。刷新 MOD 文档的「审查进度」段用这个，别手数。
+
+口径全是机械的，没有判断成分：
+
+- **已备料批** = `.work/<plugin>/batches/<B>/index.txt` 存在（判批归属靠扫它，不靠计划文件——计划与批次目录可能不同步）
+- **批行数** = 该 `index.txt` 的非空行数（`NI-*` 与 `RN-*` 两族同源，行数相同，别当成两倍工作量）
+- **已审批次** = `.work/<plugin>/reports/<plugin>-<B>-review-record.json` 存在，**且其 `status` 不在 `NOT_DONE = {IN_PROGRESS, PENDING}` 里**；记录 JSON 解析失败也不算已审（会单独告警）
+
+**为什么判据是「文件存在 + status」**：两层都得看。
+
+第一层，子代理任务报 `succeeded` **不等于**交付了文件。实测一次派 6 个批次，`068`/`069` 直接 `lost`（零输出），`066`/`067`/`070` 报 `succeeded` 但读完输入、跑完新鲜度闸就中断，`reports/` 里根本没有记录——其中 `067` 连闸都报完了（45/45/45）却没往下走。所以每次派完都要核文件真落盘，别信任务状态。
+
+第二层，**分步落盘约定让「文件存在」不等于「审完了」**：子代理过完新鲜度闸就先落一份 `status=IN_PROGRESS` 占位，再逐批追加 findings，最后才改 `COMPLETE`。只看存在性会把在途占位算成已审——实测 TheKalpicAnomaly_GLENMORIL 一度虚高 2 批 / 91 行（常驻 3 个在途批）。在途批本来就没审完，应当计入**待审**；脚本会单独打印 `在途（…）` 一行，刷新文档时据此扣除。
+
+`status` 用「未完成态白名单」而不是枚举完成态：老 schema 记录（10-02 起 36 条 `INFO-*`）根本没有 `status` 字段，需按已完成处理；将来新增完成态名时也不该让批次凭空消失。
+
+**这个脚本原本是临时脚本，因 `_tmp` 被清丢了两次**才沉淀成 skill。凡是每轮都要用的统计口径，走本脚本，别再写一次性版本。回归测试 `scripts/test_review_coverage.py`（19 项）覆盖 status 分类与在途计数。
+
+## 2.2 查 xml_index 的批次归属（`locate_idx.py`）
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/locate_idx.py --stem <plugin> 6689 6690
+py -3 ... locate_idx.py --stem <plugin> --from-file idx.txt
+```
+
+**口径是扫 `.work/<plugin>/batches/*/index.txt`，不查批次计划**——计划与批次目录可能不同步，
+行也可能被 `inherit_prefill` / `sync_batch_artifacts` 改过归属。查不到的 idx 会明确列进
+`missing`，**不静默丢弃**（静默丢弃会让 `close_round` 在更早的一步报出与真实原因无关的错）。
+
+为什么需要它：`close_round --fixes` 的分组形态是 `{batch: {idx: fix}}`，把 idx 归错批，
+错会先在别处冒出来——「裸格式 fixes 只能配一个 --batch」只是症状，真实原因是分组键错了，
+定位难度远高于直接查一次归属。**收口前拿它定批次，别猜。**
+
+同样因 `_tmp` 被清丢失过，已沉淀为 skill。
 
 `map.filled.json`（consume 第 2 步的归一化产物）只作**旁证，单独不成立**：
 

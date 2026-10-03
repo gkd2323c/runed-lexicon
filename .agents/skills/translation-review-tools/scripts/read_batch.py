@@ -46,7 +46,49 @@ def digest_is_fresh(digest_path: Path) -> bool:
     return head.lstrip().startswith(DIGEST_LEGEND_HEAD) and DIGEST_LEGEND_PROBE in head
 
 
-def ensure_fresh_digest(batch_dir: Path) -> tuple[str, str]:
+def contract_staleness_note(context_path: Path, stem: str, work_root: str) -> str:
+    """批 context.json 比编译契约旧时，给出一行告警。
+
+    digest 的 MOD 行**不是现算的**，它逐字来自 context.json 里烘焙好的
+    `mod_terms_hits`——那是翻译期由 context-builder 写下的。所以此后新增的词条
+    对**所有更早备料的批次一律不可见**，`MOD: -` 不代表「词表里没有这个词」。
+
+    事故锚定（TheKalpicAnomaly_GLENMORIL 2026-10-03，RN-INFO-033）：`Artaeum→阿塔姆`
+    早在 10-02 就立了 CONFIRMED/REQUIRED 词条（`kalpic.glen.artaeum`），但该批
+    context.json 是 09-30 建的，digest 在 2916 行如实报 `MOD: -`，子代理据此
+    报「词表缺口」并顺带质疑字首——主会话跑 `adjudicate.py contract Artaeum` 才
+    看到词条一直都在。**报「词表缺口」前必须先 adjudicate 复核，别只看 DICTIONARY.md。**
+
+    这条告警只提示、不阻断：重建全库 790 批 context 的代价远高于它省下的事。
+    """
+    contract = PROJECT_ROOT / work_root / stem / "contracts" / f"{stem}.compiled.json"
+    try:
+        c_mt = contract.stat().st_mtime
+        x_mt = context_path.stat().st_mtime
+    except OSError:
+        return ""
+    if x_mt >= c_mt:
+        return ""
+    gap = c_mt - x_mt
+    if gap >= 86400:
+        age = f"{int(gap // 86400)} 天"
+    elif gap >= 3600:
+        age = f"{int(gap // 3600)} 小时"
+    else:
+        age = f"{int(gap // 60)} 分钟"
+    return (f"  ⚠ 本批 context.json 比编译契约旧 {age}（{_ts(x_mt)} < {_ts(c_mt)}）："
+            f"MOD 行只含**建批当时**已存在的词条，此后新增的词条对本批一律不可见。"
+            f"报「词表缺口」前先跑 "
+            f"`py -3 .agents/skills/same-source-convergence/scripts/adjudicate.py "
+            f"--stem {stem} contract <词>` 复核——`MOD: -` 不等于词表里没有。")
+
+
+def _ts(mtime: float) -> str:
+    from datetime import datetime
+    return datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+
+
+def ensure_fresh_digest(batch_dir: Path, stem: str = "", work_root: str = ".work") -> tuple[str, str]:
     """确保 <batch>/term-digest.md 带图例；缺图例或缺失就从 context.json 重生成。
 
     返回 (状态, 说明)。状态取值：fresh / regenerated / skipped / no-context /
@@ -55,13 +97,18 @@ def ensure_fresh_digest(batch_dir: Path) -> tuple[str, str]:
     """
     digest_path = batch_dir / DIGEST_NAME
     context_path = batch_dir / "context.json"
+    stale = contract_staleness_note(context_path, stem, work_root) if stem else ""
 
     if digest_path.is_file() and digest_is_fresh(digest_path):
-        return "fresh", ""
+        if stale and stale not in digest_path.read_text(encoding="utf-8", errors="replace")[:4096]:
+            text = digest_path.read_text(encoding="utf-8", errors="replace")
+            digest_path.write_text(_inject_stale_note(text, stale), encoding="utf-8")
+            return "fresh", f"已注入契约陈旧告警到 {DIGEST_NAME}{stale}"
+        return "fresh", (stale or "")
     if not context_path.is_file():
         if digest_path.is_file():
-            return "no-context", f"{DIGEST_NAME} 缺图例，且无 context.json 可重生成"
-        return "no-context", f"无 {DIGEST_NAME} 且无 context.json"
+            return "no-context", f"{DIGEST_NAME} 缺图例，且无 context.json 可重生成{stale}"
+        return "no-context", f"无 {DIGEST_NAME} 且无 context.json{stale}"
 
     # 复用 term_digest 的同一条构建路径，不在这里复写注册表发现逻辑
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -83,9 +130,28 @@ def ensure_fresh_digest(batch_dir: Path) -> tuple[str, str]:
         return "failed", "重生成结果仍缺图例，判定 term_digest 不可用，未覆盖原文件"
 
     existed = digest_path.is_file()
+    if stale:
+        text = _inject_stale_note(text, stale)
     digest_path.write_text(text, encoding="utf-8")
     verb = "重生成" if existed else "生成"
-    return "regenerated", f"{verb} {DIGEST_NAME}（原缺图例，判据型 note 已恢复）"
+    return "regenerated", f"{verb} {DIGEST_NAME}（原缺图例，判据型 note 已恢复）{stale}"
+
+
+def _inject_stale_note(text: str, note: str) -> str:
+    """把陈旧告警插进图例之后、批次数据之前，保证子代理一打开就读到。
+
+    图例首行必须保持在最前（`digest_is_fresh_text` 靠它判新鲜），所以不前置整段。
+    """
+    if note.strip() and note.strip() in text:
+        return text
+    lines = text.splitlines(keepends=True)
+    # 图例块结束于第一个空行；把告警放在其后
+    for i, line in enumerate(lines):
+        if not line.strip():
+            lines.insert(i, note.rstrip() + "\n")
+            return "".join(lines)
+    lines.append("\n" + note.rstrip() + "\n")
+    return "".join(lines)
 
 
 def digest_is_fresh_text(text: str) -> bool:
@@ -123,8 +189,10 @@ def main() -> int:
         return 2
 
     if not args.no_digest_check:
-        state, detail = ensure_fresh_digest(batch_dir)
+        state, detail = ensure_fresh_digest(batch_dir, args.stem, args.work_root)
         if state == "regenerated":
+            print(f"digest: {detail}")
+        elif state == "fresh" and detail:
             print(f"digest: {detail}")
         elif state in ("no-context", "failed"):
             print(f"digest WARN [{state}]: {detail}", file=sys.stderr)

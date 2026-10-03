@@ -201,6 +201,20 @@ def main() -> int:
     archive = ROOT / ".work" / stem / "archive"
     report = ROOT / ".work" / stem / "reports" / f"{stem}-writeback-report.json"
 
+    # --xml 是**源** XML。传成 canonical（_translated.xml）是极易犯的错，而且**不炸**：
+    # writer 拿到 --xml/--source-xml 都是 canonical 时仍能正确写回（post-write 校验照过、
+    # 门禁照 PASS），受害的只有 round_pipeline 里的 progress_snapshot —— 它把 canonical
+    # 当源文去算战役口径，于是 `campaign_from_canonical` 恒为 0、目标行从 42994 掉到 34100，
+    # 每轮刷一条「口径不一致: pipeline=34100 canonical=0」告警。那条告警被当噪声忽略了很久，
+    # 实际是调用错误。源文件一旦显式校验，这种错就不会再静默发生。
+    if source.resolve() == translated.resolve():
+        print(f"  !! --xml 传成了 canonical：{args.xml}\n"
+              f"     --xml 要的是**源** XML（{stem}_english_chinese.xml）；"
+              f"canonical 由 --translated-xml 或默认推导，不需要传。\n"
+              f"     继续会把快照的战役口径算成 0，并刷一条假的「口径不一致」告警。",
+              file=sys.stderr)
+        return 1
+
     by_batch = load_fixes(args.fixes, args.batches)
     print(f"fixes: { {b: sorted(f) for b, f in by_batch.items()} }")
 

@@ -160,7 +160,9 @@ def group_fixes(fixes: dict[int, dict], owner: dict[int, str],
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="审查报告 → 修正集生成")
-    ap.add_argument("--report", required=True, help="审查报告 JSON（findings[] 或 issues[]）")
+    ap.add_argument("--report", required=True, nargs="+",
+                    help="审查报告 JSON（findings[] 或 issues[]）；可给多份，"
+                         "同源副本与批次归属跨报告一并处理（每轮常审 3 批）")
     ap.add_argument("--xml", required=True, help="canonical 译文 XML（读现值与同源副本）")
     ap.add_argument("--out", required=True, help="fix map 输出路径")
     ap.add_argument("--drop", default=None, help="驳回的 idx（逗号/空格分隔）")
@@ -176,8 +178,9 @@ def main() -> int:
     if bool(args.batches) != bool(args.batches_dir):
         raise SystemExit("--batches 与 --batches-dir 必须同用")
 
-    report = json.loads(Path(args.report).read_text(encoding="utf-8"))
-    items = parse_report(report)
+    items: list[dict] = []
+    for rp in args.report:
+        items.extend(parse_report(json.loads(Path(rp).read_text(encoding="utf-8"))))
     srcs, dests = load_canonical(args.xml)
     drops = parse_idx_set(args.drop)
     includes = parse_idx_set(args.include)
@@ -254,7 +257,9 @@ def main() -> int:
     out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2),
                         encoding="utf-8")
 
-    print(f"report: {args.report}")
+    print(f"report: {len(args.report)} 份")
+    for rp in args.report:
+        print(f"  - {rp}")
     print(f"报告条目 {len(items)}；修正 {len(fixes) - dup_aligned}；"
           f"特裁 {len(overridden)}（报告外新增 {len(introduced)}）；"
           f"驳回 {len(dropped)}；no-op {len(noop)}")

@@ -377,6 +377,14 @@ def main() -> int:
             gaps = work / "context" / f"{stem}-gaps-batches.json"
             if gaps.is_file():
                 snap_cmd += ["--plan", str(gaps)]
+            # 战役口径要齐三份计划。只带主计划时，pipeline 侧只算得出 INFO 的 34,100 行，
+            # 而 canonical 的 INFO 战役实为 38,546 行，差的那 4,446 行正是 DIAL 族（在
+            # noninfo 计划里）——于是每轮刷一条 `口径不一致: pipeline=34100 canonical=38546`。
+            # 与 close_round 的 `--xml` 传错那次不同，这次是工具侧确实少传了计划。
+            for sibling in ("noninfo-batches.json", "info-rec-batches.json"):
+                p = work / "context" / f"{stem}-{sibling}"
+                if p.is_file() and str(p) != plan_path:
+                    snap_cmd += ["--plan", str(p)]
             if args.note:
                 snap_cmd += ["--note", args.note]
             if run(snap_cmd, "snapshot") != 0:

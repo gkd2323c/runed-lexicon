@@ -93,13 +93,28 @@ Agent 在任何环节输出的文件，语义、角色、路径三者必须确�
 
   仅在实际进入特定批次的翻译或审校时，再强制读取 `skyrim-translation-craft`；派单前读 `subagent-ops`（任务卡模板与模板红线、体量上限、送达纪律），进入批次循环前读 `translation-batch-ops` §0 标准续推循环；在执行写回与校验前，再加载 `skyrim-xml-verification`。
 
-### 2.3 全局禁用词没有 MOD 级白名单通道
+### 2.3 全局禁用词有一条带作用域的 MOD 级白名单通道（R21）
 
-`global-forbidden-words.json` 的坏形态由门禁以 TERM004 全局拦截，**编译链与门禁代码中都不存在任何 MOD 级豁免/白名单解析通道**（事故形态：按「局部豁免协议」在 `DICTIONARY.md` 写特例译名，编译器不识别该语法、门禁照拦，规则死锁；`[OVERRIDE_GLOBAL_BAN: ...]` 声明从未被任何脚本消费）。MOD 确需偏离某条全局坏形态时，只有三条真实通路：
+`global-forbidden-words.json` 的坏形态由门禁以 TERM004 全局拦截。**R21 起提供 MOD 级白名单通道**：
+MOD 用 `mods/<plugin>/global-ban-exemptions.json` 声明「某个禁用形态在本 MOD 的特定上下文里是合法形态」，
+经 `term-contract-compiler --global-ban-exemptions`（须与 `--global-bans` 同用）嵌入契约的 `global_ban_exemptions`，
+门禁命中时把 **TERM004 由 FAIL 降级为 WARNING 并携带声明理由**——不丢弃，finding 仍留在报告里可审计，
+所以白名单不会退化成盲区。豁免记录形如 `{english, forbidden, reason, scope}`，`scope` 三个键
+（`source_contains` / `dest_left` / `dest_right`）语义见 `term_match._exemption_scope_matches`；
+**未知键直接报错**——拼错的键若被静默忽略，豁免就变成无条件白名单。`forbidden` 不在词库中会直接报错。
+
+它解决的是子串检查的固有误报：中文无词边界，跨 MOD 词库无法表达「同一源文里另一个词也合法译成该形」的条件。
+`BecomeKingofSkyrimTNG` 已用一条豁免（`Jarl` 的禁用条目连带误伤 `noble` 的正确译形「贵族」，
+以 `scope.source_contains: ["noble"]` 限定，确保真正的 `Jarl→贵族` 错译仍被拦）。
+
+**通道之外仍只有三条真实通路**（豁免用于子串误报，不是用于绕过项目级裁决）：
 
 1. **改译文**：全局词库表达的是项目级裁决，MOD 内不得自行绕过（回到 §1.1 保真基准）。
 2. **修订项目级词条**：确认原裁决有误时改 `global-forbidden-words.json`（含 reason）并重编译该 MOD 契约；同形误报按该文件顶部约定立即撤除或收窄为更长短语并记入 `_retracted`。
 3. **下沉 MOD 术语条目**：错形恰好落在 target 出现区间内、被区间豁免（R12/R13）因而拦不住，或需 MOD 内额外拦截时，写入该 MOD `terms.json` 走 TERM002 通道，再重编译契约。
+
+⚠ 本节此前记为「编译链与门禁代码中都不存在任何 MOD 级豁免/白名单解析通道」，该结论已随 R21 失效，照旧结论操作会绕开一条已生效的机制。
+历史事故形态仍然成立、且仍需避免的是：在 `DICTIONARY.md` 写特例译名当作豁免语法（编译器不识别该语法、门禁照拦），`[OVERRIDE_GLOBAL_BAN: ...]` 声明从未被任何脚本消费。
 
 语义门豁免通道（`semantic_gate.py --waive`）只作用于语义层 FAIL，对机械 gate 的 TERM/KEEP 拦截无效，不得当作禁用词白名单使用。
 

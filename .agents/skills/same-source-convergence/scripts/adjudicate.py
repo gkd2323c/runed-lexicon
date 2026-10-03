@@ -97,7 +97,16 @@ def cmd_contract(a):
               % (k, v.get('target'), v.get('enforcement'), v.get('decision_status'),
                  acc, v.get('forbidden')))
         if v.get('note'):
-            print('                 note: %s' % str(v['note'])[:220])
+            # 显示层截断：必须显式标注，否则读的人会误判成「词条 note 数据本身被截断」
+            # （2026-10-03 实测踩过：adjudicate contract cure 的输出停在「域③」中途，
+            #  被当成数据缺陷上报；实际 terms.json 与 compiled.json 的 note 都完整。）
+            # --full-note 出全文：分域/别名约束常写在 220 字之后，截断版不足以支撑裁决。
+            note = str(v['note'])
+            if getattr(a, 'full_note', False):
+                shown = note
+            else:
+                shown = note if len(note) <= 220 else note[:220] + ' …[显示截断，全文 %d 字；加 --full-note 出全文]' % len(note)
+            print('                 note: %s' % shown)
     return 0
 
 
@@ -142,6 +151,10 @@ def main():
     ap.add_argument('--form', dest='forms', action='append',
                     help='census 模式：指定要统计的中文形，可重复。省略则只打命中行')
     ap.add_argument('--show', type=int, default=3, help='census 模式：每个词打几行样例')
+    ap.add_argument('--full-note', action='store_true',
+                    help='contract 模式：note 全文输出，不做 220 字显示截断。'
+                         '分域/别名约束常常写在 220 字之后（如 cure 域③、nymic 的 forbidden 互斥说明），'
+                         '截断版不足以支撑裁决——2026-10-03 INFO-019 子代理为此自写脚本绕路。')
     a = ap.parse_args()
     return cmd_contract(a) if a.mode == 'contract' else cmd_census(a)
 
