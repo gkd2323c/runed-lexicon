@@ -105,7 +105,7 @@ Skill 分四层 + 元 skill：
 - **协作编排**：`subagent-ops`（委派决策、任务卡编译与红线、体量与送达纪律、故障归因；附轨迹读取与写盘冲突守卫三个可选脚本）
 - **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`（含 `semantic_gate.py` 参考层）、`xtranslator-xml-writer`、`translation-batch-ops`（批次运维：验收/覆盖/缺口/进度/分片/审查欠账 review_pending 与批次实况 batch_status/收口链 round_pipeline 与 close_round）、`translation-batch-preparer`（批次切分与未译清点）、`noninfo-batch-planner`（非 INFO 批次计划）、`translation-review-tools`（读批/术语摘要/修正集 apply/字符集归一/抗幻觉探针）、`review-sheet-export`（导出人工审校 xlsx）
 - **契约与名词**：`term-contract-compiler`（编译契约）、`proper-noun-index`（源侧官方专名清点）、`dictionary-noun-audit`（译文侧漏项候选）、`noun-consistency-scan`（同源多译分裂）、`same-source-convergence`（同源译文收敛、分片对账与译形裁决）
-- **结构提取与查询**：`mutagen-dialogue-exporter`（秒级解析插件，取代 xEdit；`xedit-context-exporter` 已退役）、`skyrim-xml-tools`（XML 检视/未译清单/官方词典查询，只读）、`translation-fidelity-scan`、`fantasy-context-auditor`（本地 LLM 预筛）、`local-model-translator`
+- **结构提取与查询**：`mutagen-dialogue-exporter`（秒级解析插件，取代 xEdit；xEdit 导出路径已退役，保留在 `.agents/skills/xedit-context-exporter/` 仅作历史参考）、`skyrim-xml-tools`（XML 检视/未译清单/官方词典查询，只读）、`translation-fidelity-scan`、`fantasy-context-auditor`（本地 LLM 预筛）、`local-model-translator`
 - **纯规则**（无脚本）：`skyrim-translation-craft`、`skyrim-doc-system`、`skyrim-term-contract-workflow`、`skyrim-tool-dev-rules`、`skyrim-xml-verification`、`longtext-hallucination-review`、`shuo-ren-hua`（中文文风，写/改中文文档默认应用）
 - **元 skill**：`skill-creator`（创建/修改 skill 的规范与 `quick_validate.py` / `check_env.mjs` 验证脚本）
 
@@ -113,7 +113,7 @@ Skill 分四层 + 元 skill：
 
 以下几条是跨多个文件才能看出的规则，违反即事故：
 
-1. **序号基准已统一 0-based**：`skyrim-xml-tools` 的 `inspect` / `untranslated` 与 `translation-context-builder` / `translation-executor` / `xtranslator-xml-writer` 的 `xml_index`（`progress_snapshot` 里叫 `idx`）同为 **0-based**（String 元素序号，非文件行号）。历史会话与旧文档中按 1-based 记录的 inspect 序号需减 1 对照——旧基准曾导致误删批次条目；拿不准仍用 `Source` 文本核对。
+1. **序号基准已统一 0-based**：`skyrim-xml-tools` 的 `inspect` / `untranslated` 与 `translation-context-builder` / `translation-executor` / `xtranslator-xml-writer` 的 `xml_index`（`progress_snapshot` 里叫 `idx`）同为 **0-based**（String 元素序号，非文件行号）。若存量文档或会话记录按 1-based 记录过 inspect 序号，需减 1 对照；拿不准仍用 `Source` 文本核对。
 
 2. **确定性输出契约**（AGENTS.md §2.0.1）：文件名 = 角色 + 目标对象，**禁止**日期戳、序号、`final` / `vN` / `roundN` / `backup` 等版本标签。写回产物恒为 `<plugin>_english_chinese_translated.xml`（同名覆盖式演进，上一代移入 `.work/<plugin>/archive/<previous-sha256>/`）；报告恒为 `.work/<plugin>/reports/<plugin>-{gate,noun-audit,writeback}-report.json`。writer 会机械拒绝违规路径，**不得用 shell 复制/重命名伪造产出**。
 

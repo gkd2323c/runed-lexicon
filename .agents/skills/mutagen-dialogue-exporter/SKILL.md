@@ -1,6 +1,6 @@
 ---
 name: mutagen-dialogue-exporter
-description: "Export deterministic DIAL→INFO dialogue structure from an original Skyrim ESP/ESM/ESL with Mutagen (.NET overlay parsing) in seconds, including topic/quest/branch links, per-INFO speaker (NPC name resolved via load-order link cache), prompts, response texts and condition function/runOn evidence. Also converts the Mutagen output into the xEdit-style dialogue-context shape consumed by translation-context-builder and extracts per-batch index files for its --index-file option. Replaces xedit-context-exporter (xEdit CLI takes over 10min or hangs; Mutagen parses Druadach.esm in ~1.3s). Use when INFO lines need their real DIAL topic / quest line attribution, when building task-line dialogue batches, or whenever plugin-grounded dialogue structure is needed without the xEdit GUI."
+description: "Export deterministic DIAL→INFO dialogue structure from an original Skyrim ESP/ESM/ESL with Mutagen (.NET overlay parsing) in seconds, including topic/quest/branch links, per-INFO speaker (NPC name resolved via load-order link cache), prompts, response texts and condition function/runOn evidence. Also converts the Mutagen output into the xEdit-style dialogue-context shape consumed by translation-context-builder and extracts per-batch index files for its --index-file option. Replaces xedit-context-exporter: xEdit CLI can exceed 10 minutes or hang on an approximately 100MB plugin, while Mutagen parses the same scale in ~1.3s. Use when INFO lines need their real DIAL topic / quest line attribution, when building task-line dialogue batches, or whenever plugin-grounded dialogue structure is needed without the xEdit GUI."
 compatibility: "Requires Windows, .NET SDK 9+ (net9.0 build), the Mutagen repo cloned at tools/Mutagen (gitignored), and the target plugin's masters present in the installed Skyrim SE Data directory. Read-only: overlay parsing never modifies the plugin."
 metadata:
   version: "0.2.0"
@@ -10,14 +10,14 @@ metadata:
 
 用 Mutagen（C# Bethesda 插件库）以 binary-overlay 方式秒级解析插件，导出确定性的
 DIAL→INFO 对话结构。这是 `xedit-context-exporter` 的替代品：xEdit 命令行模式在
-Druadach.esm（约 98MB，5235 DIAL）上超过 10 分钟不出完成标记，Mutagen 同一文件
-**1.3 秒**出全量结构，且 speaker/quest/topic 解析同样来自插件结构而非猜测。
+约 100MB、五千余 DIAL 的大型 ESM 上可超过 10 分钟仍无完成标记，Mutagen 对同量级文件
+约 **1.3 秒**即可导出全量结构，且 speaker/quest/topic 解析同样来自插件结构而非猜测。
 
 ## 前置条件（一次性）
 
 1. `tools/Mutagen/` 存在（克隆自 <https://github.com/Mutagen-Modding/Mutagen>，已加 .gitignore）。
 2. .NET SDK：环境需安装 .NET 9 或 10 SDK（0.54.x 版 NuGet 包目标框架为 net9.0/net10.0；SDK 8 编不动）。检查：`dotnet --list-sdks`。
-3. **不要走 NuGet 老包**：本地 nuget 缓存里的 `Mutagen.Bethesda.Skyrim 7.1.0` 是 2020 年旧版，API 完全不同（`SkyrimMod` 无 `CreateFromBinaryOverlay`）。本工程直接用 `ProjectReference` 指向 `tools/Mutagen/Mutagen.Bethesda.Skyrim/Mutagen.Bethesda.Skyrim.csproj`，与仓库源码同版。
+3. **不要走不兼容的 NuGet 包**：`Mutagen.Bethesda.Skyrim 7.1.0` 的 API 不含 `SkyrimMod.CreateFromBinaryOverlay`。本工程直接用 `ProjectReference` 指向 `tools/Mutagen/Mutagen.Bethesda.Skyrim/Mutagen.Bethesda.Skyrim.csproj`，与仓库源码同版。
 
 ## 导出器：scripts/DialogueExport
 
@@ -29,8 +29,7 @@ dotnet run --project .agents/skills/mutagen-dialogue-exporter/scripts/DialogueEx
   "<SkyrimSE Data 目录>"
 ```
 
-第三个参数缺省为 `D:\SteamLibrary\steamapps\common\Skyrim Special Edition\Data`；
-master 解析按目标插件 TES4 头声明的 master 列表在该目录中查找（overlay 加载，不写盘）。
+第三个参数传入当前机器的 Skyrim Special Edition `Data` 目录；master 解析按目标插件 TES4 头声明的 master 列表在该目录中查找（overlay 加载，不写盘）。
 
 ### 输出契约（确定性）
 
@@ -45,21 +44,21 @@ GetIsID→`Object`（NPC 说话者条件）、GetInFaction→`Faction`、GetIsRa
 
 FormKey 与 xTranslator XML 的 `[xxxxxxxx]` EDID 关系：xTranslator 对插件自身记录写
 **load-order FormID**（如 `[05088C1F]`，`05`=插件 load 位）。连接取后 6 位局部 FormID
-（local FormKey），在目标插件的 INFO 集合内足以唯一定位（Druadach 实测：11399 条括号
-EDID 命中 11307，99.2%；剩余 92 条全部是 REFR/FURN/TES4/DIAL 非 INFO 记录，零漏网）。
+（local FormKey），在目标插件的 INFO 集合内足以唯一定位。大型 ESM 上，一万余条括号
+EDID 的连接率可达 99.2%；未连接项应全部属于 REFR/FURN/TES4/DIAL 等非 INFO 记录。
 
 ## 拆批：scripts/split-info-lines.py + plan-info-batches.py
 
 在仓库根目录运行（第一个参数为插件文件名主干，第二个参数缺省为 `mods/<stem>.esm`，.esp 插件须显式传目录）：
 
 ```text
-# Druadach（.esm，默认路径）
-python .agents/skills/mutagen-dialogue-exporter/scripts/split-info-lines.py
-python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py
+# .esm 默认路径
+python .agents/skills/mutagen-dialogue-exporter/scripts/split-info-lines.py <stem>
+python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py <stem>
 
-# 其他插件（如 .esp）
-python .agents/skills/mutagen-dialogue-exporter/scripts/split-info-lines.py Artaeum mods/Artaeum.esp
-python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py Artaeum mods/Artaeum.esp
+# 显式指定插件目录（如 .esp）
+python .agents/skills/mutagen-dialogue-exporter/scripts/split-info-lines.py <stem> mods/<plugin>
+python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py <stem> mods/<plugin>
 ```
 
 - `split-info-lines.py`：Mutagen JSON × XML INFO 行连接，按 `questEdid` 聚合为任务线；
@@ -68,23 +67,23 @@ python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py Art
   `speakerName`（ANAM）→ `speakerFromCondition`（唯一 GetIsID 条件）→ `speaker`。
 
   **INFO EDID 双通道（关键）**：xTranslator 对 `INFO:NAM1`/`RNAM` 的 EDID 列有两种形态，脚本必须同时支持：
-  - FormID 型 `[04197AF5]`：作者未给 INFO 起 EditorID 时（Druadach 等）。连 local FormID（后 6 位）。
-  - 命名型 `SIGREL_HELLO_F90_H05`：作者为每条 INFO 填了 EditorID 时（TheKalpicAnomaly 实测）。按原样 EDID 精确匹配 mutagen 的 `info.edid`。
+  - FormID 型 `[04197AF5]`：作者未给 INFO 起 EditorID 时。连接 local FormID（后 6 位）。
+  - 命名型 `SIGREL_HELLO_F90_H05`：作者为 INFO 填了 EditorID 时。按原样 EDID 精确匹配 Mutagen 的 `info.edid`。
   两通道键空间互斥（实测交集 0），优先命名通道、回退 FormID 通道。
-  只用 FormID 通道会静默漏掉命名型行：TheKalpicAnomaly 命名型占 NAM1 行 68%（20,142/29,634），
-  单通道连接率仅 31%（9,093 行），双通道后 98.5%（29,176 行）。**新 MOD 接入后必须核对
+  只用 FormID 通道会静默漏掉命名型行；在命名型占 NAM1 行约 68% 的输入上，
+  单通道连接率仅约 31%，双通道可达 98.5%。**新 MOD 接入后必须核对
   「全 XML 未译 INFO NAM1 行数」与「各线未译之和」是否接近，差距大即说明存在未接入的 EDID 形态。**
 - `plan-info-batches.py`：以任务线为批次边界，CAP=45 唯一未译源句；单主题超容量时按
   **唯一未译源句数**（不是 INFO 条数）均分为子主题；跨批全局源句去重（同句在后批只占一次容量、也只需翻一次）。
   产出 `.work/<plugin>/context/<plugin>-info-batches.json`（批次 → line/dials/unique_src）。
 
-  **切分单位必须是源句**：INFO 与 NAM1 行是 1:N 关系（同一句台词被引擎按条件复制成多条
-  记录，TheKalpicAnomaly 实测 mean 4.11 / max 23）。按 `len(infos)` 切分会让每片仍携带
-  远超 CAP 的源句（事故：16 条 INFO 的 topic 带 165 个唯一源句，191 批超 CAP、最大 165）。
-  正确做法：按 INFO 逐条累加新增源句数，装满 CAP 切一刀，片内去重、切片后重置计数器。
+  **切分单位必须是源句**：INFO 与 NAM1 行是 1:N 关系，同一句台词可能被引擎按条件复制成多条
+  记录，实测平均约 4 条、最高 20 余条。按 `len(infos)` 切分会让每片仍携带
+  上百个唯一源句，并产生大量超 CAP 批次。正确做法：按 INFO 逐条累加新增源句数，
+  装满 CAP 切一刀，片内去重、切片后重置计数器。
   验收：`max(unique_src) <= CAP` 且 `sum(len(b.idx))` 与 split 侧未译 idx 唯一数守恒。
 
-批次命名 `INFO-001…`，批次 id 是稳定契约 ID；重跑覆盖。
+批次命名 `INFO-NNN`，批次 id 是稳定契约 ID；重跑覆盖。
 
 ## 对接 translation-context-builder：scripts/convert-dialogue-context.py + make-batch-index.py
 
@@ -94,19 +93,19 @@ python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py Art
 
 ```text
 # 1. Mutagen 结构 → xEdit 风格 dialogue context（含 FormID 前缀自动推导）
-python .agents/skills/mutagen-dialogue-exporter/scripts/convert-dialogue-context.py Artaeum mods/Artaeum.esp
-#    → .work/Artaeum/context/Artaeum-dialogue-context.json
+python .agents/skills/mutagen-dialogue-exporter/scripts/convert-dialogue-context.py <stem> mods/<plugin>
+#    → .work/<stem>/context/<stem>-dialogue-context.json
 
 # 2. 从批次计划抽取单批次索引（供 --index-file）
-python .agents/skills/mutagen-dialogue-exporter/scripts/make-batch-index.py Artaeum INFO-001
-#    → .work/Artaeum/batches/INFO-001/index.txt
+python .agents/skills/mutagen-dialogue-exporter/scripts/make-batch-index.py <stem> <BID>
+#    → .work/<stem>/batches/<BID>/index.txt
 
 # 3. 生成批次上下文（注意显式传 --dialogue-context 与 --index-file）
-python .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/Artaeum.esp \
-  --xml mods/Artaeum.esp/Artaeum_english_chinese.xml \
-  --dialogue-context .work/Artaeum/context/Artaeum-dialogue-context.json \
-  --index-file .work/Artaeum/batches/INFO-001/index.txt \
-  --batch-size 0 --output .work/Artaeum/batches/INFO-001/context.json --force
+python .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/<plugin> \
+  --xml mods/<plugin>/<plugin>_english_chinese.xml \
+  --dialogue-context .work/<stem>/context/<stem>-dialogue-context.json \
+  --index-file .work/<stem>/batches/<BID>/index.txt \
+  --batch-size 0 --output .work/<stem>/batches/<BID>/context.json --force
 ```
 
 完整流水线（新增 MOD 时按序执行）：
@@ -126,19 +125,19 @@ speakerName/speakerFromCondition→speaker_candidates、questEdid→quest_edid�
 **FormID 前缀自动推导**。xTranslator XML 的括号 EDID（`[0600F5AE]`）比 Mutagen 的
 局部 FormID（`00F5AE`）多 2 位 load 位，脚本从 XML 采样括号 EDID 与 Mutagen 局部
 FormID 交叉验证命中率，取最高频前缀——不写死、不猜 load order，推导结果打印在
-stdout（Artaeum 实测 7735/7735 全命中）。输出 `.work/<stem>/context/<stem>-dialogue-context.json`。
+stdout；固定样本中数千条记录应全部命中。输出 `.work/<stem>/context/<stem>-dialogue-context.json`。
 - `make-batch-index.py`：从 `.work/<stem>/context/<stem>-info-batches.json` 按批次 id 抽 `idx` 到
 `.work/<stem>/batches/<BATCH-ID>/index.txt`（每行一个 XML 索引）。
 
 > 前缀推导报错（XML 与 Mutagen 无交叉命中）通常意味着 XML 与插件不是同一代次，
 > 或该 XML 尚无任何本插件 INFO 行。
 
-## Druadach 实测基线（回归对照）
+## 大型 ESM 性能基线（回归对照）
 
-- Druadach.esm：5235 DIAL / 8089 INFO，1297ms；
-- INFO 连接率 99.2%，未译 INFO NAM1 10673 行全部归线，unlinked=0；
-- 319 批（CAP=45，唯一源句 10462，批大小中位 42、最大 45）。
-  行数>唯一句数是因为大量复读台词（守卫、市民套话），去重省 211 句 + 后续批次免审。
+- 约 100MB、五千余 DIAL / 八千余 INFO：约 1.3s；
+- INFO 连接率 99.2%，一万余条未译 INFO NAM1 应全部归线，`unlinked=0`；
+- 数百批，`CAP=45`，约一万条唯一源句，批大小中位数约 42、最大 45。
+  行数大于唯一句数通常来自守卫、市民套话等复读台词，去重可省数百句及后续重复审查。
 
 ## 安全边界
 
@@ -151,19 +150,18 @@ stdout（Artaeum 实测 7735/7735 全命中）。输出 `.work/<stem>/context/<s
 
 ## 已知坑（禁止重踩）
 
-0. **INFO EDID 有两种形态，拆线脚本必须双通道**（2026-09-18 事故）：xTranslator 的 EDID
+0. **INFO EDID 有两种形态，拆线脚本必须双通道**：xTranslator 的 EDID
    列对同一插件可能混用 FormID 型（`[04197AF5]`）与命名型（`SIGREL_HELLO_F90_H05`）。
-   旧版 `split-info-lines.py` 只认 FormID 型，在 TheKalpicAnomaly 上静默漏掉 68% 的 NAM1 行
-   （连接率 31%），且不报错——拆线结果「看起来正常」（unlinked=0）但覆盖严重不足。
-   判据：`全 XML 未译 INFO NAM1 行数` 应约等于 `各线未译之和 + unlinked`；不等即漏通道。
-   修复：`by_edid` 命名通道优先、`by_fk` 回退；两池键空间互斥（实测交集 0），互不影响。
-   验证：命名通道新增行数 = XML 命名型行唯一数；FormID 通道命中数不变。
+   只认 FormID 型会静默漏掉命名型 NAM1 行；在命名型占约 68% 的输入上，连接率会降至约 31%，
+   且 `unlinked=0` 仍让结果看似正常。判据：`全 XML 未译 INFO NAM1 行数` 应约等于
+   `各线未译之和 + unlinked`；不等即漏通道。实现采用 `by_edid` 命名通道优先、`by_fk` 回退；
+   两池键空间互斥，互不影响。验证：命名通道新增行数 = XML 命名型行唯一数；FormID 通道命中数不变。
 
-0b. **拆批切分单位必须是唯一源句，不是 INFO 条数**（2026-09-18 事故）：INFO 与 NAM1 行是
-   1:N 关系（同一句台词被引擎按条件复制成多条记录，实测 mean 4.11 / max 23）。
-   旧版 `topic_units` 按 `len(tp['infos'])` 均分，在 16 条 INFO 的 topic 上算出 k=1、不切分，
-   结果单批带 165 个唯一源句，191 批超 CAP。修复：按 INFO 累加新增源句数，装满 CAP 切一刀。
-   验收：`max(unique_src) <= CAP` 且所有批 `idx` 并集 = split 侧未译 idx 唯一数（守恒）。
+0b. **拆批切分单位必须是唯一源句，不是 INFO 条数**：INFO 与 NAM1 行是
+   1:N 关系，同一句台词可复制成多条记录，实测平均约 4 条、最高 20 余条。
+   按 `len(tp['infos'])` 均分时，少量 INFO 的 topic 仍可能携带上百个唯一源句，造成大量批次超 CAP。
+   应按 INFO 累加新增源句数，装满 CAP 切一刀。验收：`max(unique_src) <= CAP` 且所有批 `idx`
+   并集 = split 侧未译 idx 唯一数（守恒）。
 
 1. `IConditionGetter` 无 `Function`，函数枚举在 `c.Data` 派生 getter 上，而 overlay
    的 `IConditionDataGetter.Function` 未实现 → 输出条件用类型名（`kind`=如

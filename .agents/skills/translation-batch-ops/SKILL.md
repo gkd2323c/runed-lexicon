@@ -35,7 +35,7 @@ metadata:
 5. **收口（唯一入口）**：`round_pipeline.py`（§5c）一条命令完成 consume→charset→check→write→verify→snapshot；语义 FAIL 时它停在写回前，裁决后重跑。
 6. **文档治理（与步 5 同轮）**：刷新该 MOD `PROGRESS.md` 的状态数字（以步 5 产出的 `--record` 快照为准）、更新「下一动作」、确认无新增「已收口」条目。**这一步是硬规则不是收尾补办**（AGENTS.md §5；判据与归档机制见 `skyrim-doc-system` §12）。
 
-> **硬规则（2026-09-22）：步 5 的收口链禁止拆成手动并行命令。** 手动编排曾六次产生覆盖时序（快照记入写前态 200/205/213/216/220、charset 读到 fill 前空文、统计读到写前态）；write_translations 与 progress_snapshot 内置 pipeline.lock 守卫，持锁期间外部命令直接拒绝。独立的多批 consume / apply_fixes 并行仍允许（不碰 canonical，见 skyrim-tool-dev-rules §2 第 4 条）。
+> **硬规则：步 5 的收口链禁止拆成手动并行命令。** 手动并行会反复产生覆盖时序：快照记录写前态、charset 读到 fill 前空文、统计读到写前态。`write_translations` 与 `progress_snapshot` 内置 `pipeline.lock` 守卫，持锁期间外部命令直接拒绝。独立的多批 consume / apply_fixes 并行仍允许（不碰 canonical，见 `skyrim-tool-dev-rules` §2 第 4 条）。
 
 派单安全规范（体量上限、验收三查、送达纪律）以 `subagent-ops` 为准，本表不重复。
 
@@ -54,7 +54,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/verify_subagent_batch.py \
   [--contract <compiled.json>] [--keep-list <keep.json>] [--report <report.json>] [--repair]
 ```
 
-三段：A. 完整性（`set(map) == set(idx)`，缺/多/重合率 < 0.5 判键错位整批不可用）；B. 内容初筛（WAITING/空译、非法状态、KEEP≠原文需 `--xml`、英文残留需 `--xml`）；C. gate 段（`--result` 时跑 executor 的 validate 需 `--context`，加 quality_gate `--auto-bind`）。C 段**不写 gate 的 `--report`**（受命名契约限制只认 `*-gate-report.json`，而那是个全库单文件、内容可能与本次批次对不上），改为把 gate stdout 的 FAIL/WARN 明细行**直接内联**进验收报告：FAIL 行走 `gate_fail_detail` 进 `fails[].detail`，同时全量留在 `gate.fail_lines`；WARN 行进顶层 warnings 与 `gate.warn_lines`。**明细不得只留计数**——早先只写「用 *-gate-report.json 重跑取明细」，而那个固定路径报告里躺着的是上一次全库 gate 的旧结果，Agent 拿不到「到底哪条被拦、什么码」，只能手工重跑才看得见（事故锚定：INFO-088 的 CHAR001 直角引号）。
+三段：A. 完整性（`set(map) == set(idx)`，缺/多/重合率 < 0.5 判键错位整批不可用）；B. 内容初筛（WAITING/空译、非法状态、KEEP≠原文需 `--xml`、英文残留需 `--xml`）；C. gate 段（`--result` 时跑 executor 的 validate 需 `--context`，加 quality_gate `--auto-bind`）。C 段**不写 gate 的 `--report`**（受命名契约限制只认 `*-gate-report.json`，而那是个全库单文件、内容可能与本次批次对不上），改为把 gate stdout 的 FAIL/WARN 明细行**直接内联**进验收报告：FAIL 行走 `gate_fail_detail` 进 `fails[].detail`，同时全量留在 `gate.fail_lines`；WARN 行进顶层 warnings 与 `gate.warn_lines`。**明细不得只留计数**。若只写「用 *-gate-report.json 重跑取明细」，固定路径报告可能仍是其他范围的结果，Agent 拿不到“哪条被拦、什么码”，只能手工重跑。典型失效是 CHAR001 直角引号只留下计数而无对应条目。
 
 **gate WARN 可见性（必读）**：gate 在 `--auto-bind` 模式下把「required target 未出现」报为 review candidate（WARNING 而非 FAIL）；C 段会把 WARN 明细行并入顶层 warnings 输出（`warnings=N` 与 `WARN <batch> GATE_WARN ...` 行同屏显示），报告在 `gate.warn_lines` 留全量。**验收纪律：`warnings>0` 时逐条核 WARN 明细**，不得只看 verdict；漏读即可放过真漂移：契约词条与 DICTIONARY 的 target 不一致时，gate 的 WARN 是机械暴露点，被吞掉则全库用错形直写回。术语裁决落盘时两处同步核一遍。
 
@@ -68,7 +68,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/verify_subagent_batch.py \
 
 ## 2. 批次状态与覆盖核查（`check_batch_coverage.py`）
 
-对批次计划做全量状态扫描，输出每个批次的状态（VERIFIED 已验收 / TRANSLATED 已交卷待消费 / PREPPED 已备料待翻 / **PARTIAL 部分备料，三件套不齐不可派单** / MISSING 未备料）与未完成清单。PREPPED 要求 `index.txt + context.json + term-digest.md` 三件套齐全；只齐部分归 PARTIAL 并在快照中单独警告——事故锚定：旧判定只看 context.json 就算已备料，gaps 六批 digest 全缺却显示已备料，派单前才发现：
+对批次计划做全量状态扫描，输出每个批次的状态（VERIFIED 已验收 / TRANSLATED 已交卷待消费 / PREPPED 已备料待翻 / **PARTIAL 部分备料，三件套不齐不可派单** / MISSING 未备料）与未完成清单。PREPPED 要求 `index.txt + context.json + term-digest.md` 三件套齐全；只齐部分归 PARTIAL 并在快照中单独警告。失效形态是只看 `context.json` 就判定已备料，使多个缺 digest 的批次直到派单前才暴露：
 
 ```text
 py -3 .agents/skills/translation-batch-ops/scripts/check_batch_coverage.py \
@@ -76,11 +76,11 @@ py -3 .agents/skills/translation-batch-ops/scripts/check_batch_coverage.py \
   --xml mods/<plugin>/<plugin>_english_chinese_translated.xml
 ```
 
-规则：① 声明「已完成批次 XX～XX」前必须先跑一次核对——按序推进时的跳号跳批会使整批漏译（INFO-123、INFO-107～111 即此模式：混在声明范围内、从未备料），只有全量扫描能发现；② 每轮收口时用它定位下一批候选。
+规则：① 声明“已完成某批次范围”前必须先跑一次核对。按序推进时的跳号跳批会使整批混在声明范围内却从未备料，只有全量扫描能发现；② 每轮收口时用它定位下一批候选。
 
 **`VERIFIED` 不等于已写回**：`VERIFIED` 的定义只是「translation.json 已填充」，它会盖住「三查 PASS 但 writeback 从没跑」的批次——按「已验收」口径统计时它们看起来像已完成。因此**必须带 `--xml` 跑**：工具会把每批 idx 与 canonical 逐行对照，报出「译文已填、但 canonical 仍与 Source 相同」的批与行数（KEEP 行不计）。声明批次收敛前，未写回行数必须为 0。
 
-**`VERIFIED` 的两条通路（纯 KEEP 批的已消费性）**：`VERIFIED` 的定义是“consume 已落盘”，有两条互不替代的通路——① `translation.json` 里 ≥1 条 `TRANSLATED`（旧口径，行为不变）；② **消费痕迹**：`translation.json` 每条都有非空译文且 `status ∈ {TRANSLATED, KEEP}`，无 PENDING 残留。第二条是为**纯 KEEP 批**准备的：它的 Dest 变更恒为 0、`Dest == Source` 本来就成立，canonical 里没有任何痕迹，而它又永远拿不到通路 ①，于是状态机停在 TRANSLATED、快照每轮报同一条假滞留（事故锚定：TheKalpicAnomaly_GLENMORIL 2026-10-02 `NI-TES4-001`，consume 与 round_pipeline 早已 `PIPELINE PASS` / `0 Dest change(s)`，快照仍报“滞留 1 批（253min→270min）”）。
+**`VERIFIED` 的两条通路（纯 KEEP 批的已消费性）**：`VERIFIED` 的定义是“consume 已落盘”，有两条互不替代的通路——① `translation.json` 里 ≥1 条 `TRANSLATED`（旧口径，行为不变）；② **消费痕迹**：`translation.json` 每条都有非空译文且 `status ∈ {TRANSLATED, KEEP}`，无 PENDING 残留。第二条是为**纯 KEEP 批**准备的：它的 Dest 变更恒为 0、`Dest == Source` 本来就成立，canonical 里没有任何痕迹，而它又永远拿不到通路 ①，于是状态机停在 TRANSLATED、快照每轮报同一条假滞留（失效形态：consume 与 round_pipeline 早已 `PIPELINE PASS` / `0 Dest change(s)`，快照仍报「滞留 1 批」且滞留时长逐轮增长）。
 
 判据为什么落在 `translation.json` 上：`fill_translations` 只由 consume / round_pipeline / close_round 触发，能落满就证明交付确实被消费过。它也骗不过同源预填——`inherit_prefill` 只写 `map.json`，未派单批的 `translation.json` 始终是 PENDING 骨架。
 
@@ -103,18 +103,18 @@ py -3 ... review_coverage.py --stem <plugin> --json
 
 **为什么判据是「文件存在 + status」**：两层都得看。
 
-第一层，子代理任务报 `succeeded` **不等于**交付了文件。实测一次派 6 个批次，`068`/`069` 直接 `lost`（零输出），`066`/`067`/`070` 报 `succeeded` 但读完输入、跑完新鲜度闸就中断，`reports/` 里根本没有记录——其中 `067` 连闸都报完了（45/45/45）却没往下走。所以每次派完都要核文件真落盘，别信任务状态。
+第一层，子代理任务报 `succeeded` **不等于**交付了文件。执行者可能零输出，也可能在读完输入、通过新鲜度闸后中断，导致 `reports/` 中没有记录。所以每次派完都要核文件真落盘，不能只信任务状态。
 
-第二层，**分步落盘约定让「文件存在」不等于「审完了」**：子代理过完新鲜度闸就先落一份 `status=IN_PROGRESS` 占位，再逐批追加 findings，最后才改 `COMPLETE`。只看存在性会把在途占位算成已审——实测 TheKalpicAnomaly_GLENMORIL 一度虚高 2 批 / 91 行（常驻 3 个在途批）。在途批本来就没审完，应当计入**待审**；脚本会单独打印 `在途（…）` 一行，刷新文档时据此扣除。
+第二层，**分步落盘约定让“文件存在”不等于“审完了”**：子代理过完新鲜度闸就先落一份 `status=IN_PROGRESS` 占位，再逐批追加 findings，最后才改 `COMPLETE`。只看存在性会把数批、上百行的在途占位虚算成已审。在途批应计入**待审**；脚本会单独打印 `在途（…）` 一行，刷新文档时据此扣除。
 
-`status` 用「未完成态白名单」而不是枚举完成态：老 schema 记录（10-02 起 36 条 `INFO-*`）根本没有 `status` 字段，需按已完成处理；将来新增完成态名时也不该让批次凭空消失。
+`status` 用“未完成态白名单”而不是枚举完成态：没有 `status` 字段的兼容记录按已完成处理；新增完成态名时也不应让批次凭空消失。
 
-**这个脚本原本是临时脚本，因 `_tmp` 被清丢了两次**才沉淀成 skill。凡是每轮都要用的统计口径，走本脚本，别再写一次性版本。回归测试 `scripts/test_review_coverage.py`（19 项）覆盖 status 分类与在途计数。
+凡是每轮都要用的统计口径，统一走本脚本，不写一次性版本。回归测试 `scripts/test_review_coverage.py`（19 项）覆盖 status 分类与在途计数。
 
 ## 2.2 查 xml_index 的批次归属（`locate_idx.py`）
 
 ```text
-py -3 .agents/skills/translation-batch-ops/scripts/locate_idx.py --stem <plugin> 6689 6690
+py -3 .agents/skills/translation-batch-ops/scripts/locate_idx.py --stem <plugin> <idx-a> <idx-b>
 py -3 ... locate_idx.py --stem <plugin> --from-file idx.txt
 ```
 
@@ -125,8 +125,6 @@ py -3 ... locate_idx.py --stem <plugin> --from-file idx.txt
 为什么需要它：`close_round --fixes` 的分组形态是 `{batch: {idx: fix}}`，把 idx 归错批，
 错会先在别处冒出来——「裸格式 fixes 只能配一个 --batch」只是症状，真实原因是分组键错了，
 定位难度远高于直接查一次归属。**收口前拿它定批次，别猜。**
-
-同样因 `_tmp` 被清丢失过，已沉淀为 skill。
 
 `map.filled.json`（consume 第 2 步的归一化产物）只作**旁证，单独不成立**：
 
@@ -194,9 +192,9 @@ py -3 .agents/skills/translation-batch-ops/scripts/progress_snapshot.py \
 
 **滞留告警的边缘情况**：`TRANSLATED` 的判定依赖 consume 落盘痕迹（通路与依据见 §2“`VERIFIED` 的两条通路”），所以已消费的**纯 KEEP 批**不再进滞留列表——它的 Dest 变更恒为 0，在 canonical 里本就无痕。真正没被消费的纯 KEEP 批（translation.json 仍是 PENDING 骨架）依旧按滞留报出；`consume_batch` 崩在 fill 之前、或 `map.filled.json` 是空 `{}` 的批次同样不算已消费。另一侧的反向风险：对已消费的纯 KEEP 批跑 `rebuild_context` 会清掉 KEEP 条目（它只保留 TRANSLATED），该批退回 TRANSLATED 并重新告警——译文确实丢了，重跑 `consume_batch` 恢复即可，这是有意的保守侧倒。
 
-主状态行的「已备料 N」**后面直接跟成员 ID**（最多 12 个，溢出显示 `+N`），按「躺了多久」降序——已备料待派就是下一轮的开工清单，只给计数会让人无从判断下一批派什么。事故锚定：TheKalpicAnomaly 2026-10-02，INFO-368/369 备料后整轮无人派单、canonical 里 93 行始终未译，摘要只打印「已备料 6」这个计数，直到审查器逐行读出未译才暴露；补上成员清单与本告警后首次实跑即额外抓出躺了 37 小时的 `NI-QUST-001` / `NI-TES4-001`。**开工顺序取本告警列表里最久未派的批次，不是按批号顺推。**
+主状态行的「已备料 N」**后面直接跟成员 ID**（最多 12 个，溢出显示 `+N`），按「躺了多久」降序——已备料待派就是下一轮的开工清单，只给计数会让人无从判断下一批派什么。失效形态：备料后整轮无人派单、canonical 里数十行始终未译，摘要只打印「已备料 6」这个计数，直到审查器逐行读出未译才暴露；补上成员清单与本告警后首次实跑即额外抓出躺了数十小时的未派批次。**开工顺序取本告警列表里最久未派的批次，不是按批号顺推。**
 
-**口径交叉校验的语义（②）**：pipeline 只计批次侧 `status==TRANSLATED` 的行。批次侧残存 REVIEW 条目（值已定稿并写回 canonical、仅状态未转正）会使 pipeline 少于 canonical、持续报「不一致」。差异处置：求差（canonical INFO 已译集 − 源预译集 − 各批 translation.json 的 TRANSLATED 并集）→ 核对差异行批次值==canonical 值 → 将仍挂 REVIEW 的条目在 map.json 与 translation.json 中一并转正。2026-09-21 TheKalpicAnomaly 按此清 23 条后双口径一致。
+**口径交叉校验的语义（②）**：pipeline 只计批次侧 `status==TRANSLATED` 的行。批次侧残存 REVIEW 条目（值已定稿并写回 canonical、仅状态未转正）会使 pipeline 少于 canonical、持续报「不一致」。差异处置：求差（canonical INFO 已译集 − 源预译集 − 各批 translation.json 的 TRANSLATED 并集）→ 核对差异行批次值==canonical 值 → 将仍挂 REVIEW 的条目在 map.json 与 translation.json 中一并转正（实测按此处置可使双口径一致）。
 
 输出角色：进度日志 `.work/<plugin>/reports/<plugin>-progress-log.json`（追加式；与上一条内容一致时自动跳过；`--record` 才写盘，默认只读）。
 
@@ -224,16 +222,16 @@ py -3 .../shard_batch.py merge --stem <S> --batch <B> --parts blockA blockB --pa
 - **片间同源译形**：合并键集一致不等于译形一致。分片独立翻译时同一 Source 可能被两片各定一次形，此分裂若不在此拦住，会活到 `close_round` 同源对账才爆，那时已写回 canonical。默认报错退出并列出各组各形；`--converge` 按多数形自动收敛。
 - 手动拆半（`--pattern`、无 index-part）时跳过越界检查。
 
-**maps/ 分片兼容（v1.1.0）**：翻译子代理按分片各自交付时，产物通常落在 `maps/<BID><lab>-map.json`（如 `GAP-INFO-002a-map.json`）且值为扁平 `{idx: "译文"}`。merge 自动回退到该路径与形态（扁平字符串自动升格为 object 形态）。
+**maps/ 分片兼容（v1.1.0）**：翻译子代理按分片各自交付时，产物通常落在 `maps/<BID><lab>-map.json` 且值为扁平 `{idx: "译文"}`。merge 自动回退到该路径与形态（扁平字符串自动升格为 object 形态）。
 
 ```text
-py -3 .../shard_batch.py merge --stem <S> --batch GAP-INFO-002 --parts a b \
+py -3 .../shard_batch.py merge --stem <S> --batch <BID> --parts a b \
     --pattern "../../maps/{lab}-map.json"   # 或省略 pattern，自动尝试 maps/<BID><lab>-map.json
 ```
 
 ## 5a. 子代理产出一键消费（`consume_batch.py`）
 
-把「翻译产出 → 验收就绪」的机械链条收敛为一个命令（此前此链条散落在多个一次性脚本中，属流程缺陷）：
+把“翻译产出 → 验收就绪”的机械链条固定为一个命令，避免步骤散落在多个一次性脚本中：
 
 ```text
 py -3 .agents/skills/translation-batch-ops/scripts/consume_batch.py \
@@ -249,7 +247,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/consume_batch.py \
    写 `map.filled.json`（object 形态原样通过）；
 3. **immutable 同步**：`review_reasons` / `protected_tokens` 以 context 为唯一真相，
    用 `translation_result.review_reasons()` / `protected_tokens()` 原函数重算——
-   **禁止手写近似逻辑**（曾因手写推断导致 immutable field changed FAIL）；
+   **禁止手写近似逻辑**；近似推断会触发 `immutable field changed` FAIL；
 4. **fill**：`fill_translations.py --force --overwrite`（map 为唯一真相源，已译也覆盖）；
 5. **verify**：`verify_subagent_batch.py` 全链（--plan 自动探测：GAP- 前缀走 gaps 计划）。
 
@@ -276,7 +274,7 @@ immutable 字段一律以新 context 重算。mods 目录名与 stem 不一致�
 
 ## 5c. 一轮收口唯一入口（`round_pipeline.py`）
 
-把「consume→charset→check-only→写回→段核对→快照」整链收敛为**单进程严格顺序**执行，并持 `.work/<stem>/reports/pipeline.lock` 独占锁——从工具链层面拒绝并行（手动并行编排曾六次产生覆盖时序）：
+把「consume→charset→check-only→写回→段核对→快照」整链收敛为**单进程严格顺序**执行，并持 `.work/<stem>/reports/pipeline.lock` 独占锁，从工具链层面拒绝并行。手动并行会反复产生覆盖时序：
 
 ```text
 py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
@@ -300,8 +298,8 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
 **首次写回（canonical 引导，工具内置）**：新 MOD 第一次收口时 canonical 尚不存在，`round_pipeline` 自动切到 writer 的 full rebuild 模式（baseline = 源 XML，`--output` 指向 canonical 路径），无需主会话手工拼命令；PASS 行会标 `first-write`。约束与边界：
 
 - 只有含 `write` 步骤的调用才能引导（`--phases` 不含 write 而 canonical 缺失时直接报错退出 2）。
-- 首次不做 `--archive-to`（无旧版本可归档），也不做写回前同源预检（canonical 为空，无既有形可比）；从第二次写回起恢复常规增量与预检。
-- 此前该步骤散落在主会话手工拼命令、SKILL 未记载，每次新 MOD 都要现场推导（2026-10-03 BecomeKingofSkyrimTNG 首次踩坑：round_pipeline 报 canonical 不存在，主会话在外面手跑了 writer 才建起来）；现固化为工具行为，唯一入口自洽。
+- 首次不做 `--archive-to`（无既有版本可归档），也不做写回前同源预检（canonical 为空，无既有形可比）；从第二次写回起恢复常规增量与预检。
+- 该步骤若散落在主会话手工命令中，每次新 MOD 都要现场推导。失效形态是 `round_pipeline` 报 canonical 不存在，操作者被迫在入口外手跑 writer。该行为必须由唯一入口内置。
 
 **写回前同源预检与合法分层**：预检把 canonical 全部已译行与本批 map 合并按 source 分组，>1 形即停。官方**行政层次分层**（城市名 vs 领名，如 Whiterun→白漫城/白漫领）与 **REC 语用分层**（DIAL 选项 vs INFO 台词）不是漂移，属合法差异，登记 `.work/<plugin>/contracts/<plugin>-same-source-exemptions.json`（格式 `{"<source>": {"idxs": [...], "reason": "..."}}`）后放行；未登记的仍一律拦截。
 
@@ -309,27 +307,27 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
 
 退出码：0 全链 PASS（尾行 `PIPELINE PASS canonical=<hash8>`）/ 1 某步失败 / 2 用法或锁冲突。
 
-验证（2026-09-22 首跑，TheKalpicAnomaly）：全链 13 步 PASS，92 行写回 hash 链 `325ad903→06f50eb5→2635ec7a`，段核对与快照第 225 条同进程落定对账一致；守卫四场景（独立拒 / token 放行 / 无锁放行）单测过。性能：含双 consume 约 40s（consume 为主，写回本体仍秒级）。
+验证要求：全链各步骤 PASS；数十至百行规模写回时，hash 链逐段递增，段核对与快照在同一进程内对账一致。守卫测试覆盖独立拒绝、token 放行与无锁放行。性能基线：含双 consume 约 40s，耗时主要来自 consume，写回本体保持秒级。
 
 ## 5d. 已写回批修正收口一条龙（`close_round.py`）
 
-已写回批的审查修正不能再走 5c 的 result 模式（`original_dest` 软保护会整批拒写），也不应手串 apply_fixes → patch → round → readout → 断言（手串曾踩：忘 regen readout 致审查读旧稿、verify 断言 token 手误假红、同源副本行漂移收口才发现）。`close_round.py` 一条命令完成：fixes 分组 → apply_fixes（生成 patch，校验先行）→ patch write（每批）→ round verify,snapshot → readout regen → **同源组对账（split>0 即失败）** → **new 断言自动生成（从 fixes 的 new 逐 idx 验证，消灭手写 token 手误）**。
+已写回批的审查修正不能再走 5c 的 result 模式（`original_dest` 软保护会整批拒写），也不应手串 apply_fixes → patch → round → readout → 断言。手串失效形态包括：忘记 regen readout 导致审查读取旧稿、手写 verify token 造成假红、同源副本漂移直到收口才发现。`close_round.py` 一条命令完成：fixes 分组 → apply_fixes（生成 patch，校验先行）→ patch write（每批）→ round verify,snapshot → readout regen → **同源组对账（split>0 即失败）** → **new 断言自动生成（从 fixes 的 new 逐 idx 验证，消灭手写 token 手误）**。
 
 ```text
 py -3 .agents/skills/translation-batch-ops/scripts/close_round.py \
   --stem <plugin> --batches <B1> [<B2> ...] --fixes <fixes.json> \
   --xml mods/<plugin>/<plugin>_english_chinese.xml \
   --contract .work/<plugin>/contracts/<plugin>.compiled.json \
-  --note "rNN审查N条全采" [--archive-keep N]
+  --note "<本轮说明>" [--archive-keep N]
 ```
 
-fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；也接受裸 `{"<idx>": {...}}`（此时必须且只能配一个 --batch）。改译文字段名是 `new`（传 `translation` 会被 apply_fixes 入口直接拒绝）。安全边界：只接管已写回批修正；首次写回（consume→write result 链）仍走 5c；源 XML 只读，写回仅经 `--patch` 通道；每次 patch write 归档保留最近 `--archive-keep` 代（默认 5），archive 只增不减会随轮次无限膨胀。同值修正（new=现译文）时空 patch 自动跳过 write，可作零风险自测。同源组对账只比较已译形态（`Dest != Source`）；未来批次仍为 Source 的同源副本不算翻译分裂。实测全链（含 3086 行同源对账）约 8s。
+fixes 文件格式 `{"<batch>": {"<idx>": {"new": "...", "notes": "..."}}}`；也接受裸 `{"<idx>": {...}}`（此时必须且只能配一个 --batch）。改译文字段名是 `new`（传 `translation` 会被 apply_fixes 入口直接拒绝）。安全边界：只接管已写回批修正；首次写回（consume→write result 链）仍走 5c；源 XML 只读，写回仅经 `--patch` 通道；每次 patch write 归档保留最近 `--archive-keep` 代（默认 5），archive 只增不减会随轮次无限膨胀。同值修正（new=现译文）时空 patch 自动跳过 write，可作零风险自测。同源组对账只比较已译形态（`Dest != Source`）；未来批次仍为 Source 的同源副本不算翻译分裂。全链在数千行同源对账规模下约 8s。
 
 **同源对账的豁免通道**：对话里存在 prompt 驱动的必要差异——同一句 `I am.` 分别回 `You sound disappointed.` 与 `You sound happy about this.`，译文必须不同；按源文分组会把它们永久判成分裂，让 close_round 无限失败。对账默认严格，例外需人工逐条回源核实后登记到 `.work/<plugin>/contracts/<plugin>-same-source-exemptions.json`：
 
 ```json
 {
-  "I am.": { "idxs": [15322], "reason": "prompt 决定：15322 回 You sound happy about this.，14334 回 You sound disappointed.。主形取较早的 14334。" }
+  "<source>": { "idxs": [<xml_index>, ...], "reason": "prompt 证明这些位置需要采用不同译形。" }
 }
 ```
 
@@ -351,7 +349,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/prune_close_patch.py \
 
 **默认 dry-run**，只分类打印（`[已就位]` / `[老值]` + 原因）不写任何文件；`--prune` 只删已就位、`--drop-stale` 只删老值，两者互不越界，老值必须显式放行。批次无 patch 文件时如实报告「无 patch 文件」而非报错；空 patch（`{}`，本轮无修正）视为正常。idx 越界或非整数一律归入「老值」并标注原因，**绝不静默丢弃**。`--xml` 默认取 canonical，可覆盖。实测：一次 9 批扫描 1.2s。
 
-**这条能力此前只有 SOP 条文、没有工具**，每轮撞 stale 都在 `_tmp/` 手搓一次性脚本——已在本项目累计触发 5 次（INFO-334/063/212/154/358），是典型的跨 MOD 通用缺口。
+**这条能力若只有 SOP 条文、没有工具**，每轮撞 stale 都在 `_tmp/` 手搓一次性脚本——是典型的跨 MOD 通用缺口。
 
 ## 5e. 同源继承预填与折叠（`inherit_prefill.py`）
 
@@ -407,7 +405,7 @@ py -3 batch_sync.py rebuild --stem <plugin> [--batch BID] [--dry-run]
 判为「修正未写回 canonical」（处置：`make_patch_from_maps` + 写回），否则判为
 「批次落后」（处置：`apply` 拉平）。判错方向就是数据丢失：拉平会冲掉未写回的修正。
 
-**重建语义（`rebuild`）**：map.json 缺失时从 canonical 重建（仅 canonical 已译行，status=TRANSLATED）；文件存在但缺行键时只补缺失键，**绝不覆盖既有值**（值漂移属 `apply` 职责）。translation.json 不在此重建（immutable 字段必须经 fill 链路重算）；命令会检测 translation.json 缺行/缺失并列出需重链的批次。验证（2026-09-21，TheKalpicAnomaly）：补全 13 批缺失 map（INFO-001/174~177 + NI-* 8 批）、8 批 NI 重链回填，零漂移保持。
+**重建语义（`rebuild`）**：map.json 缺失时从 canonical 重建（仅 canonical 已译行，status=TRANSLATED）；文件存在但缺行键时只补缺失键，**绝不覆盖既有值**（值漂移属 `apply` 职责）。translation.json 不在此重建（immutable 字段必须经 fill 链路重算）；命令会检测 translation.json 缺行/缺失并列出需重链的批次。验证：补全十余批缺失 map、NI 批重链回填，零漂移保持。
 
 **自动环节**：跨批修正（`apply_fixes` 无 `--batch`、`make_patch_from_maps`）默认把
 patch 值同步进批次文件，不需要事后手工跑。`--no-sync-batches` 可显式关闭。
@@ -439,7 +437,7 @@ py -3 .../make_patch_from_maps.py --canonical <translated.xml> --out <patch.json
 
 ## 7. 跨工具约定
 
-**idx 坐标系**：批次目录 `index.txt`（`.work/<plugin>/batches/<BID>/index.txt`）里的数字是流水线的 `xml_index` 契约——即 ElementTree `findall('.//String')` 的 **String 元素序号**（从 0 开始），不是文件物理行号。用物理行号去 canonical 取行会落在 FURN/WEAP 等错误记录上（Ming 审计已验证）。派单/验收描述统一用「xml_index」或「idx 行号（String 元素序号）」，不要叫物理行号。（全工具链已统一 0-based；2026-09-17 前 `skyrim-xml-tools` 输出为 1-based，旧记录对照时先减 1。）
+**idx 坐标系**：批次目录 `index.txt`（`.work/<plugin>/batches/<BID>/index.txt`）里的数字是流水线的 `xml_index` 契约，即 ElementTree `findall('.//String')` 的 **String 元素序号**（从 0 开始），不是文件物理行号。用物理行号去 canonical 取行会落在 FURN/WEAP 等错误记录上。派单与验收统一写“xml_index”或“idx 行号（String 元素序号）”，不要写“物理行号”。拿不准时用 `Source` 文本核对。
 
 **同源句与专名分裂的全量核销**：用 `query.py --src "<源文片段>"` 列出同一英文句/词的全部出现位置与各自译文；发现多形时按 `skyrim-translation-craft` §8 收敛，改完复扫确认零分裂。
 

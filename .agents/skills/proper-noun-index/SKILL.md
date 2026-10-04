@@ -155,16 +155,11 @@ Smoke checks after any change to the script:
 ```text
 py -3 -m py_compile .agents/skills/proper-noun-index/scripts/proper_noun_index.py
 py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py build
-py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py scan .work/_shared/proper-noun-index/index.json --target mods/SB1NeethmarinFollower.esp/SB1NeethmarinFollower_english_chinese.xml --json .work/SB1NeethmarinFollower/reports/sb1-smoke.json
+py -3 .agents/skills/proper-noun-index/scripts/proper_noun_index.py scan .work/_shared/proper-noun-index/index.json --target mods/<plugin>/<plugin>_english_chinese.xml --json .work/<plugin>/reports/<plugin>-smoke.json
 ```
 
-Known baseline (79 dictionary files, 2026-09-06):
-- `build`: ~3.0s; index has 66946 English sources; `classify` 19940 enabled /
-  11640 optional names. Schema 1.1 adds a `classify.semantic` list of the 19
-  weekday/month family terms (also folded into `enabled`, kept out of
-  `optional`).
-- `scan` SB1 (3632 rows): ~2s, 114 distinct names (29 ENTITY / 28 MULTIWORD /
-  57 ENTITY_LOW) before the semantic layer; with it, names present in the MOD
-  that are family terms surface as `SEMANTIC`.
+Known scale baseline:
+- `build`: ~3.0s on tens of dictionary files; the index contains about 67,000 English sources, with roughly 20,000 enabled and 12,000 optional names. Schema 1.1 adds a small `classify.semantic` family-term list, also folded into `enabled` and kept out of `optional`.
+- `scan`: ~2s on a several-thousand-row MOD, yielding about one hundred distinct names across ENTITY / MULTIWORD / ENTITY_LOW before the semantic layer; family terms present in the MOD surface as `SEMANTIC`.
 - Performance gate: well under the 30s defect threshold; if a larger corpus
   pushes a run past 5s, profile first (cProfile) before optimizing.

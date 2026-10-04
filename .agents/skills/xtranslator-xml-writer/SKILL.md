@@ -6,7 +6,7 @@ metadata:
   version: "0.4.0"
 ---
 
-> 性能基线（见 `skyrim-tool-dev-rules` §2；MVF1 规模 8528 替换 / 9402 节点 / 7 结果文件）：0.43s。回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复；已知反面模式是循环内反复重建整份文档字符串。
+> 性能基线（见 `skyrim-tool-dev-rules` §2；约 8500 个替换 / 9400 个节点 / 数个结果文件）：0.43s。回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复；已知反面模式是循环内反复重建整份文档字符串。
 
 # xTranslator XML Writer
 
@@ -31,9 +31,9 @@ Two modes exist, and the second is the supported default once a canonical exists
   even then a shrink guard rejects any rebuild that would revert rows the existing
   output already had translated outside this run's item set.
 
-Why the guards exist: a partial batch set written against a source baseline once
-replaced a canonical and reverted thousands of translations. The protection is
-mechanical now. Incremental baselines are the correct path; the loss mode is rejected
+Why the guards exist: writing a partial batch set against a source baseline can
+replace the canonical and revert thousands of translations. The protection is
+mechanical. Incremental baselines are the correct path; the loss mode is rejected
 before any bytes are written.
 
 The one-command incremental flow (snapshot + in-place update):
@@ -71,7 +71,7 @@ workaround:
 
 ```json
 {
-  "1264": {
+  "<xml_index>": {
     "expected_dest": "<current Dest text exactly as in the baseline XML>",
     "translation": "<new Dest text>"
   }
@@ -187,22 +187,21 @@ Pass explicit result files with repeatable `--result`:
 
 ```text
 py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
-  --xml mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese.xml \
-  --result .work/batch-0.json \
-  --result .work/batch-1.json \
-  --output mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese_translated.xml
+  --xml mods/<plugin>/<plugin>_english_chinese.xml \
+  --result .work/<plugin>/batch-a.json \
+  --result .work/<plugin>/batch-b.json \
+  --output mods/<plugin>/<plugin>_english_chinese_translated.xml
 ```
 
 For deterministic families of files, `--result-glob` may be repeated:
 
 ```text
 py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
-  --xml mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese.xml \
-  --result-glob ".work/sirenroot/translations/sirenroot-info-translation-325-batch-*.json" \
-  --result-glob ".work/sirenroot/translations/sirenroot-info-translation-549-batch-1[3-9].json" \
-  --result-glob ".work/sirenroot/translations/sirenroot-noninfo-translation-batch-*.json" \
-  --output mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese_translated.xml \
-  --report .work/sirenroot/reports/sirenroot-writeback-report.json
+  --xml mods/<plugin>/<plugin>_english_chinese.xml \
+  --result-glob ".work/<plugin>/translations/<plugin>-info-translation-batch-*.json" \
+  --result-glob ".work/<plugin>/translations/<plugin>-noninfo-translation-batch-*.json" \
+  --output mods/<plugin>/<plugin>_english_chinese_translated.xml \
+  --report .work/<plugin>/reports/<plugin>-writeback-report.json
 ```
 
 Use quoted glob patterns so the script, rather than a shell, resolves the intended files consistently.
@@ -247,10 +246,10 @@ few units still awaiting review (e.g. long BOOK texts held for a second pass),
 `--skip-nonfinal` skips exactly those units instead of rejecting the whole run.
 Skipped units are listed in the report (`skipped_units` with file/unit/status +
 `skipped_count`) and never written; they must be resolved and written by a later
-generation. Without the flag the default stays strict-reject. R14: a BOOK-heavy
-run carried 8 REVIEW units across 15 files; manual subset extraction produced
-430 TRANSLATED + 5 KEEP, and `--skip-nonfinal --check-only` on the original
-files reproduces exactly the same counts.
+generation. Without the flag the default stays strict-reject. Regression coverage
+uses a BOOK-heavy, multi-file result set containing hundreds of translated rows,
+several KEEP rows, and a small REVIEW remainder; `--check-only` must preserve the
+same category counts without manual subset extraction.
 
 ## Protected tokens
 
@@ -265,7 +264,7 @@ Ordinary percentages such as `10% permanently` are not printf placeholders.
 
 **R16 waived_tokens（方括号中文化豁免，result 与 patch 双路径）**：方括号动作/季终标记（如 `[Show Ring]`→`[展示戒指]`、`[END OF SEASON 1]`→`[第一季结束]`）按天际官方中文惯例需中文化，机械 multiset 必然不等。结果条目声明 `"waived_tokens": ["[Show Ring]"]`（或 patch 条目同键）时，该校验从 Source/译文两侧各减一次该 token；声明的 token 必须在 Source 中真实存在（防乱声明），否则报错。
 
-> 历史缺口（已修）：`waived_tokens` 此前仅 `load_patch` 路径读取，`load_result` 路径漏读——同一批数据 gate 与 executor 已放行、writer 却报 `protected token mismatch`，形成“前两道放行、写回被拦”的机制缺口。现两条路径语义一致。
+> **一致性约束**：`load_patch` 与 `load_result` 两条路径都必须读取 `waived_tokens`。若结果路径漏读，同一批数据会被 gate 与 executor 放行，却在 writer 报 `protected token mismatch`。两条路径必须保持同义。
 
 ## Output and report
 
@@ -284,7 +283,7 @@ The report is evidence of deterministic writeback only. It does not mean the Chi
 
 ## Safety boundaries
 
-- **pipeline.lock 并发守卫（2026-09-22）**：写目标的 stem 对应 `.work/<stem>/reports/pipeline.lock` 存在且环境变量 `RUNED_PIPELINE_TOKEN` 与锁内 token 不匹配时，本脚本直接拒绝执行（rc=2）——`translation-batch-ops` 的 `round_pipeline.py` 收口期间，外部任何独立写回命令一律拒之，防并行写互相覆盖（历史上并行写曾回滚一批 44 行）。pipeline 自身的子进程经 env 继承 token 放行；无锁时行为不变。stale 锁需手动确认进程已死后删除锁文件。
+- **pipeline.lock 并发守卫**：写目标的 stem 对应 `.work/<stem>/reports/pipeline.lock` 存在且环境变量 `RUNED_PIPELINE_TOKEN` 与锁内 token 不匹配时，本脚本直接拒绝执行（rc=2）。`translation-batch-ops` 的 `round_pipeline.py` 收口期间，外部独立写回命令一律拒绝，防止并行写互相覆盖并回滚数十行。pipeline 自身的子进程经 env 继承 token 放行；无锁时行为不变。stale 锁需手动确认进程已死后删除锁文件。
 
 - Never alter `<Source>`, `<EDID>`, `<REC>`, `<Params>`, String order, or unrelated `<Dest>` values.
 - Never make semantic translation decisions in this skill.

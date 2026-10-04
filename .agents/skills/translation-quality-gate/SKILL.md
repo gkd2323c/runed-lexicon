@@ -8,17 +8,17 @@ metadata:
 
 > 性能基线（见 `skyrim-tool-dev-rules` §2）：
 >
-> - MVF1 规模（8555 单元 / 9402 节点，含 XML 预检 + auto-bind）：**0.89s**
-> - Druadach 规模（20634 单元 / 849 条全局禁词，auto-bind）：**4.1s**（2026-09-09 优化后；优化前 26.7s）
+> - 中等规模（约 8600 单元 / 9400 节点，含 XML 预检 + auto-bind）：**0.89s**
+> - 两万余单元规模（约 850 条全局禁词，auto-bind）：**4.1s**；缺少正则缓存时可升至 26.7s
 >
 > 回归对照：若同规模耗时超过 5s，先 cProfile 拆账再修复。
 >
 > 已内建的三层预筛（改动匹配逻辑时不得回退）：
 >
-> 1. 正则缓存：`_compiled_literal` / `_compiled_word` / `_strip_html_tags_cached`（原实现对每个 unit × 每个 term 重新 `re.compile`，实测 2200 万次）
+> 1. 正则缓存：`_compiled_literal` / `_compiled_word` / `_strip_html_tags_cached`（对每个 unit × 每个 term 重新 `re.compile` 会达到约 2200 万次）
 > 2. 字面预筛：`find_source_hit_spans` / `_iter_word_matches` 在进正则前先用 `in` 检查锚点
 > 3. ban 层预筛：`global_ban_issue` 先查 forbidden 是否出现在 dest，再调 `find_global_ban_hits`
-> 4. 候选集复用：`run_gate` 把 auto-bind 候选表算一次传进 `_resolve_auto`（R21），不在每行重扫 `term_index`；实测 1411 候选 / 0.52ms 每行，略快于修复前的 0.64ms
+> 4. 候选集复用：`run_gate` 把 auto-bind 候选表算一次传进 `_resolve_auto`（R21），不在每行重扫 `term_index`；千级候选下每行保持亚毫秒级
 
 # Translation Quality Gate
 
@@ -81,12 +81,12 @@ python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
 
 ```text
 python .agents/skills/translation-quality-gate/scripts/quality_gate.py \
-  --result .work/lucifer/round4/lucifer-round4-translation-000.json \
-  --result .work/lucifer/round4/lucifer-round4-translation-001.json \
-  --contract .work/MVF1FollowerBeta/contracts/MVF1FollowerBeta.esp.compiled.json \
-  --keep-list .work/MVF1FollowerBeta/contracts/mvf1-keep.json \
-  --xml mods/MVF1FollowerBeta.esp/MVF1FollowerBeta_english_chinese.xml \
-  --report .work/MVF1FollowerBeta/reports/mvf1-round4-gate.json
+  --result .work/ExampleMod/round4/examplemod-round4-translation-000.json \
+  --result .work/ExampleMod/round4/examplemod-round4-translation-001.json \
+  --contract .work/ExampleMod/contracts/ExampleMod.compiled.json \
+  --keep-list .work/ExampleMod/contracts/examplemod-keep.json \
+  --xml mods/ExampleMod.esp/ExampleMod_english_chinese.xml \
+  --report .work/ExampleMod/reports/examplemod-gate-report.json
 ```
 
 Exit code: 0 = PASS (no FAIL), 1 = FAIL, 2 = usage error. A `--report` JSON carries full per-unit issues for review routing.
@@ -99,7 +99,7 @@ When explicit `unit_bindings` are not yet authored (e.g. auditing an existing
 completed batch), add `--auto-bind`:
 
 ```text
-... --auto-bind --auto-strict mvf1.sweetroll
+... --auto-bind --auto-strict <plugin>.sweetroll
 ```
 
 - Auto-binds every **no-risk REQUIRED** term (enforcement=REQUIRED, no risk_flags)
@@ -139,12 +139,11 @@ from `quality_gate` instead of replicating it, so gate and selftest cannot drift
 
 auto-bind 的整词边界判断有个结构性盲区：**短词条锚点会命中以它为前缀的更长专名**。
 
-事故（TheKalpicAnomaly_GLENMORIL，已复现）：契约里 `the Eyes`（裸形，译“眼线”，指贾'泽尔的
+**失效形态**：契约里 `the Eyes`（裸形，译“眼线”，指贾'泽尔的
 情报网）与 `the Eyes of Hinnom`（实体专名，译“欣嫩之眼”）是两条严格分立的词条。源文
 `Is the Eyes of Hinnom here with me now?` 只含全形专名，译文“欣嫩之眼”完全正确，但
 `the Eyes` 落在 `the Eyes of Hinnom` 内部、被整词边界判为命中，于是报
-`TERM001 WARN: required target 未出现: '眼线'`——纯假阳性，6 行
-（2869 / 2870 / 13102 / 14343 / 29180 / 31831）。
+`TERM001 WARN: required target 未出现: '眼线'`。这种纯假阳性可成批出现。
 
 规则：**短锚的某次命中若完整落在某个更长的、契约里已登记的专名锚点区间内，该次命中不算
 短锚的有效出现**。长锚照常按自己的规则绑定与检查（不放过长锚的缺失）。
@@ -171,7 +170,7 @@ target 出现——但长锚自身的 required target 仍会检查，所以不�
 ### Auto-bind substring guard (R6 fix, v0.1.3)
 
 `find_source_hit_spans()` uses word-boundary detection and HTML-tag stripping to prevent
-substring false positives reported by R6 (dg04bjornfollower.esp rest audit). It returns
+substring false positives. It returns
 `(start, end)` spans so R21 can test containment against longer anchors;
 `find_source_hits()` is the offsets-only wrapper (`term_match.py`, also used directly by
 callers that don't need the R21 shadowing).
@@ -186,16 +185,15 @@ callers that don't need the R21 shadowing).
 锚点匹配是**字面量匹配**，所以一个**整句词条**（英文以 `.` / `!` / `?` 结尾）会命中更长句子
 尾部的同形子串。匹配默认大小写不敏感，`He did.` 于是逐字等于 `...what he did.` 的尾部。
 
-**真实事故（TheKalpicAnomaly_GLENMORIL INFO-480 idx 33438）**：
+**失效形态**：
 `It does not rewrite what he did.` → 「它改写不了他做过的事。」译文**完全正确**，却被
 `He did.` 词条报 `TERM001: required target 未出现: '他照做了。'`。
 
 **规则**：`is_standalone_sentence(source)` 为真时，命中必须覆盖源文**去掉空白与成对引号后的
 全部内容**——即「源文整句就是这条词条」才命中。自动判定，不需要逐词条登记。
 
-**为什么自动判定是安全的**：对 MOD 词表普查，英文以句末标点结尾的只有 4 条
-（`He did.` / `There it is.` / `Timing matters.` / `Unknown.`），**全是真整句，
-没有 `U.S.` / `Jr.` 这类缩写**。
+**为什么自动判定是安全的**：现有词表中，英文以句末标点结尾的条目很少，
+且均为完整句，没有 `U.S.` / `Jr.` 这类缩写。
 
 **逃生口**：缩写型词条写 `substring_match: true` 退回宽松子串匹配
 （`find_source_hits` 传 `standalone=False`）。缺省不传，走自动判定。
@@ -217,22 +215,21 @@ callers that don't need the R21 shadowing).
 锚点匹配**默认大小写不敏感**（`_compiled_literal` 用 `re.IGNORECASE`）。当**源文大小写本身
 承载语义**时，逐词条开 `case_sensitive: true`，锚点只按登记的大小写命中。
 
-**为什么需要这个字段**：契约里原本**没有任何机制能表达大小写敏感**，词条 note 写了
-「本条只走大写 C」也拦不住小写触发。两个真实事故（TheKalpicAnomaly_GLENMORIL）：
+**为什么需要这个字段**：若契约无法表达大小写敏感，词条 note 即使写明
+「本条只走大写 C」，小写形态仍会触发。常见失效形态如下：
 
-| 事故 | 词条 | 源文 | 症状 |
+| 失效形态 | 词条 | 源文 | 症状 |
 | --- | --- | --- | --- |
-| 第一例（26848） | `the Eyes`→眼线 | 小写 `the eye` | 普通义误触发专名 REQUIRED |
-| 第二例（31517） | `Command`→掌权者 | `a chain of command` | 门禁报 `TERM001: required target 未出现: '掌权者'`，而译文「指挥链」**完全正确** |
+| 普通义误绑 | `the Eyes`→眼线 | 小写 `the eye` | 普通义误触发专名 REQUIRED |
+| 词组误绑 | `Command`→掌权者 | `a chain of command` | 门禁报 `TERM001: required target 未出现: '掌权者'`，而译文「指挥链」**完全正确** |
 
-第二例的小写 `command` 源行中形分布是 命令 63 : 指挥 34 : 指挥链 5 : 发号施令 2 : 掌权者 1，
-主形「掌权者」只对应大写 C 的 3 行。
+小写 `command` 在语料中绝大多数表示“命令”“指挥”“指挥链”等普通义，只有极少数大写形态对应专名“掌权者”。
 
 **两条绕过方案都不采用**：
 - 往 `match.accepted`（`additional_accepted`）塞「指挥链/指挥/命令」→ 丢掉大写 C 的主形约束；
 - 降 `FORBIDDEN_ONLY` → 把大写 C 的约束一并丢掉。
 
-只有真匹配开关能同时保住两者。**纯增量**：没有该字段的词条行为与修复前逐字节一致；
+只有真匹配开关能同时保住两者。**兼容约束**：没有该字段的词条保持默认的大小写不敏感行为；
 `_compiled_literal` 的缓存键含该标志，两种模式互不污染；`auto_bind_candidates` 的候选资格
 判定不看该标志。字段契约与详细取舍见 `references/contract-schema.md`。
 
@@ -247,26 +244,23 @@ callers that don't need the R21 shadowing).
 | **独立路径** | `standalone_forbidden_issues` → `_anchor_present` | **未绑定词条的 forbidden 强制**（TERM002 unbound） |
 
 `_anchor_present` 的匹配器 `_iter_word_matches` 硬编码 `re.IGNORECASE`——那是**豁免侧**
-的有意宽松（跨条 target 覆盖、派生词、连字符变体）。独立路径原本不传 `case_sensitive`，
-于是该字段在第二条路径上**静默失效**。
+的有意宽松（跨条 target 覆盖、派生词、连字符变体）。独立路径若不透传 `case_sensitive`，
+该字段会在第二条路径上**静默失效**。
 
-**真实事故（TheKalpicAnomaly_GLENMORIL idx 9039，`the Serpent`）**：词条已开
-`case_sensitive: true`，全库普查证明大小写与中文形一对一——大写 `Serpent` 12 行 → 巨蛇，
-小写 `serpent` 仅 9038/9039 两行 → 巨蟒（蜕皮铁皮喻）。修词表、加 note、跑 lint 全过，
-**全库门禁照报 `TERM002 the-serpent: forbidden 变体出现: '巨蟒'`**。译文是对的，是工具在说谎。
+**失效形态**：词条已开 `case_sensitive: true`，且语料证明大写 `Serpent` 对应“巨蛇”、
+少量小写 `serpent` 对应“巨蟒”（蜕皮铁皮喻），但独立路径仍报
+`TERM002 the-serpent: forbidden 变体出现: '巨蟒'`。译文正确，门禁却产生假阳性。
 
 > **判据**：开 `case_sensitive` 后**必须重跑全库门禁**确认消解。只跑 lint 或逐批门禁
-> 看不到它——那只查当批，而这条 9039 属于早已写回的历史批。词表治理的「已修」结论
-> 在全库门禁 PASS 之前不成立。
+> 看不到早已写回批次中的同类问题。词表治理的「已修」结论在全库门禁 PASS 之前不成立。
 >
-> **另一个坑**：同一批两行小写只报一行是正常的。9038 源文是 `the whole serpent`，
-> 压根不含 `the Serpent` 锚点。别把「只报一条」误当成漏检。
+> **另一个坑**：同一批多行小写只报部分行可能是正常现象；源文若不含完整专名锚点，
+> 本就不应命中。不要把「只报部分」直接判成漏检。
 
 `_cross_term_target_covered` 的**覆盖方**锚点同样按覆盖方词条自己的标志判定，
 避免「不区分大小写地豁免」——只认大写的词条被小写源文豁免掉。
 
-`test_case_sensitive.py` 共 **29 项**（原 20 + 新增 `TestStandaloneForbiddenIssuesHonorsFlag`
-6 项复现 9039 事故、`TestCrossTermCoverageHonorsFlag` 3 项），含新旧行为对照护栏。
+`test_case_sensitive.py` 共 **29 项**，覆盖独立 forbidden 路径与跨词条覆盖路径，并含默认行为对照护栏。
 
 This prevents auto-bind from flagging units where the English term only appears as a
 substring of a longer word or inside markup attributes. These fixes are covered by
@@ -275,7 +269,7 @@ the incident-derived synthetic corpus selftest.
 ### 全局禁用词（TERM004）设计说明
 
 `global_bans` 是**独立于 unit_bindings 的全局扫描**：它保护官方名词完整性，
-无论某行是否带 binding 都执行（MVF1/SB1 事故证明：大部分错误形态出现在无
+无论某行是否带 binding 都执行（失效形态：大部分错误出现在无
 binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免误伤：
 
 1. **英文侧整词锚点**：dest 出现坏形态还不够，source 必须整词出现对应英文
@@ -289,16 +283,15 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
    时，其在 dest 中的出现若完整落在任一 target 出现区间内，视为 canonical
    形态的组成部分，不报；未被 target 覆盖的实例仍报——同单元混有裸译缺月
    （"晨星"无"月"）与正确"晨星月"时，裸错误照样拦得住。按区间豁免而非
-   整单元豁免，避免误放真错误。修复 Druadach-book 24 条 TERM004 中 20 条
-   月名 substring 假 FAIL（2026-09-08），回归用例见 corpus global-bans.json
+   整单元豁免，避免误放真错误。该机制修复了一批 BOOK 类译文的 20 余条
+   月名 substring 假 FAIL，回归用例见 corpus global-bans.json
    010-013。R13：forbidden 命中后紧跟 target 剩余部分（允许间隔 "..."/"…"/
    空白）同样豁免——source 残缺形态（"Morning Star..." 残缺日期）的忠实译文
-   "晨星...月" 不是裸译错误（Druadach-book 8530，回归用例 014-015）。
+   "晨星...月" 不是裸译错误（BOOK 类，回归用例 014-015）。
 5. **跨条豁免的锚点容错（R17, v0.1.8）**：跨条 target/forbidden 交叉豁免
    （cross_target_covered）依赖「覆盖方」英文锚点出现在 source；锚点检查原先
-   不识别连字符变体写法（作者手写 "High-elf" / "alt-mer"），导致 Altmer/High
-   Elf 互搏条的正确译文被误拦（INFO-035 三处误报：源文 High-elf's 译「高精灵」、
-   alt-mer 译「傲特莫」均正确）。现在多词锚点允许词间 [\s-]+ 连接、单词锚点
+   不识别连字符变体写法（作者手写 "High-elf" / "alt-mer"），会导致 Altmer/High
+   Elf 互搏条的正确译文被误拦。多词锚点允许词间 [\s-]+ 连接、单词锚点
    允许单点插连字符，并保留形容词派生（Altmeri）；仅豁免侧生效，主检查仍为
    严格整词。回归验证：selftest_corpus 64 项 + 正反案例双向测试。
 
@@ -373,15 +366,15 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
 
 TERM002 路径（`find_forbidden_hits`）原先对 forbidden 只做简单子串检查：当 forbidden
 是 target 子串（短形禁令 + 长形 target，如「琼」⊂「琼恩」）时，被长形包含的实例
-同样被拦（Artaeum INFO-062，2026-09-10）。修复与 TERM004 的 R12 豁免对齐：forbidden
+同样被拦（失效形态：短形禁令作为长形 target 的子串时，被长形包含的实例一并被拦）。修复与 TERM004 的 R12 豁免对齐：forbidden
 实例完整落在任一 target 出现区间内时不报；未被覆盖的独立实例仍报——按区间豁免
 而非整单元豁免。回归用例见 term-contract-core.json jong-substr-exempt-001/002。
 
 ## 全库门禁复核（`scripts/export_full_result.py`）
 
-**`--result` 是批次级的，`units_checked` 不等于全库行数。** 流水线产出的 result 只覆盖该批次的 idx，因此既有 `*-gate-report.json` 的覆盖数通常远小于 canonical 行数（Artaeum 实测 74 / 14968）。**不能据此声明全库通过门禁。**
+**`--result` 是批次级的，`units_checked` 不等于全库行数。** 流水线产出的 result 只覆盖该批次的 idx，因此既有 `*-gate-report.json` 的覆盖数通常远小于 canonical 行数（实测数十行对上万行）。**不能据此声明全库通过门禁。**
 
-真实事故（2026-09-12）：批次级 gate 全 PASS 的 canonical，在全库复核时抓出 `圣母`（现实宗教禁令 TERM004）违规——该行属于早已写回的批次，此后从未再经过任何 gate。
+真实失效形态：批次级 gate 全 PASS 的 canonical，在全库复核时抓出 `圣母`（现实宗教禁令 TERM004）违规——该行属于早已写回的批次，此后从未再经过任何 gate。
 
 收口或声明收敛前，用导出器把 canonical 转成全库 result 再跑一次：
 
@@ -406,8 +399,8 @@ py -3 .agents/skills/translation-quality-gate/scripts/quality_gate.py \
 ## TRUNC001 截断检测（WARNING，需人审）
 
 TRUNC001 检出“译文把后半句吞了”的候选：源文是完整长句、译文却以省略号中断且明显偏短。
-背景（SB1 事故 2026-09-04）：一批译文为省事把难译的后半句砍掉用……带过，34 条真残缺
-混在 207 条启发式命中里，noun-audit 查不出（它只查名词）。
+背景（失效形态）：一批译文为省事把难译的后半句砍掉用……带过，真残缺条目
+混在大量启发式命中里，noun-audit 查不出（它只查名词）。
 
 判定条件（全部满足才报）：
 
@@ -417,15 +410,15 @@ TRUNC001 检出“译文把后半句吞了”的候选：源文是完整长句�
 - dest 以 …… 或 … 结尾；
 - len(dest) < len(source) × 0.62。
 
-富文本先 strip 标签再判定（R15, v0.1.7）：此前见 `<` 就整条跳过，导致 BOOK
-这类 HTML 信件/书籍的 11 条截断无一条被检出（Druadach-book 2026-09-08）。
+富文本先 strip 标签再判定（R15, v0.1.7）。若见 `<` 就整条跳过，BOOK
+这类 HTML 信件或书籍的截断将全部漏检。
 标签内省略号 strip 后自然消失不误报；纯标签行 strip 后为空仍被排除。
 长度与结尾判定一律用去标签后文本。回归用例见 source-fidelity-core.json
-trunc-html-006/007（另：selftest 此前从未调用 truncation_issue，已补上）。
+trunc-html-006/007；selftest 必须直接调用 `truncation_issue`。
 
 **定位为 WARNING 而非 FAIL**：中英长度差天然存在，且“毒舌省略”是合法风格（尼思这类角色），
 机械判定会误伤。每个 TRUNC001 需 Agent 对照完整 source 判断是真残缺（补全）还是风格省略（忽略）。
-修复 SB1 34 条后全量 gate TRUNC001 = 0，且无对合法译文的误报。
+修复后全量 gate TRUNC001 = 0，且无对合法译文的误报。
 
 ## CHAR001 确定性实现与误报过滤（v0.1.4 R11；v0.1.6 去 zhconv 环境依赖）
 
@@ -435,7 +428,7 @@ CHAR001 检测非简体字符。v0.1.6 起使用**随仓 vendored 转换表** `s
 逐字节一致（全 CJK 单字符域 + 短语探针验证）。不再 import zhconv，无"环境是否
 装了 zhconv"的降级分支——检测能力不再随环境漂移（t_2f368a4c）。
 
-历史背景（R11 fix, v0.1.4）：zhconv 存在**上下文敏感性**：当 么 (U+4E48，
+**失效机制**：zhconv 存在上下文敏感性。当 么 (U+4E48，
 什么/怎么/多么 的标准简体字) 后接 正 或 子 等字时，词组级转换会将其变为 幺/什幺。
 例如 convert('什么正路', 'zh-cn') 返回 "什幺正路"。这是转换表词组覆盖的固有行为，
 不是真正的繁简问题。
@@ -451,9 +444,9 @@ CHAR001 检测非简体字符。v0.1.6 起使用**随仓 vendored 转换表** `s
 場→场、「→"）无论上下文一律检出。回归用例见 corpus `charset-core.json`
 （t_2f368a4c 新增，不改动既有 corpus 语义）。
 
-## Selftest against the incident-derived synthetic corpus
+## Selftest against the failure-mechanism synthetic corpus
 
-The corpus at `corpus/translation-regression/cases/gate/` encodes failure mechanisms distilled from confirmed project incidents as semantic-equivalent synthetic fixtures (bad translation must FAIL, golden must PASS). Private MOD text and record identifiers are not required for this selftest. After any change to the gate, contract schema, or term matching:
+The corpus at `corpus/translation-regression/cases/gate/` encodes failure mechanisms as semantic-equivalent synthetic fixtures (bad translation must FAIL, golden must PASS). Private MOD text and record identifiers are not required for this selftest. After any change to the gate, contract schema, or term matching:
 
 ```text
 python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
@@ -481,15 +474,13 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 阈值依据：禁用词级违反实测召回 19/19（0.5 门限）；high 级漏判的实测分布 0.23~0.49
 落入升级带，由人工兜底，符合成本不对称原则（漏标进人眼，多标无害）。
 
-**判定指令（2026-09-22 扩充）**：`semantic_error` 的 instructions 显式声明以下不算
-语义错误——字面隐喻/语类双关/非常规动宾搭配的**忠实直译**（即使读来新奇）；
-合理显化扩充至被动句补施事、省略句补出与上文一致的回指、排比复现词的统一；
-并附判定方法指令（先逐个在源文定位关键成分的对应表达，弱化否定先还原逻辑，
-只有确实找不到对应才判是）。扩充动因：豁免清单暴露的系统性误报（忠实直译非常规
-结构被反复拦）。回放实测：26499 类硬拦消除（0.51~0.73 → 0.39），真错召回无损
-（旧译 26400=0.71、26501=0.50 仍 FAIL），分数普降；但显化类（26486/26193/26031）
-仍越线，且同一译文双跑可跨线抖动（0.60/0.49，判定非确定性），此二者继续由豁免
-通道人工裁决。`MOD_REGISTER` 同步声明角色的诙谐/调侃变体属正常语域。
+**判定指令**：`semantic_error` 的 instructions 显式声明以下不算
+语义错误：字面隐喻、语类双关、非常规动宾搭配的**忠实直译**，即使读来新奇；
+合理显化包括被动句补施事、省略句补出与上文一致的回指、排比复现词的统一。
+判定时先逐个在源文定位关键成分的对应表达，弱化否定先还原逻辑，只有确实找不到对应才判错。
+这可消除忠实直译非常规结构的系统性误报，边界分数可从 0.51~0.73 降至约 0.39，
+同时保留真错的 0.50 以上召回。显化类仍可能越线，同一译文双跑也可能出现 0.60/0.49
+的跨线抖动；两类均交豁免通道人工裁决。`MOD_REGISTER` 应声明角色的诙谐或调侃变体属正常语域。
 
 **语境适用性**：注入契约条目时连 `note` 一并注入，模型先判断 alias 注明的适用语境
 是否成立，不成立则该条目不适用。alias 条目的 REQUIRED 级绑定由此在语义层生效，
@@ -509,7 +500,7 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 修复后误报消除且不漏真违规（同一句）：正确全称 0.04 ok、正确省称 0.03 ok、
 未译 0.96 FAIL、错译「雪漫」0.41 FAIL、音译「怀特伦」0.95 FAIL。
 
-**四态判定（状态必须如实；2026-09-23 起整体为参考层）**：
+**四态判定（状态必须如实；语义层仅作参考）**：
 
 | verdict | 含义 | rc | 后续 |
 | --- | --- | --- | --- |
@@ -518,10 +509,10 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 | `PARTIAL` | 有条目未判定（调用失败）——本批语义层**未完成** | 1 | 参考信号：未判定项交复核，不阻塞 |
 | `UNCHECKED` | 无 key 或未配置连接，本批语义层**未检查** | 0 | 参考缺失，不阻主线，不得当作已过语义门 |
 
-**参考层定位（2026-09-23 用户裁决）**：语义门的 verdict、分数与 FAIL/UNJUDGED
-明细全部照出并入验收报告，但 `verify_subagent_batch` 对 `FAIL`/`PARTIAL`/
-`UNKNOWN` 一律只记参考 warning，**不再阻塞 consume/写回主线**；语义把关由
-主会话通读 + 独立审查线承担（机械层 gate 的 FAIL 仍是硬拦截，不受此影响）。
+**参考层定位**：语义门的 verdict、分数与 FAIL/UNJUDGED 明细全部照出并入验收报告，
+但 `verify_subagent_batch` 对 `FAIL`/`PARTIAL`/`UNKNOWN` 一律只记参考 warning，
+**不阻塞 consume/写回主线**；语义把关由主会话通读 + 独立审查线承担
+（机械层 gate 的 FAIL 仍是硬拦截，不受此影响）。
 
 `PARTIAL` 与 `UNCHECKED` 是如实上报，不是缺陷：语义门不追求 100% 自动判定，
 未判定项交复核即可。网络抖动在**条目级**做有限退避重试（`ask()` 内 `RETRIES=3`，
@@ -539,10 +530,8 @@ RemoteDisconnected 不被 URLError 包装，漏捕时零重试直接穿透，实
  "mod_register": "<本项目/角色的语域语境描述（对话题材、正常语域边界、口语节奏判定规则、专名约束）>"}
 ```
 
-- `mod_register` 是注入 payload 的语域语境（原硬编码于脚本的项目级提示词，
-  2026-09-23 抽出）：随项目与角色变化（如本仓库的西格瓦格言式语域约定），
-  不硬编码在工具内；缺失时回退通用中性句「英译中翻译质量审查（通用文本，
-  无特定角色语域约束；专名按术语契约）」。
+- `mod_register` 是注入 payload 的语域语境，随项目与角色变化，不能硬编码在工具内；
+  缺失时回退通用中性句「英译中翻译质量审查（通用文本，无特定角色语域约束；专名按术语契约）」。
 
 - 加载优先级：配置文件 > 环境变量（`api_key` 缺省回退 `TYPESAFE_API_KEY`；
   配置文件路径可用 `SEMANTIC_GATE_CONFIG` 环境变量覆盖）。
@@ -550,9 +539,8 @@ RemoteDisconnected 不被 URLError 包装，漏捕时零重试直接穿透，实
 - 缺 `api_url`/`model`（或无配置且无 key）时输出 `verdict=UNCHECKED`、rc=0，
   verify 报告中该批 `checked=false`——参考层缺失同样不阻主线。
 
-**豁免通道（人工复核裁决的落盘，v0.4.0）**：概率模型对部分句式存在稳定误报
-（实测 INFO-481 的 23580/23602 两轮改写分数钉在 0.57 不动，均为语境正确的边界
-句），逐句改写对抗没有收敛；整批 `--no-semantic` 又等于放弃其余条目的语义检查。
+**豁免通道（人工复核裁决的落盘，v0.4.0）**：概率模型对部分语境正确的边界句存在稳定误报，
+多轮改写后分数仍可能固定在约 0.57；整批 `--no-semantic` 又会放弃其余条目的语义检查。
 豁免通道把人工裁决变成机器可读的状态：
 
 | 参数 | 语义 |
@@ -596,9 +584,9 @@ python .agents/skills/translation-quality-gate/scripts/semantic_gate.py \
 
 ## Semantic gate 基线（`scripts/semgate_baseline.py`，哨兵层）
 
-语义门判定来自概率模型，上游模型版本或阈值一改，判定行为可能静默位移；机械 gate
-有 corpus 回归兜底（gate 与 selftest 不可漂移），语义层此前没有对应机制。本脚本补
-这一层：**不判译文对错，只判同一输入的判定轨迹是否与上次一致**。
+语义门判定来自概率模型，上游模型版本或阈值一改，判定行为可能静默位移。机械 gate
+有 corpus 回归兜底（gate 与 selftest 不可漂移），语义层也需要对应机制。本脚本
+**不判译文对错，只判同一输入的判定轨迹是否与基线一致**。
 
 三个动作：
 

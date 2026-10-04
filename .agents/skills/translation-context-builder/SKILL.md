@@ -12,7 +12,7 @@ Build Agent-ready translation context batches without modifying source XML.
 
 ## ⚠️ xml_index 基准（重要）
 
-本工具生成 entry 的 `xml_index` 为 **0-based**（从 0 起枚举 `<Content/String>`），与 `skyrim-xml-tools` / `translation-executor` / `xtranslator-xml-writer` 一致（全链已统一；2026-09-17 前 skyrim-xml-tools 为 1-based，旧记录对照先减 1）。`--index-file` 传 0-based 序号。拿不准用 `Source` 文本核对。
+本工具生成 entry 的 `xml_index` 为 **0-based**（从 0 起枚举 `<Content/String>`），与 `skyrim-xml-tools` / `translation-executor` / `xtranslator-xml-writer` 一致。`--index-file` 传 0-based 序号。拿不准时用 `Source` 文本核对，不依赖来源不明的旧序号。
 
 Use this after xTranslator XML exists and, for dialogue-heavy work, after `xedit-context-exporter` has produced a dialogue context JSON. The builder joins deterministic record context to XML translation strings so the translating Agent can focus on wording instead of rediscovering plugin structure.
 
@@ -21,7 +21,7 @@ Use this after xTranslator XML exists and, for dialogue-heavy work, after `xedit
 The normal input is a MOD directory such as:
 
 ```text
-mods/evgSIRENROOT.esm
+mods/<plugin>
 ```
 
 The directory's human-facing documents (`CONTEXT.md`, `DICTIONARY.md`) are read by the translation agents directly; this tool never reads, parses, embeds, or hashes them. Machine inputs are structured only: an xTranslator XML, an optional `*_dialogue_context.json`, and an optional `terms.json` (the machine-readable term source — when absent, MOD term hits are simply empty). Early in a project there may be only one xTranslator XML, but after writeback a MOD directory can legitimately contain both the untouched source XML and one or more generated translated XML files.
@@ -37,7 +37,7 @@ The builder also reads every XML file recursively under the project root `dictio
 Run from the project root:
 
 ```text
-py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 20 --output .work/sirenroot/context/sirenroot-info-context.json
+py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/<plugin> --rec INFO:NAM1 --limit 20 --output .work/<plugin>/context/<plugin>-info-context.json
 ```
 
 Use the Python command that passed `.agents/skills/skill-creator/scripts/check_env.mjs --capability quick-validate` if it is not `py -3`.
@@ -60,7 +60,7 @@ Useful options:
 If the MOD directory contains both an original XML and a generated translated XML, prefer an explicit command such as:
 
 ```text
-py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/evgSIRENROOT.esm --xml mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese.xml --rec INFO:NAM1 --output .work/sirenroot/context/sirenroot-info-context.json --force
+py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/<plugin> --xml mods/<plugin>/<plugin>_english_chinese.xml --rec INFO:NAM1 --output .work/<plugin>/context/<plugin>-info-context.json --force
 ```
 
 Do not feed the generated translated XML back into a fresh translation pass unless that is intentionally the new source state for a later revision workflow.
@@ -137,13 +137,13 @@ This skill prepares context. Translation, review, and XML writeback are separate
 
 ## Validation
 
-### Performance baseline (v0.2.3)
+### Performance baseline
 
-Per-batch build (Artaeum scale: 4.7MB xTranslator XML + 29.7MB / 81-file dictionary tree) measured **~1.4s** (was ~15.6s before v0.2.3). The fix: `Path.resolve()` hit the filesystem (`nt._getfinalpathname` on Windows, ~0.16ms/call) once per dictionary String row (37k+ calls ≈ 12s); `relative()` is now `lru_cache`-d and the dictionary index builder hoists one resolution per file. Output verified byte-identical before/after on two independent batches. Regression watch: if a per-batch build exceeds ~5s, re-profile with `cProfile` before touching anything else.
+Per-batch build on an approximately 5MB xTranslator XML and 30MB, 80-file dictionary tree measures **~1.4s**. Calling `Path.resolve()` once per dictionary String row causes tens of thousands of filesystem hits and about 12s overhead; `relative()` must remain `lru_cache`-d, with one resolution hoisted per file. Output must remain byte-identical across the optimization. If a per-batch build exceeds ~5s, re-profile with `cProfile` before changing code.
 
-### v0.3.0 / v0.3.1 change summary
+### Structured-input contract
 
-Human-facing documents no longer enter the machine path: v0.3.0 removed `DICTIONARY.md` (parsing, embedding, hashing); v0.3.1 removed `CONTEXT.md` (reading, embedding, hashing). Inputs are structured-only: xTranslator XML, dialogue-context JSON, and `terms.json`. Consequences: (1) editing either document can never break a build; (2) context provenance tracks `terms.json` and no longer carries `mod_context` (the executor passes a historical `mod_context` through when present, so old contexts keep validating); (3) `terminology.mod_terms_hits` replaces `terminology.mod_dictionary_hits` (the executor accepts both keys when reading historical contexts).
+Human-facing documents never enter the machine path. Inputs are limited to xTranslator XML, dialogue-context JSON, and `terms.json`. Editing `DICTIONARY.md` or `CONTEXT.md` cannot break a build. Context provenance tracks `terms.json` and omits `mod_context`; the executor still accepts legacy `mod_context` and `terminology.mod_dictionary_hits` fields for compatibility.
 
 After changing this skill, follow `.agents/skills/skill-creator/SKILL.md`:
 
@@ -156,10 +156,10 @@ Then run:
 
 ```text
 py -3 -m py_compile .agents/skills/translation-context-builder/scripts/build_translation_context.py
-py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 3 --output _tmp/data/translation-context-builder-smoke.json --force
+py -3 .agents/skills/translation-context-builder/scripts/build_translation_context.py mods/<plugin> --rec INFO:NAM1 --limit 3 --output _tmp/data/translation-context-builder-smoke.json --force
 ```
 
-For the Sirenroot sample, verify mechanically that:
+For the selected sample, verify mechanically that:
 
 - the output has three entries when `--limit 3` is used;
 - `INFO:NAM1` entries with `[xxxxxxxx]` EDIDs include an xEdit dialogue join when the FormID exists in the dialogue JSON;

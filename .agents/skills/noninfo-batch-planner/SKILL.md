@@ -21,8 +21,8 @@ metadata:
 
 ```text
 py -3 .agents/skills/noninfo-batch-planner/scripts/plan_noninfo_batches.py \
-  --xml mods/Artaeum.esp/Artaeum_english_chinese.xml \
-  --stem Artaeum
+  --xml mods/ExampleMod.esp/ExampleMod_english_chinese.xml \
+  --stem ExampleMod
 ```
 
 常用变体：

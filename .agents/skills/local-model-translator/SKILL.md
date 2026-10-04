@@ -105,7 +105,7 @@ Create a UTF-8 JSON request under `.work/<plugin>/local-requests/`. A minimal re
 ```json
 {
   "schema_version": 1,
-  "task_id": "sirenroot-info-000",
+  "task_id": "examplemod-info-000",
   "model": "hy-mt2-32k:latest",
   "background": "The speaker is an old mercenary. He is terse and distrustful. The current scene takes place before the party enters the ruin.",
   "style": [
@@ -170,7 +170,7 @@ Batch by semantic coherence rather than an arbitrary row count. The current loca
 Before a new request shape or a difficult batch, inspect exactly what the local model will receive:
 
 ```text
-py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py prompt .work/sirenroot/local-requests/sirenroot-local-request.json
+py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py prompt .work/examplemod/local-requests/examplemod-local-request.json
 ```
 
 The renderer deliberately places background first and repeats the hard translation contract immediately before the source items. This reduces completion-style drift in long prompts.
@@ -180,7 +180,7 @@ The renderer deliberately places background first and repeats the hard translati
 Use the HTTP API wrapper rather than piping Chinese prompts through the Windows shell. This avoids command-line encoding damage to terminology.
 
 ```text
-py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py run .work/sirenroot/local-requests/sirenroot-local-request.json --output .work/sirenroot/local-results/sirenroot-local-response.json
+py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py run .work/examplemod/local-requests/examplemod-local-request.json --output .work/examplemod/local-results/examplemod-local-response.json
 ```
 
 Useful overrides:
@@ -237,7 +237,7 @@ For `required_phrases` failures specifically, one retry with clearer compact gui
 Revalidate an existing response without calling Ollama:
 
 ```text
-py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py validate .work/sirenroot/local-results/sirenroot-local-response.json --request .work/sirenroot/local-requests/sirenroot-local-request.json
+py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py validate .work/examplemod/local-results/examplemod-local-response.json --request .work/examplemod/local-requests/examplemod-local-request.json
 ```
 
 ## 安全生成 executor 导入 map

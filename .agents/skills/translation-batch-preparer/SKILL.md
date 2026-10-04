@@ -21,19 +21,19 @@ The bundled script also checks that `CONTEXT.md` and `DICTIONARY.md` exist when 
 Run from the project root:
 
 ```text
-python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 20
+python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/ExampleMod.esp --rec INFO:NAM1 --limit 20
 ```
 
 Write a batch to a JSON file when the result should be reused:
 
 ```text
-python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 20 --output .work/sirenroot/context/sirenroot-info-001.json
+python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/ExampleMod.esp --rec INFO:NAM1 --limit 20 --output .work/examplemod/context/examplemod-info-001.json
 ```
 
 If a MOD directory contains both the untouched source XML and one or more generated translated XML files, pass the intended source XML file directly instead of the directory. Use `PROGRESS.md` to identify the current source when available:
 
 ```text
-python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese.xml --rec INFO:NAM1 --limit 20
+python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/ExampleMod.esp/ExampleMod_english_chinese.xml --rec INFO:NAM1 --limit 20
 ```
 
 Use `--force` only when intentionally replacing an existing batch file.
@@ -61,7 +61,7 @@ By default, include strings where `Source == Dest` and `Source` is non-empty. Th
 Use `--rec` to restrict the batch to one or more record types:
 
 ```text
-python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --rec DIAL:FULL --limit 50
+python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/ExampleMod.esp --rec INFO:NAM1 --rec DIAL:FULL --limit 50
 ```
 
 Use `--limit 0` for all matching entries.
@@ -101,7 +101,7 @@ Then run the script checks from the project root:
 
 ```text
 python -m py_compile .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py
-python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 3
+python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/ExampleMod.esp --rec INFO:NAM1 --limit 3
 ```
 
 For the current Sirenroot sample, the first `INFO:NAM1` untranslated entry should retain its XML index, EDID, record type, and English source, and should attach established terms such as `Nirnroot` or `skooma` when those exact normalized terms exist in the official dictionaries.

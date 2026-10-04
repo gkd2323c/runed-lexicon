@@ -16,7 +16,7 @@ metadata:
 
 ## ⚠️ index 基准（重要）
 
-本工具所有命令输出的 `index` / 条目序号为 **0-based**（XML 中 `<Content/String>` 节点从 0 起枚举的顺序位置，非 `List` 属性），与 `translation-context-builder` / `translation-executor` / `xtranslator-xml-writer` 的 `xml_index` 基准一致，跨工具对照无需换算。注意：2026-09-17 之前本工具输出为 1-based，历史文档中按旧基准记录的序号须减 1；拿不准时用 `Source` 文本对照，不要用序号。
+本工具所有命令输出的 `index` / 条目序号为 **0-based**（XML 中 `<Content/String>` 节点从 0 起枚举的顺序位置，非 `List` 属性），与 `translation-context-builder` / `translation-executor` / `xtranslator-xml-writer` 的 `xml_index` 基准一致，跨工具对照无需换算。拿不准时用 `Source` 文本核对，不要依赖来源不明的旧序号。
 
 ## 适用场景
 
@@ -62,19 +62,19 @@ metadata:
 在项目根目录执行：
 
 ```text
-python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py inspect mods/evgSIRENROOT.esm
-python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py inspect mods/evgSIRENROOT.esm --json
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py inspect mods/<plugin>
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py inspect mods/<plugin> --json
 
-python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py untranslated mods/evgSIRENROOT.esm
-python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py untranslated mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 20
-python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py untranslated mods/evgSIRENROOT.esm --json --limit 0
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py untranslated mods/<plugin>
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py untranslated mods/<plugin> --rec INFO:NAM1 --limit 20
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py untranslated mods/<plugin> --json --limit 0
 
 python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py lookup "Soul Gem"
 python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py lookup "Sovngarde" --ignore-case
 python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py lookup "soul" --contains --ignore-case --limit 20
 
-python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py termrules mods/evgSIRENROOT.esm/evgSIRENROOT_english_chinese_translated.xml --rules <term-rules.txt>
-python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py termrules mods/evgSIRENROOT.esm --rules <term-rules.txt> --rec INFO:NAM1 --json
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py termrules mods/<plugin>/<plugin>_english_chinese_translated.xml --rules <term-rules.txt>
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py termrules mods/<plugin> --rules <term-rules.txt> --rec INFO:NAM1 --json
 ```
 
 `--limit 0` 表示不限制输出数量。
@@ -115,7 +115,7 @@ Search 为中文的规则，命中则报告“位置 + 命中的旧译 + 规则�
 - 建议配合 `lookup` 使用：命中先用官方词典验证，官方证据确认后再改。
 - 典型误报来源：规则 Search 是正确译名的一部分（如“图瓦”命中“图瓦卡”）。
   这类需人工判断，工具不试图消除。
-- 性能基线（SB1 3632 节点 × 27173 规则，2026-09-04 实测）：**0.18s**，远低于
+- 性能基线（约 3600 节点 × 约 2.7 万条规则）：**0.18s**，远低于
   30s 缺陷阈值；后续如规则集或 XML 大幅增长导致超 5s，先 cProfile 拆账再优化。
 
 ## 安全边界
@@ -133,20 +133,12 @@ Search 为中文的规则，命中则报告“位置 + 命中的旧译 + 规则�
 
 ```text
 python -m py_compile .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py
-python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py inspect mods/evgSIRENROOT.esm
-python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py untranslated mods/evgSIRENROOT.esm --rec INFO:NAM1 --limit 3
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py inspect mods/<plugin>
+python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py untranslated mods/<plugin> --rec INFO:NAM1 --limit 3
 python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py lookup "Soul Gem"
 ```
 
-对当前 `evgSIRENROOT.esm` 样本，已知基准数据可用于发现明显回归：
-
-- 总 `<String>` 数：1080。
-- `Source == Dest`：931。
-- `Source != Dest`：149。
-- `INFO:NAM1`：549。
-- `DIAL:FULL`：228。
-
-如果这些结果在原 XML 未发生变化的情况下突然变化，应先调查解析逻辑，而不是继续翻译。
+用固定样本记录以下机械基准：总 `<String>` 数、`Source == Dest`、`Source != Dest`、`INFO:NAM1` 与 `DIAL:FULL` 数量。原 XML 未变化而任一基准突变时，先调查解析逻辑，不要继续翻译。
 
 ## 与项目文件的关系
 

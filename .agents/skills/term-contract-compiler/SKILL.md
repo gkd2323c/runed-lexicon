@@ -1,7 +1,7 @@
 ---
 name: term-contract-compiler
 description: Deterministically compile the MOD's structured `terms.json` into the machine-readable `terms` section of a Translation Contract consumed by translation-quality-gate, with a mechanical terminology lint (quote pairing / direction slips / invisible chars / width mixing / traditional chars) enforced before every compile. Use whenever a terms.json decision must become executable term definitions with forbidden variants and risk flags, when building the gate input for a MOD, when a terminology decision changed and the compiled contract must be regenerated, or when terminology data needs a mechanical character-level health check (lint_terms.py). The compiler never infers unit bindings (those are semantic, produced by the analysis Agent) and never auto-binds ambiguous terms; terms with alias/knowledge-boundary risk default to FORBIDDEN_ONLY. 触发词：词表 lint、引号配对、禁词库检查、编译前检查。
-compatibility: Python 3.10+. Standard library only. Machine term source is the MOD's structured `mods/<plugin>/terms.json` (canonical). Human-facing `DICTIONARY.md` is never consumed by the pipeline (AGENTS.md §2.0); a deprecated `--dictionary` Markdown path remains only for pre-migration MODs (MVF1 / evgSIRENROOT).
+compatibility: Python 3.10+. Standard library only. Machine term source is the MOD's structured `mods/<plugin>/terms.json` (canonical). Human-facing `DICTIONARY.md` is never consumed by the pipeline (AGENTS.md §2.0); a deprecated `--dictionary` Markdown path remains only for MODs not yet migrated.
 metadata:
   version: "0.3.2"
 ---
@@ -21,7 +21,7 @@ The compiler is deterministic and faithful: it converts rows and extracts declar
 ## When to use
 
 - Before gating a batch: compile the MOD's `terms.json` (add `--glossary` only when a cross-MOD project decision must enter this MOD's contract).
-- **所有 MOD 一律使用结构化 `--terms mods/<plugin>/terms.json`。** JSON 是唯一机器源——每个字段（`english` / `zh` / `status` / `enforcement` / `risk_flags` / `forbidden`）都显式声明，编译器不做列猜测，也不会静默误解析（如 `Neeth & His Past`、`Mercenaries Needed!` 或以中文开头的行）。已废弃的 Markdown 路径仅为尚未迁移的历史 MOD（MVF1 / evgSIRENROOT）保留，新 MOD 不得使用。
+- **所有 MOD 一律使用结构化 `--terms mods/<plugin>/terms.json`。** JSON 是唯一机器源——每个字段（`english` / `zh` / `status` / `enforcement` / `risk_flags` / `forbidden`）都显式声明，编译器不做列猜测，也不会静默误解析（如英文含 `&`、`!` 或行首为中文）。Markdown 路径仅为尚未迁移的 MOD 保留，新 MOD 不得使用。
 - After a terminology decision changes: update `terms.json`, then recompile so the gate enforces the new decision.
 - The compiled contract is a derived artifact; **`terms.json` stays the source of truth**. Never edit the compiled JSON by hand as the canonical version (only ephemeral overrides via the confirmation file).
 
@@ -47,9 +47,9 @@ python .agents/skills/term-contract-compiler/scripts/compile_contract.py \
 
 ```json
 {
-  "id_prefix": "sb1.",
+  "id_prefix": "<plugin>.",
   "terms": [
-    { "english": "Neethmarin", "zh": "尼思马林", "status": "PROVISIONAL", "note": "...", "enforcement": "REQUIRED", "risk_flags": ["alias"], "forbidden": ["..."] },
+    { "english": "Example Name", "zh": "示例名", "status": "PROVISIONAL", "note": "...", "enforcement": "REQUIRED", "risk_flags": ["alias"], "forbidden": ["..."] },
     { "english": "Command", "zh": "掌权者", "status": "CONFIRMED", "case_sensitive": true, "note": "note 声明本条只走大写 C 的义位" }
   ]
 }
@@ -58,20 +58,20 @@ python .agents/skills/term-contract-compiler/scripts/compile_contract.py \
 Rules:
 - `enforcement` / `risk_flags` declared in JSON are authoritative and are **not** overridden by the ambiguous-word heuristic (unlike Markdown, where `Companions` / `Dragonborn` etc. are auto-downgraded to `FORBIDDEN_ONLY` unless a conf file forces them). This lets a term like `the Guild` (REQUIRED + alias-risk in this MOD's context) stay REQUIRED when it is genuinely unambiguous in context.
 - Missing optional fields fall back to documented defaults: status → PROVISIONAL, enforcement → REQUIRED (FORBIDDEN_ONLY for REVIEW), risk_flags → none, forbidden → [], additional_accepted → [], case_sensitive → absent (false).
-- `case_sensitive: true` is passed through verbatim to the compiled definition and is consumed by the gate's anchor matcher. Set it only when **source casing is itself semantic** and case-insensitive matching produces false `TERM001` reports. Both the JSON path (`build_terms_json`) and the Markdown path (`build_terms`) support it; only the literal `true` enables it, so `false` / `0` / `null` / `"false"` all stay off. See `translation-quality-gate/references/contract-schema.md` for the field contract and the two real incidents behind it.
+- `case_sensitive: true` is passed through verbatim to the compiled definition and is consumed by the gate's anchor matcher. Set it only when **source casing is itself semantic** and case-insensitive matching produces false `TERM001` reports. Both the JSON path (`build_terms_json`) and the Markdown path (`build_terms`) support it; only the literal `true` enables it, so `false` / `0` / `null` / `"false"` all stay off. See `translation-quality-gate/references/contract-schema.md` for the field contract and the two documented failure forms behind it.
 - `status: KEEP` or `enforcement: KEEP` routes the term to the keep list (not emitted as a term).
 - The validator rejects (exit 1) missing `english` / `zh`, an `english` that is a bare status word, and unknown `status` / `enforcement` values — it never silently emits a garbage term.
 
-### Markdown source (deprecated — 迁移期遗留，仅历史 MOD)
+### Markdown source（仅迁移兼容）
 
-> **不得用于新 MOD。** 该路径读取 `DICTIONARY.md`，与 `AGENTS.md` §2.0「人类文档不进机器链路」冲突，仅为尚未迁移的历史 MOD（MVF1 / evgSIRENROOT）保留。新 MOD 的术语决策落 `terms.json`；`DICTIONARY.md` 继续作为人读文档承载依据与取舍。
+> **不得用于新 MOD。** 该路径读取 `DICTIONARY.md`，与 `AGENTS.md` §2.0「人类文档不进机器链路」冲突，仅供尚未迁移的 MOD 使用。新 MOD 的术语决策落 `terms.json`；`DICTIONARY.md` 继续作为人读文档承载依据与取舍。
 
 ```text
 python .agents/skills/term-contract-compiler/scripts/compile_contract.py \
-  --dictionary mods/MVF1FollowerBeta.esp/DICTIONARY.md \
-  --id-prefix mvf1. \
-  --output .work/MVF1FollowerBeta/contracts/MVF1FollowerBeta.esp.compiled.json \
-  --keep-output .work/MVF1FollowerBeta/contracts/MVF1FollowerBeta.esp.keep.json
+  --dictionary mods/<plugin>/DICTIONARY.md \
+  --id-prefix <plugin>. \
+  --output .work/<plugin>/contracts/<plugin>.compiled.json \
+  --keep-output .work/<plugin>/contracts/<plugin>.keep.json
 ```
 
 Markdown tables must keep the first cell of every term row as the pure-English source (no `&`, `!`, or Chinese in that cell) and the second cell as the Chinese translation; the compiler identifies the English / Chinese columns heuristically, so rows that violate this can be silently mis-parsed. Prefer the structured JSON source for new content.
@@ -80,7 +80,7 @@ Optional `--conf <file>.json` supplies per-term overrides:
 
 ```json
 {
-  "id_prefix": "mvf1.",
+  "id_prefix": "<plugin>.",
   "overrides": {
     "Argonian": { "enforcement": "REQUIRED", "forbidden": ["亚龙人", "阿戈尼安"], "match_kind": "forms" },
     "Companions": { "enforcement": "FORBIDDEN_ONLY", "risk_flags": ["alias"] }
@@ -147,7 +147,7 @@ py -3 .agents/skills/term-contract-compiler/scripts/lint_terms.py \
 - 音译隔字符例外：`’`（U+2019）两侧为汉字且当前无待闭合的 `‘` 时，视为名字内部分隔符（官方译形如 Y'ffre→「伊’符瑞」），不参与引号配对；否则合规官方译名会被误报 QUOTE_UNPAIRED。
 - forbidden 列表里的繁体条目（如「黛爾芬」）是刻意防护形，CHAR001 已拦繁体译文故冗余但无害 → WARN 不拦。
 - 编辑词表后跑一次 standalone lint 看明细；编译路径只在 FAIL 时打印明细，warn 只计数。
-- 历史事故：`“唤风者“约根`（词条 zh 值里两个左引号）导致 TERM001 循环误报，人眼排查两轮才发现 → 本工具化。
+- 失效形态：词条 zh 值含两个左引号会导致 TERM001 循环误报，且人眼难以定位；lint 必须在编译前机械拦截。
 
 ## Global ban list (project-wide TERM004)
 

@@ -77,7 +77,7 @@ truth; a compiled contract is a deterministic machine-readable derivative.
   `true`, the English anchor only matches `source` with exactly the registered
   casing. Use it when source casing is itself semantic and case-insensitive
   matching produces false `TERM001` reports on ordinary lowercase usage.
-  Real incident (TheKalpicAnomaly_GLENMORIL, two independent instances): the
+  Real failure mode (two independent instances): the
   `Command` term declares in its note that only capital `C` denotes the
   「掌权者」 sense, but the matcher hardcoded `re.IGNORECASE`, so lowercase
   `command` (ordinary verb/noun sense) triggered the required-target check and
@@ -93,10 +93,10 @@ truth; a compiled contract is a deterministic machine-readable derivative.
   `source` ends in sentence punctuation (`.`, `!`, `?`) is treated as a *whole
   sentence* and only matches when the stripped source **is** that sentence.
   Without this, a literal case-insensitive match of a sentence-shaped term fires on
-  the tail of a longer sentence. Real incident (TheKalpicAnomaly_GLENMORIL): the
+  the tail of a longer sentence. Real failure mode: the
   `He did.` term (`target` 「他照做了。」) matched the tail of
   `It does not rewrite what he did.` and reported `TERM001` on a fully correct
-  translation (idx 33438). Auto-detection is safe here — a census of that
+  translation. Auto-detection is safe here — a census of that
   vocabulary found only 4 sentence-shaped entries (`He did.`, `There it is.`,
   `Timing matters.`, `Unknown.`), all genuine sentences and no abbreviations.
   Set `substring_match: true` to opt an abbreviation-shaped term (`U.S.`, `Jr.`)

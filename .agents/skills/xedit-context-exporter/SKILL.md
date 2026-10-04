@@ -4,10 +4,10 @@ description: Export deterministic Skyrim dialogue context from an original ESP/E
 compatibility: Requires Windows, Python 3.10+, xEdit under tools/xEdit, and an installed Skyrim Special Edition Data directory containing the target plugin's masters. Uses xEdit in command-line Script mode and never modifies the source plugin.
 metadata:
   version: "0.5.0"
-  status: "已退役 2026-09-08，由 Mutagen 导出器接替（见下）"
+  status: "已退役，由 Mutagen 导出器接替（见下）"
 ---
 
-> **退役说明（2026-09-08）**：xEdit 命令行模式导出在 Druadach 上超时（>10 分钟无完成标记），且首次缓存构建极慢。已改用 Mutagen（C# 库，tools/Mutagen 克隆 + .agents/skills/mutagen-dialogue-exporter/scripts/DialogueExport）以 overlay 模式解析插件：Druadach.esm 全量 DIAL→INFO 导出仅 **1.3 秒**（5235 DIAL / 8089 INFO，含 speaker 解析、prompt、responses、conditions），与 xTranslator 的 INFO EDID 连接率 99.2%。产物规范：`.work/<plugin>/context/<plugin>-mutagen-dialogue.json`。下文保留作为历史参考与兑备。
+> **当前状态**：xEdit 命令行模式处理约 100MB、五千余 DIAL 的大型插件时可超过 10 分钟仍无完成标记，首次缓存构建也很慢。优先使用 Mutagen overlay 导出器：同量级插件约 **1.3 秒**完成全量 DIAL→INFO 导出，包含 speaker、prompt、responses 与 conditions，INFO EDID 连接率可达 99.2%。产物规范：`.work/<plugin>/context/<plugin>-mutagen-dialogue.json`。下文仅供兼容场景使用。
 
 # xEdit Context Exporter
 
@@ -20,7 +20,7 @@ The first version deliberately exports only relationships that can be read deter
 From the project root:
 
 ```text
-py -3 .agents/skills/xedit-context-exporter/scripts/run_xedit_context_export.py mods/evgSIRENROOT.esm/evgSIRENROOT.esm
+py -3 .agents/skills/xedit-context-exporter/scripts/run_xedit_context_export.py mods/<plugin>/<plugin>.esm
 ```
 
 By default the JSON is written next to the plugin as:
@@ -152,13 +152,13 @@ Then at minimum run:
 
 ```text
 py -3 -m py_compile .agents/skills/xedit-context-exporter/scripts/run_xedit_context_export.py
-py -3 .agents/skills/xedit-context-exporter/scripts/run_xedit_context_export.py mods/evgSIRENROOT.esm/evgSIRENROOT.esm
+py -3 .agents/skills/xedit-context-exporter/scripts/run_xedit_context_export.py mods/<plugin>/<plugin>.esm
 ```
 
-For Sirenroot, validate mechanically that:
+For the selected plugin, validate mechanically that:
 
 - the source ESM hash is unchanged;
-- the JSON identifies `evgSIRENROOT.esm` as its target;
+- the JSON identifies the requested plugin as its target;
 - at least one DIAL contains one or more child INFO records;
 - INFO load-order FormIDs can be found among the `INFO:NAM1` FormIDs exported by xTranslator;
 - no output was written into the real Skyrim Data directory.

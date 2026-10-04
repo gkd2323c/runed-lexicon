@@ -17,7 +17,7 @@ This is deliberately the layer immediately before XML writeback. It produces tra
 The target MOD directory is identified from `inputs.mod_dir`. Use JSON produced by `translation-context-builder`, for example:
 
 ```text
-.work/sirenroot/context/sirenroot-info-context.json
+.work/<plugin>/context/<plugin>-info-context.json
 ```
 
 The input should contain one or more `batches`, each with traceable `translation_unit_id` values and the original XML metadata, dialogue context, and terminology evidence.
@@ -38,7 +38,7 @@ Do not infer a speaker merely from prose when structural evidence is absent.
 Initialize a result file for one batch:
 
 ```text
-py -3 .agents/skills/translation-executor/scripts/translation_result.py init .work/sirenroot/context/sirenroot-info-context.json --batch 0 --output .work/sirenroot/translations/sirenroot-info-translation-000.json
+py -3 .agents/skills/translation-executor/scripts/translation_result.py init .work/<plugin>/context/<plugin>-info-context.json --batch <batch-index> --output .work/<plugin>/translations/<plugin>-info-translation.json
 ```
 
 Use the Python command that passed `skill-creator` preflight if it is not `py -3`.
@@ -130,15 +130,15 @@ py -3 .agents/skills/translation-executor/scripts/suggest_waived_tokens.py --res
 
 ## Fill a draft from a translation map
 
-> **2026-09-04 废弃警告**：`sanitize_translation_map.py` 曾把含特定引号格式条目的 JSON 结构（`, "status": "TRANSLATED"...`）泄漏进 translation 值，在 SB1 项目污染 1489 条。**不再使用该工具**。map 的 ASCII 引号问题改为：写 map 时直接用中文引号“”，写完 `json.load` 验证；确需清洗时用 `fill_translations.py` 的校验错误提示定位，手改源文件。
+> **禁用工具**：`sanitize_translation_map.py` 会把含特定引号格式条目的 JSON 结构（`, "status": "TRANSLATED"...`）泄漏进 translation 值，可一次污染上千条。**不再使用该工具**。map 的 ASCII 引号问题改为：写 map 时直接用中文引号“”，写完 `json.load` 验证；确需清洗时用 `fill_translations.py` 的校验错误提示定位，手改源文件。
 
 写 map 时注意：中文引号必须用“”，不用 ASCII `"`；写完先 `json.load` 验证格式，再应用 filler：
 
 ```text
 py -3 .agents/skills/translation-executor/scripts/fill_translations.py \
-  --result .work/sirenroot/translations/sirenroot-info-translation-000.json \
-  --map .work/sirenroot/maps/sirenroot-info-map-blockA.json \
-  --output .work/sirenroot/translations/sirenroot-info-translation-000.json --force
+  --result .work/<plugin>/translations/<plugin>-info-translation.json \
+  --map .work/<plugin>/maps/<plugin>-info-map.json \
+  --output .work/<plugin>/translations/<plugin>-info-translation.json --force
 ```
 
 The map is a flat JSON object keyed by `xml_index` (string form) whose values are
@@ -182,7 +182,7 @@ py -3 .agents/skills/translation-executor/scripts/fill_translations.py --result 
 After translating, run:
 
 ```text
-py -3 .agents/skills/translation-executor/scripts/translation_result.py validate .work/sirenroot/translations/sirenroot-info-translation-000.json --context .work/sirenroot/context/sirenroot-info-context.json
+py -3 .agents/skills/translation-executor/scripts/translation_result.py validate .work/<plugin>/translations/<plugin>-info-translation.json --context .work/<plugin>/context/<plugin>-info-context.json
 ```
 
 Validation fails if, among other things:
@@ -202,7 +202,7 @@ Use `--allow-pending` only for checking an initialized template or an intentiona
 Get a compact progress summary with:
 
 ```text
-py -3 .agents/skills/translation-executor/scripts/translation_result.py summary .work/sirenroot/translations/sirenroot-info-translation-000.json
+py -3 .agents/skills/translation-executor/scripts/translation_result.py summary .work/<plugin>/translations/<plugin>-info-translation.json
 ```
 
 ## 多文件修订：生成新结果集合
@@ -271,7 +271,7 @@ Rebuild or revalidate an older batch when the new context actually changes somet
 python .agents/skills/translation-executor/scripts/test_workflow_regressions.py
 ```
 
-统一运行 5 个永久测试文件（查询、旧值保护、集合发布、导入校验、导入到 filler 的离线 CLI 链路）；任一失败返回非零。只用合成临时数据，不联网、不调用模型、不改真实译文。它不替代 translation-quality-gate 的真实事故语料自测和实际批次校验。
+统一运行 5 个永久测试文件（查询、旧值保护、集合发布、导入校验、导入到 filler 的离线 CLI 链路）；任一失败返回非零。只用合成临时数据，不联网、不调用模型、不改真实译文。它不替代 translation-quality-gate 的失效机制语料自测和实际批次校验。
 
 ## Validate this Skill
 

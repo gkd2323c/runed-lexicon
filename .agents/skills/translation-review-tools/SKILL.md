@@ -40,12 +40,12 @@ py -3 .../make_fixes_from_report.py \
   --report .work/<plugin>/notes/review-INFO-XXX.json \
   --xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
   --out .work/<plugin>/maps/<plugin>-fix-map-review-XXX.json \
-  [--drop 4960,4981] [--override ov.json] [--align-dups] [--include 5107,5108]
+  [--drop <idx,...>] [--override ov.json] [--align-dups] [--include <idx,...>]
 
 # 多批修正：直接产出 close_round 需要的分组形态
 py -3 .../make_fixes_from_report.py --report <review.json> --xml <translated.xml> \
-  --batches INFO-334 INFO-335 --batches-dir .work/<plugin>/batches \
-  --out .work/<plugin>/maps/<plugin>-fix-map-334-335.json
+  --batches <BID-A> <BID-B> --batches-dir .work/<plugin>/batches \
+  --out .work/<plugin>/maps/<plugin>-fix-map.json
 ```
 
 - 兼容两种报告 schema：`findings[]`（新）与 `issues[]`（历史）；`xml_index`/`idx` 均可。
@@ -81,7 +81,7 @@ py -3 .../make_fixes_from_report.py --report <review.json> --xml <translated.xml
 ```text
 py -3 .../check_review_proposed.py \
   --xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
-  --reports .work/<plugin>/reports/<plugin>-INFO-577-review-record.json [...]
+  --reports .work/<plugin>/reports/<plugin>-<BID>-review-record.json [...]
 
 # 确认某条确实「本无缺陷、proposed 有意留空」时才放宽
 py -3 .../check_review_proposed.py --xml <canonical.xml> --reports <rec.json> --allow-same
@@ -89,13 +89,12 @@ py -3 .../check_review_proposed.py --xml <canonical.xml> --reports <rec.json> --
 
 存在不可用 finding 时退出码 1，阻断收口。
 
-### 为什么需要它（事故锚定）
+### 为什么需要它
 
-`INFO-574` 的审查记录 7 条 finding 的 `proposed` **全部逐字等于 canonical 现译**。子代理把改法
-写进了 `rationale` 散文（「改动仅一处词」「改后既顺搭配又落回主形」），`proposed` 字段却原样
-留成现译。这类记录喂给 `make_fixes_from_report.py` 是**静默空转**：不报错、不改字节、
-`close_round` 照样打印 `PASS`，而本该修的缺陷一条没修。事后 `prune_close_patch` 只会把
-它们报成「已就位 7 条」，进一步掩盖「本该改却没改」。
+**失效形态**：审查记录中的多条 finding 把改法写进 `rationale` 散文，`proposed` 却逐字保留
+canonical 现译。这类记录喂给 `make_fixes_from_report.py` 会**静默空转**：不报错、不改字节，
+`close_round` 仍打印 `PASS`，而本该修的缺陷完全未改。随后 `prune_close_patch` 还会把它们
+报成「已就位」，进一步掩盖空转。
 
 ### 判定的三种不可用形态
 
@@ -110,15 +109,14 @@ py -3 .../check_review_proposed.py --xml <canonical.xml> --reports <rec.json> --
 
 ### 它是**收口前**闸门，收口后会误报（这是设计如此）
 
-收口应用之后重跑本脚本，**已修好的 finding 会重新报成 `SAME_AS_NOW`**——因为 canonical
-现在正好等于它的 `proposed`。实跑确认：`INFO-578` / `INFO-579` 的 6 条在 `close_round`
-应用前全部可用，应用后全部变 `SAME_AS_NOW`。
+收口应用之后重跑本脚本，**已修好的 finding 会重新报成 `SAME_AS_NOW`**，因为 canonical
+此时正好等于它的 `proposed`。同一组 finding 在 `close_round` 应用前全部可用，应用后会全部变为 `SAME_AS_NOW`。
 
 这不是误报，是「已就位」，判据在别处：
 
 | 现象 | 含义 | 处置 |
 | --- | --- | --- |
-| 收口**前**报 `SAME_AS_NOW` | 改法只写在散文里，字段留了现译（574 事故） | 必须处置，阻断收口 |
+| 收口**前**报 `SAME_AS_NOW` | 改法只写在散文里，字段仍为现译 | 必须处置，阻断收口 |
 | 收口**后**报 `SAME_AS_NOW` | 该条已被应用，canonical == proposed | 已就位，无需处置 |
 
 收口后要确认「哪些是已就位」，用 `translation-batch-ops` 的 `prune_close_patch.py`
@@ -143,7 +141,7 @@ py -3 .../check_review_proposed.py --xml <canonical.xml> --reports <rec.json> --
 ```
 
 前两处 `\\` 合法，末尾 `\]` 只有**一个**反斜杠——JSON 里 `\]` 非法，`json.loads` 直接抛
-`Invalid \escape`，整份记录作废。真实事故：`RN-INFO-083` 的 9 条 findings 因此全部作废。
+`Invalid \escape`，整份记录作废。失效可使一批数条 findings 全部无法读取。
 
 ```text
 py -3 .../repair_json_escapes.py --path <record.json> --dry-run
@@ -194,7 +192,7 @@ py -3 .../adjudication_pack.py build \
 
 ```text
 py -3 .../adjudication_pack.py consume \
-  --pack _tmp/data/adj-pack/pack-001.json \
+  --pack _tmp/data/adj-pack/<pack-id>.json \
   --verdicts _tmp/data/verdicts.json \
   --plan-out _tmp/data/adj-plan.json
 ```
@@ -240,9 +238,9 @@ py -3 .../hallucination_probe.py --xml <same> --json _tmp/data/probe.json
 - **P1**：合段排版会报，但内容通常完整。
 - **P4**：作者笔误会报（源文 `He's been here` 实指女性角色）。探针报的是
   「不一致」，**归因需人判**；角色性别应有词表或正文自证支撑后再改。
-- **不做专名编造检测**：实测信噪比极差（Artaeum 546/546 全误报——词表连写形
-  `soulgem` vs 源文分词 `soul gem`、项目规则性补全 `the Eye`→「玛格纳斯之眼」
-  均会误报）。该维度交语义精读。
+- **不做专名编造检测**：实测信噪比极差，数百条候选可全部误报。词表连写形
+  `soulgem` 与源文分词 `soul gem`、规则性补全 `the Eye`→「玛格纳斯之眼」
+  都会触发。该维度交语义精读。
 
 ## longtext_readout.py
 
@@ -259,8 +257,8 @@ py -3 .agents/skills/translation-review-tools/scripts/longtext_readout.py \
 `manifest.json`。
 
 **按 `[idx]` 头分块，不按空行**：BOOK:DESC / MESG:DESC 的 Dest 含 `<font>` 标记与
-空行，按空行分块会把一条切成残片，阅读者看似整段漏译（历史事故：某轮分片 1249 条
-里 83 条没打印 Dst，审校代理回查 canonical 才发现是切片缺陷）。
+空行，按空行分块会把一条切成残片，阅读者看似整段漏译。失效可在千条规模分片中造成
+数十条 Dst 缺失，且只有回查 canonical 才能确认是切片缺陷。
 
 ## read_batch.py
 
@@ -268,11 +266,11 @@ py -3 .agents/skills/translation-review-tools/scripts/longtext_readout.py \
 
 ```text
 py -3 .agents/skills/translation-review-tools/scripts/read_batch.py \
-  --stem Artaeum --batch NI-CELL-002
+  --stem <plugin> --batch <BID>
 
 # 只看待决条目 / 输出到文件
-py -3 .../read_batch.py --stem Artaeum --batch INFO-023 --status WAITING,KEEP
-py -3 .../read_batch.py --stem Artaeum --batch NI-NPC-001 --out _tmp/data/readout.txt
+py -3 .../read_batch.py --stem <plugin> --batch <BID> --status WAITING,KEEP
+py -3 .../read_batch.py --stem <plugin> --batch <BID> --out _tmp/data/readout.txt
 
 ### term-digest 新鲜度门（默认开启）
 
@@ -281,15 +279,13 @@ py -3 .../read_batch.py --stem Artaeum --batch NI-NPC-001 --out _tmp/data/readou
 本脚本**，就是为了拿到新鲜料——手工「记得先重生成」记一次漏一次。
 
 ```text
-# 只想要读本、不想触发重生成（例如比对历史行为）
-py -3 .../read_batch.py --stem Artaeum --batch INFO-023 --no-digest-check
+# 只想要读本、不想触发重生成（例如做固定输入对照）
+py -3 .../read_batch.py --stem <plugin> --batch <BID> --no-digest-check
 ```
 
-为什么必须有这道门：2026-10-02 全库普查发现 **585 批** digest 缺图例（KalpicAnomaly 551 /
-VIGILANT 34），全部是判据型 note 机制上线前生成的。而〔判据:…〕正是为了根治整轮术语漂移
-（`machinery` / `virtue` / `cause` / `curse` / `vessel`）才加的——译者看不到判据，等于把
-分域判据藏回词表。检查按需自愈，不做全库批量重写：VIGILANT 等不在推进的批次不必为此产生
-文件churn，真要复审时那一批会自动补上。
+为什么必须有这道门：全库普查可发现**数百批** digest 缺少图例。缺图例的摘要会把
+`machinery` / `virtue` / `cause` / `curse` / `vessel` 等词条的分域判据藏回词表，导致整轮术语漂移。
+检查按需自愈，不做全库批量重写：暂不推进的批次无需产生文件 churn，复审时再自动补上。
 
 判定只看「图例在不在」，不比对正文：正文会随词表变动而变，逐字比对会让这道门退化成
 「永远陈旧」的噪声源。边缘情况：
@@ -309,8 +305,8 @@ VIGILANT 34），全部是判据型 note 机制上线前生成的。而〔判据
 把批次 `context.json` 编译成紧凑派单摘要。**派单前必跑**：原始 context.json 单批约 95–105 KB，子代理一次 `read` 读不下，会绕道 shell 查词典树，把预算烧在机械查证上。
 
 ```text
-py -3 .../term_digest.py --context .work/Artaeum/batches/NI-NPC-005/context.json \
-  --out .work/Artaeum/batches/NI-NPC-005/term-digest.txt
+py -3 .../term_digest.py --context .work/<plugin>/batches/<BID>/context.json \
+  --out .work/<plugin>/batches/<BID>/term-digest.txt
 ```
 
 每 idx 三行（含空命中标注 `-`）：
@@ -329,12 +325,15 @@ MOD = 项目契约命中（`mod_terms_hits`）；OFF = 官方词典命中（`off
 命中项若**词条首字母大写、而本行源文里出现的是全小写形态**，会在该词条后标注 `⚠源文小写，疑普通名词`：
 
 ```text
-[28267] INFO:NAM1 | …the companions whose behavior remains consistent…
+[<xml_index>] INFO:NAM1 | …the companions whose behavior remains consistent…
     MOD: The Companions→战友团 (CONFIRMED) ⚠源文小写，疑普通名词
     OFF: Familiar=使魔[NPC_:FULL] ⚠源文小写，疑普通名词
 ```
 
-判据只看大小写（词条去冠词后取词干，两侧都加词边界），**不猜语义**。动机是实测事故：2026-10-02 INFO-370 的译者看到「官方词条 `Familiar=使魔[NPC_:FULL]`」自然以为 `familiar shapes`（熟悉的形状）必须译成召唤法术，只能靠人工识破；同批还查出 `The Companions`（`the companions`=同行者）与 `Confidence`（`confidence`=对自身感官的笃信）两处同类误绑。**大小写是专名判别的第一信号，必须在派单材料里显式给出**，不该让每个译者实例各自踩一次。
+判据只看大小写（词条去冠词后取词干，两侧都加词边界），**不猜语义**。失效形态是译者看到
+「官方词条 `Familiar=使魔[NPC_:FULL]`」后，把 `familiar shapes`（熟悉的形状）误绑成召唤法术；
+`The Companions` 与 `the companions`、`Confidence` 与 `confidence` 也会产生同类误绑。
+**大小写是专名判别的第一信号，必须在派单材料里显式给出**。
 
 同源同批已收敛的形态：`engineering` 一律「工程」；`history` 主形「历史」，「来历」是既有的「出身」义形。
 
@@ -343,19 +342,30 @@ MOD = 项目契约命中（`mod_terms_hits`）；OFF = 官方词典命中（`off
 MOD 命中项若其词条 `note` 带**语义判据**，会在该词条后附 `〔判据:…〕`：
 
 ```text
-[30162] INFO:NAM1 | Someone wants the frame narrow here.
+[<xml_index>] INFO:NAM1 | Someone wants the frame narrow here.
     MOD: frame→框子 (CONFIRMED)〔判据:影像语境指画面框；与抽象义「框架」（全库 6 处）分域。…〕
 ```
 
 摘要**开头**固定带一段 `== 读法 ==` 图例，明说 `en→zh` 只是主形记录、不是无条件替换指令——译者不必回查本脚本源码才知道标记含义。
 
-**为什么必须带出**：2026-10-02 整轮术语漂移的根因就是 `_fmt_mod()` 只打 `en→zh (STATUS)`、把 note 整条丢掉。译者看不到分域判据，于是 `machinery→机械` 盖掉了 note 里写明的「实物装置＝机械／抽象体系＝机制」，`vessel`／`frame`／`change` 各漂 1~2 处，「神龛」「教团」这类坏形只能等门禁 FAIL 才发现。**判据不到译者眼前就是缺陷，不是可选增强。**
+**为什么必须带出**：`_fmt_mod()` 若只输出 `en→zh (STATUS)` 而丢掉 note，译者就看不到分域判据。
+例如 `machinery→机械` 会盖掉「实物装置＝机械／抽象体系＝机制」，`vessel`／`frame`／`change`
+也会出现少量漂移，“神龛”“教团”这类坏形只能等门禁 FAIL 才发现。
+**判据不到译者眼前就是缺陷，不是可选增强。**
 
-**为什么不全量带出**：全库 1,471 词条都有 note，但绝大多数是取证过程记录（哪几行实证、什么时候回正的），与「这一行该怎么判」无关。全量带出会把摘要从紧凑派单材料撑成 context.json 的复刻，重新制造本工具要解决的「一次读不完」问题。所以只挑带判据标记的：`分域`／`两义`／`判据`／`绑定`／`勿强并`／`不作同锚合并`／`分立`／`不是无条件`／`勿混`／`不是同一`／`勿作`。判据**内联**在 MOD 行尾，不另起行，所以行数几乎不变（实测 INFO-414 193→198，增量全是 5 行图例）。
+**为什么不全量带出**：上千词条都有 note，但绝大多数是取证记录，与「这一行该怎么判」无关。
+全量带出会把摘要撑成 context.json 的复刻，重新制造「一次读不完」的问题。所以只挑带判据标记的：
+`分域`／`两义`／`判据`／`绑定`／`勿强并`／`不作同锚合并`／`分立`／`不是无条件`／`勿混`／`不是同一`／`勿作`。
+判据**内联**在 MOD 行尾，不另起行，因此只增加少量图例行。
 
-**⚠ 截断的例外：note 点名了本行 `xml_index` 就不截断**（2026-10-02 加）。note 压掉换行后默认截断到 180 字并加省略号——但事故证明这个上限会切掉**针对本行的逐行预裁**：`communion` 的 note 写明「③**34842 未译**（`The communion with Ja'bal…`），按②取『共融』」，而这句正好落在 180 字之后；摘要表头明明写着「〔判据:…〕**先读它再定译文**」，实际只递了残句，译者看不到预裁就自行取「共食」并标 REVIEW。**判据：note 里出现本行 `xml_index`（独立数字）＝ 它含针对本行的裁决，截掉等于把裁决藏起来，这类 note 全文带出。** 实现是 `_judge_note(h, idx)` 收到本行 index 时把上限提到 `_JUDGE_MAX_ROW_CITED`（4000，实际等于不截）；未点名的行仍按 180 截断，防摘要膨胀回 context 复刻。数字匹配用 `(?<!\d)<idx>(?!\d)`，所以 348421 / 134842 / 3484 不会被误判成点名 34842（`test_term_digest_case.py` 与 `test_review_tools.py` 两侧都有回归覆盖）。
+**⚠ 截断的例外：note 点名本行 `xml_index` 时不截断**。note 压掉换行后默认截断到 180 字并加省略号，
+但这可能切掉**针对本行的逐行预裁**，让译者看不到既有裁决并自行选择错误义项。
+**判据：note 里出现本行 `xml_index`（独立数字），说明它含针对本行的裁决；这类 note 全文带出。**
+实现是 `_judge_note(h, idx)` 收到本行 index 时把上限提到 `_JUDGE_MAX_ROW_CITED`（4000，实际等于不截）；
+未点名的行仍按 180 字截断，防摘要膨胀回 context 复刻。数字匹配用 `(?<!\d)<idx>(?!\d)`，
+避免把更长或更短数字误判成本行索引。
 
-`--no-judge-notes` 可关掉判据与图例（默认开）。**关掉等于把分域判据藏回词表**，只在需要与旧版摘要逐字节对照时用。
+`--no-judge-notes` 可关掉判据与图例（默认开）。**关掉等于把分域判据藏回词表**，只在固定输入对照实验中使用。
 
 `global_bans` 不由本工具带出：它属于编译契约（`global-forbidden-words.json`）而非词条，不在 `context.json` 的 `terminology` 块里，且由门禁以 TERM004 机械执行；把全局禁词表复制进每份摘要只会制造噪声。**本工具的职责边界是「让译者看见词条级语义判据」，不是「复述门禁」。**
 
@@ -369,7 +379,7 @@ MOD 命中项若其词条 `note` 带**语义判据**，会在该词条后附 `�
     Charge = 充能术
 ```
 
-**为何必须带**：此表的法术名已写回 canonical，但不进 `terms.json`（普通词作 REQUIRED 会过度绑定，如 Charge/Ghost/Diamond）。摘要不带时，子代理看不到已定形，只能凭音感自造（真实事故：BOOK-004 的 Throwdoll/Sacrifice/Charge 三处自创，与已写回的击倒术/祭品/充能术偏离，验收时才发现）。`*` 标出本批源文命中项，便于优先对齐。
+**为何必须带**：此表的法术名已写回 canonical，但不进 `terms.json`（普通词作 REQUIRED 会过度绑定，如 Charge/Ghost/Diamond）。摘要不带时，子代理看不到已定形，只能凭音感自造。失效形态是同批多个法术名与 canonical 既有译形偏离，直到验收才发现。`*` 标出本批源文命中项，便于优先对齐。
 
 ## query.py
 
@@ -377,16 +387,16 @@ MOD 命中项若其词条 `note` 带**语义判据**，会在该词条后附 `�
 
 ```text
 # 按源文搜（大小写不敏感，字面匹配）
-py -3 .../query.py --xml mods/Artaeum.esp/Artaeum_english_chinese_translated.xml --src Thrall
+py -3 .../query.py --xml mods/<plugin>/<plugin>_english_chinese_translated.xml --src Thrall
 
 # 按译文搜
 py -3 .../query.py --xml <same> --dst 斯罗尔
 
 # 单行 + 邻域（--context K）
-py -3 .../query.py --xml <same> --idx 3023 --context 4
+py -3 .../query.py --xml <same> --idx <xml_index> --context 4
 
 # 批次归属（扫批次计划）
-py -3 .../query.py --locate 3023
+py -3 .../query.py --locate <xml_index>
 
 # 正则 / 大小写敏感 / 提高上限
 py -3 .../query.py --xml <same> --src "Thrall|斯罗尔" --regex --limit 0
@@ -451,44 +461,44 @@ fixes JSON：
 
 ```json
 {
-  "2943": "你不该来这儿",
-  "14729": {
+  "<idx-a>": "你不该来这儿",
+  "<idx-b>": {
     "new": "……你在耍我吧？",
     "expected_current": "……你在耍我把？",
     "notes": "错字修正",
     "status": "TRANSLATED"
   },
-  "5268": {
+  "<idx-c>": {
     "status": "TRANSLATED",
     "notes": "仅改 status（无 new）：REVIEW → TRANSLATED，译文保留现值"
   }
 }
 ```
 
-**`new` 可选**：缺省时只改 status/notes/confidence（常见需求：把 REVIEW/KEEP 状态转成 TRANSLATED 而译文不动），避免为此手写一次性脚本。**改译文的字段名恒为 `new`**：传 `translation` 会在入口直接报错拒绝（事故锚定：旧版静默丢弃该字段只更新 notes，patch 全部「已就位」0 生效，表面成功实际未改）。已写回批的修正收口优先走 `translation-batch-ops` 的 `close_round.py` 一条龙（自动 patch 写回 + readout 重生成 + 同源对账 + new 断言）。
+**`new` 可选**：缺省时只改 status/notes/confidence（常见需求：把 REVIEW/KEEP 状态转成 TRANSLATED 而译文不动），避免为此手写一次性脚本。**改译文的字段名恒为 `new`**：传 `translation` 会在入口直接报错拒绝。若该字段被静默忽略，patch 会全部显示“已就位”、表面成功却不改译文。已写回批的修正收口优先走 `translation-batch-ops` 的 `close_round.py` 一条龙（自动 patch 写回 + readout 重生成 + 同源对账 + new 断言）。
 
-**整句覆盖守卫（事故锚定 2026-09-27）**：`new` 是**整句替换**语义，不是词形替换。事故形态：词形修正意图（offshoot 分支→旁支）把裸词当 `new` 传入，9 处完整译文被整句覆盖为裸词并写回 canonical，靠下游 semgate 0.92+ FAIL 才事后发现。入口机械拦截两型：**G1** 现值为完整句（句末标点、≥12字）而 `new` 无句末标点且不足现值一半；**G2** ≥2 键 `new` 同值且无句末标点（同一裸词批量替换多条完整句）。词形/子串修正一律用 `--find/--replace` 或 `--subs-file` 通道；确认是真短句替换时在 fix 加 `"allow_collapse": true` 显式放行。守卫覆盖手工 `--fixes` 路径（批次模式取批次文件现值，跨批模式取 XML Dest）。
+**整句覆盖守卫**：`new` 是**整句替换**语义，不是词形替换。失效形态：词形修正意图（offshoot 分支→旁支）把裸词当 `new` 传入，数处完整译文会被整句覆盖为裸词并写回 canonical，只能靠下游 semgate 0.92+ FAIL 发现。入口机械拦截两型：**G1** 现值为完整句（句末标点、≥12字）而 `new` 无句末标点且不足现值一半；**G2** ≥2 键 `new` 同值且无句末标点（同一裸词批量替换多条完整句）。词形/子串修正一律用 `--find/--replace` 或 `--subs-file` 通道；确认是真短句替换时在 fix 加 `"allow_collapse": true` 显式放行。守卫覆盖手工 `--fixes` 路径（批次模式取批次文件现值，跨批模式取 XML Dest）。
 
 **`--find/--replace`（同型多行替换）**：不值得为 5 条同型修正写全量 new JSON 时用；从各 idx 现值做子串替换并生成 fixes，走同一条写盘链路。`--idx-list` 限定行；无可替换时 no-op 且 exit 0。多行文本用 `--find-file` / `--replace-file`（见下「跨批模式」）。
 
 **`--subs-file`（多组替换声明，替代手写 fix-*.py）**：一个批次涉及多组词对、或多批次各需替换时，用声明式 JSON 一次执行（之前每轮手写 `fix-XXX.py` 的主要原因）：
 
 ```text
-py -3 .../apply_fixes.py --stem TheKalpicAnomaly --subs-file _tmp/data/subs.json
+py -3 .../apply_fixes.py --stem <plugin> --subs-file _tmp/data/subs.json
 ```
 
 ```json
 [
-  {"find": "鬼婆乌鸦", "replace": "乌鸦鬼婆", "batches": ["INFO-452", "INFO-453"]},
-  {"find": "路径", "replace": "路线", "batches": ["INFO-453"], "idx_list": "22337,22351"},
-  {"find": "旧形", "replace": "新形", "canonical": true, "idx_list": "816"}
+  {"find": "鬼婆乌鸦", "replace": "乌鸦鬼婆", "batches": ["<BID-A>", "<BID-B>"]},
+  {"find": "路径", "replace": "路线", "batches": ["<BID-B>"], "idx_list": "<idx-a>,<idx-b>"},
+  {"find": "旧形", "replace": "新形", "canonical": true, "idx_list": "<idx-c>"}
 ]
 ```
 
 - 批内项（`batches`）读 map.json 当场生成 fix（含 CAS 基准）；**同批次多组替换自动叠加**（第二轮基于第一轮结果继续），`status`/`notes` 可选覆盖。
 - canonical 项（`canonical: true`）从译文 XML 读现值并生成 patch（需 `--translated-xml` / `--patch-out`），默认同步批次文件（`--no-sync-batches` 关闭）。
 - 多批次先全部 dry-run 校验、后统一写盘（近似整体原子）；任一错误则零写盘。
-- 不再需要为这类替换写 `fix-XXX.py` 脚本（历史遗留 220+ 份，教训已入库）。
+- 这类替换统一使用声明式 JSON，不写一次性 `fix-XXX.py` 脚本。
 
 **跨批模式自动同步批次文件**：省略 `--batch` 时（跨批修正/patch 生成），默认把新值
 同步进批次文件（map.json / translation.json）——canonical 修正不回写批次会致审查视图
@@ -502,10 +512,10 @@ py -3 .../apply_fixes.py --stem TheKalpicAnomaly --subs-file _tmp/data/subs.json
 抗幻觉审查这类修订常跨多个批次，逐个绑定 batch 目录很繁琐。**patch 生成本就不依赖 batch**（它只读 canonical 并对 idx 做 CAS），故 `--batch` 可省略：
 
 ```text
-py -3 .../apply_fixes.py --stem Artaeum \
+py -3 .../apply_fixes.py --stem <plugin> \
   --fixes _tmp/data/longtext-fix.json \
-  --translated-xml mods/Artaeum.esp/Artaeum_english_chinese_translated.xml \
-  --patch-out .work/Artaeum/maps/Artaeum-fix-patch.json
+  --translated-xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
+  --patch-out .work/<plugin>/maps/<plugin>-fix-patch.json
 ```
 
 该模式只产出 canonical patch，不同步 map.json / translation.json（那两个文件本身就是批次的）。控制台会显式标 `map.json: 0（不存在）`，不是错误。
@@ -513,8 +523,8 @@ py -3 .../apply_fixes.py --stem Artaeum \
 **跨批字符串替换**：同样省略 `--batch`，`--find/--replace` 改从 canonical 读现值（而非 map.json）：
 
 ```text
-py -3 .../apply_fixes.py --stem Artaeum \
-  --find "旧词" --replace "新词" --idx-list "6010,6513" \
+py -3 .../apply_fixes.py --stem <plugin> \
+  --find "旧词" --replace "新词" --idx-list "<idx-a>,<idx-b>" \
   --translated-xml <canonical> --patch-out <patch>
 ```
 
@@ -525,16 +535,16 @@ py -3 .../apply_fixes.py --stem Artaeum \
 **方括号标记自动豁免**：译文把方括号内容中文化后（`[END OF SEASON 1]`→「[第一季终]」），writer 的占位符校验会报 `protected token mismatch`。patch 生成时**自动对比源译的方括号标记并写入 `waived_tokens`**，无需手工声明（手工补声明漏过两次）。两侧都保留的标记（如 `[pagebreak]`）不入豁免；显式提供 `waived_tokens` 时以调用方为准。
 
 ```text
-py -3 .../apply_fixes.py --stem Artaeum --batch NI-CELL-002 --fixes _tmp/data/fix.json
+py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --fixes _tmp/data/fix.json
 
 # 同型多行子串替换（不必写全量 new）：全批替换，或用 --idx-list 限定
-py -3 .../apply_fixes.py --stem Artaeum --batch NI-QUST-023 --find "拉格瓦滕岛" --replace "洛格瓦滕岛"
-py -3 .../apply_fixes.py --stem Artaeum --batch NI-QUST-014 --find "「" --replace "“" --idx-list "5730,5731"
+py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --find "旧词" --replace "新词"
+py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --find "「" --replace "“" --idx-list "<idx-a>,<idx-b>"
 
 # 同时生成 canonical patch（expected_dest 自动取 XML 当前 Dest）
-py -3 .../apply_fixes.py --stem Artaeum --batch NI-CELL-002 --fixes fix.json \
-  --translated-xml mods/Artaeum.esp/Artaeum_english_chinese_translated.xml \
-  --patch-out .work/Artaeum/maps/Artaeum-fix-patch.json
+py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --fixes fix.json \
+  --translated-xml mods/<plugin>/<plugin>_english_chinese_translated.xml \
+  --patch-out .work/<plugin>/maps/<plugin>-fix-patch.json
 ```
 
 行为细则：
@@ -611,10 +621,10 @@ py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --fixes _tmp/data/charset
 proposed / rationale / 置信度」并排打出。这是主会话逐条裁决时的实际阅读面：
 
 ```text
-py -3 .../dump_review_findings.py --report .work/<plugin>/reports/<plugin>-INFO-600-review-record.json \
+py -3 .../dump_review_findings.py --report .work/<plugin>/reports/<plugin>-<BID>-review-record.json \
   --xml mods/<plugin>/<plugin>_english_chinese_translated.xml
 
-py -3 .../dump_review_findings.py --report <rec.json> --xml <canonical.xml> --only 41422,41448   # 只看几条
+py -3 .../dump_review_findings.py --report <rec.json> --xml <canonical.xml> --only <idx-a>,<idx-b>   # 只看几条
 py -3 .../dump_review_findings.py --report <rec.json> --xml <canonical.xml> --full              # 附未报项 / 风险注 / validation
 ```
 
@@ -639,8 +649,8 @@ py -3 .../append_adjudication_note.py --stem <plugin> \
 3. 刷新 `totals.verification`
 4. 写盘后回读断言 note 存在、canonical 一致
 
-- `notes` 数组里**混有字符串条目**（早期手写记录），遍历时必须 `isinstance(n, dict)` 守卫，
-  否则回读断言会在 `.get()` 上炸——这个坑已踩过一次。
+- `notes` 数组可能**混有字符串条目**，遍历时必须用 `isinstance(n, dict)` 守卫，
+  否则回读断言会在 `.get()` 上失败。
 - 中文正文用 `--note-body` 传参时不要在 PowerShell 里手拼长串；Write 落盘或参数数组更稳。
 
 ## 安全边界
@@ -667,14 +677,14 @@ make_review_view 一致性守卫（一致生成 / 漂移拒绝 / --allow-drift�
 
 `test_term_digest_case.py`（unittest 风格，CI 的 `unittest discover` 步骤自动收集）覆盖
 大小写警示与判据型 note 两条派单判据：分域 note 被带出、纯取证 note 不带出（保持摘要紧凑）、
-note 截断与换行压平、**note 点名本行 `xml_index` 时不截断（含未点名行仍截断、以及
-348421/134842/3484/48420 这类数字子串不得误判为点名）**、
+note 截断与换行压平、**note 点名本行 `xml_index` 时不截断（含未点名行仍截断，
+更长或更短的数字子串不得误判为点名）**、
 `note` 缺失时安全、`--no-judge-notes` 同时关掉判据与图例且不影响主形、
 `== 读法 ==` 图例默认存在。
 
 `test_digest_freshness.py`（unittest 风格，CI 自动收集）覆盖 `read_batch.py` 的
-term-digest 新鲜度门：图例判定（有无图例、半旧版、文件版与文本版一致）、
-新鲜 digest 不被触碰、旧 digest 与缺失 digest 的重生成并确认判据真的回到材料里、
+term-digest 新鲜度门：图例判定（有无图例、残缺图例、文件版与文本版一致）、
+新鲜 digest 不被触碰、缺图例 digest 与缺失 digest 的重生成并确认判据真的回到材料里、
 无 `context.json` 时只警告不覆盖、`context.json` 损坏时返回 `failed` 而非抛错，
 以及 `term_digest.build_digest()` 与 `digest()` 输出一致、注册表发现显式路径优先。
 

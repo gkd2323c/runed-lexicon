@@ -31,14 +31,14 @@ py -3 .agents/skills/review-sheet-export/scripts/export_review_sheet.py --mod <m
 
 | 参数                  | 说明                                                                                         |
 | --------------------- | -------------------------------------------------------------------------------------------- |
-| `--mod`               | 必填，`mods/` 下的目录名，如 `Artaeum.esp`                                                   |
+| `--mod`               | 必填，`mods/` 下的目录名，如 `ExampleMod.esp`                                                   |
 | `--work`              | `.work/` 下的工作目录名，默认取 `--mod` 去掉扩展名。MOD 目录名与工作目录名不一致时必须显式给 |
 | `--xml` / `--context` | 显式指定输入路径，绕过自动定位                                                               |
 | `--out`               | 输出路径，默认 `mods/<MOD>/<base>-review-sheet.xlsx`                                         |
 | `--dialogue-only`     | 只导出对话段，丢弃非对话行                                                                   |
 | `--root`              | 项目根目录，默认当前目录                                                                     |
 
-示例：MOD 目录是 `TheKalpicAnomaly_VIGILANT.esp`，工作目录同名，直接 `--mod TheKalpicAnomaly_VIGILANT.esp` 即可。
+示例：MOD 目录是 `ExampleMod.esp`，工作目录同名，直接 `--mod ExampleMod.esp` 即可。
 
 ## 输出列
 
@@ -69,8 +69,8 @@ XML 不保存 FormID，只有 EDID；而一部分 INFO 记录在 XML 里根本�
 
 ## 关键边缘情况
 
-- **`speaker_candidates` 常常为空**。只有当 INFO 的条件里有 `GetIsID` 时才有值；用 VoiceType 或别名指向说话人的 MOD（例如 TheKalpicAnomaly_VIGILANT）整列都是空的。这不是工具的缺陷，是源数据的形状，列仍保留。
-- **`editor_id` 可能整批为空**。有的 MOD 的 INFO 普遍没有 EDID（例如 Artaeum 的 INFO EDID 索引只有个位数），此时 formid 通道是唯一入口，命中数会远大于 EDID 命中数。
+- **`speaker_candidates` 常常为空**。只有当 INFO 的条件里有 `GetIsID` 时才有值；用 VoiceType 或别名指向说话人的 MOD 整列都是空的。这不是工具的缺陷，是源数据的形状，列仍保留。
+- **`editor_id` 可能整批为空**。有的 MOD 的 INFO 普遍没有 EDID（索引只有个位数），此时 formid 通道是唯一入口，命中数会远大于 EDID 命中数。
 - **未命中不等于异常**。非对话记录（BOOK、NPC_、MESG、QUST 等）本来就不在对话索引里，落在非对话段是正常的。
 - **未译判定是 `Source == Dest`**，与项目其他地方一致。已全译的 MOD 该列全空是正常的。
 

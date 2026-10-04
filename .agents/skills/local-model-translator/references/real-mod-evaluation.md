@@ -1,8 +1,8 @@
 # Real MOD evaluation notes
 
-These observations come from `evgSIRENROOT.esm` and are evidence for how this skill should be used, not a generic benchmark claim about every translation model.
+These observations come from one full-scale real MOD evaluation and are evidence for how this skill should be used, not a generic benchmark claim about every translation model.
 
-## 2026-09-03 Hy-MT2 Q8 / Ollama 32K pass
+## Hy-MT2 Q8 / Ollama 32K pass
 
 Configuration:
 
