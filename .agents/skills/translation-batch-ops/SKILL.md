@@ -37,7 +37,7 @@ metadata:
 
 > **硬规则（2026-09-22）：步 5 的收口链禁止拆成手动并行命令。** 手动编排曾六次产生覆盖时序（快照记入写前态 200/205/213/216/220、charset 读到 fill 前空文、统计读到写前态）；write_translations 与 progress_snapshot 内置 pipeline.lock 守卫，持锁期间外部命令直接拒绝。独立的多批 consume / apply_fixes 并行仍允许（不碰 canonical，见 skyrim-tool-dev-rules §2 第 4 条）。
 
-派单安全规范（体量上限、验收三查、送达纪律）以 `subagent-ops` / `hana-subagent-ops` 为准，本表不重复。
+派单安全规范（体量上限、验收三查、送达纪律）以 `subagent-ops` 为准，本表不重复。
 
 **新会话接手指南**：读 `mods/<mod>/PROGRESS.md` 取「下一批编号」→ 按上表从步 1 开跑 → 每轮收口走 `round_pipeline`（步 5）。步 1~3 为幂等备料，可安全重跑。
 

@@ -3,6 +3,7 @@
 
 锁定行为：
 - 引号/括号栈式配对：未闭合、多余、错序 → FAIL；正常嵌套（含「」）→ 无报
+- 音译隔字符 ’（两侧汉字、无待闭合 ‘）不参与配对（官方译形 伊’符瑞 → 无报）
 - 直角引号在目标形字段 FAIL；note 里「」为惯例不报
 - 不可见/控制字符 FAIL
 - 半角双引号贴中文 FAIL；半角单引号贴中文 WARN（音译撇号）
@@ -54,6 +55,23 @@ class PairCheckTest(unittest.TestCase):
     def test_paren_balanced(self):
         self.assertEqual(LT.check_pairs("（备注；【注】）"), [])
 
+    def test_translit_apostrophe_skipped(self):
+        # 音译隔字符（两侧汉字）：不参与配对
+        self.assertEqual(LT.check_pairs("伊\u2019符瑞"), [])
+
+    def test_translit_apostrophe_inside_double_quote(self):
+        # 双引号内嵌隔字符：双引号正常闭合，不误报
+        self.assertEqual(LT.check_pairs("“伊\u2019符瑞”"), [])
+
+    def test_apostrophe_pairs_with_pending_left_quote(self):
+        # 栈中有等待的 ‘ 时，’ 仍按闭合符处理（既有行为保留）
+        self.assertEqual(LT.check_pairs("‘伊’符瑞"), [])
+
+    def test_trailing_apostrophe_still_reported(self):
+        # 行尾孤立 ’（无右邻汉字）：不豁免，仍报
+        issues = LT.check_pairs("伊\u2019符瑞\u2019")
+        self.assertEqual([c for c, _, _ in issues], ["QUOTE_UNPAIRED"])
+
 
 class ScanStringTest(unittest.TestCase):
     def _scan(self, s, strict=True, field="zh"):
@@ -90,6 +108,11 @@ class ScanStringTest(unittest.TestCase):
         issues = self._scan("杰'扎格")
         self.assertEqual(codes(issues, "fail"), [])
         self.assertIn("ASCII_APOSTROPHE_CJK", codes(issues, "warn"))
+
+    def test_translit_apostrophe_in_zh_ok(self):
+        # 官方译名的音译隔字符在 zh 字段不再误报
+        issues = self._scan("伊\u2019符瑞")
+        self.assertEqual(codes(issues, "fail"), [])
 
     def test_halfwidth_punct_warn(self):
         issues = self._scan("等等,还有")

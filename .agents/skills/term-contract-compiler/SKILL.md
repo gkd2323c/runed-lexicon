@@ -130,7 +130,7 @@ py -3 .agents/skills/term-contract-compiler/scripts/lint_terms.py \
 
 | 级别 | 检查 | 代码 |
 | --- | --- | --- |
-| FAIL | 引号/括号栈式配对（未闭合/多余/错序）：`“”‘’（）【】《》〔〕［］｛｝「」『』〈〉` | QUOTE_UNPAIRED / QUOTE_ORDER |
+| FAIL | 引号/括号栈式配对（未闭合/多余/错序）：`“”‘’（）【】《》〔〕［］｛｝「」『』〈〉`（例外：`’` 两侧为汉字且无待闭合的 `‘` 时视为音译隔字符，如「伊’符瑞」，不参与配对） | QUOTE_UNPAIRED / QUOTE_ORDER |
 | FAIL | 目标形（zh/target）含直角引号「」（译文层 CHAR001 已禁，词表源头同步拦） | CORNER_QUOTE |
 | FAIL | 半角双引号 `"` 紧邻中文 | ASCII_QUOTE_CJK |
 | FAIL | 不可见/控制字符（零宽空格/连接符、BOM、软连字符、C0/C1） | INVISIBLE / CONTROL_CHAR |
@@ -144,6 +144,7 @@ py -3 .agents/skills/term-contract-compiler/scripts/lint_terms.py \
 
 - 目标形（zh / target）必须纯简体：译文匹配锚，字符形态与译文严格一致才能正确拦截；繁体/直角引号在此字段是 FAIL。
 - note 字段里「」为术语标记惯例，出现不报；配对错误照报（哨兵式校验）。
+- 音译隔字符例外：`’`（U+2019）两侧为汉字且当前无待闭合的 `‘` 时，视为名字内部分隔符（官方译形如 Y'ffre→「伊’符瑞」），不参与引号配对；否则合规官方译名会被误报 QUOTE_UNPAIRED。
 - forbidden 列表里的繁体条目（如「黛爾芬」）是刻意防护形，CHAR001 已拦繁体译文故冗余但无害 → WARN 不拦。
 - 编辑词表后跑一次 standalone lint 看明细；编译路径只在 FAIL 时打印明细，warn 只计数。
 - 历史事故：`“唤风者“约根`（词条 zh 值里两个左引号）导致 TERM001 循环误报，人眼排查两轮才发现 → 本工具化。

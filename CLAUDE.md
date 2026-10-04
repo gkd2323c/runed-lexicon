@@ -102,10 +102,11 @@ ESP/ESM ──xTranslator──> mods/<plugin>/<plugin>_english_chinese.xml   �
 
 Skill 分四层 + 元 skill：
 
+- **协作编排**：`subagent-ops`（委派决策、任务卡编译与红线、体量与送达纪律、故障归因；附轨迹读取与写盘冲突守卫三个可选脚本）
 - **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`（含 `semantic_gate.py` 参考层）、`xtranslator-xml-writer`、`translation-batch-ops`（批次运维：验收/覆盖/缺口/进度/分片/收口链 round_pipeline 与 close_round）、`translation-batch-preparer`（批次切分与未译清点）、`noninfo-batch-planner`（非 INFO 批次计划）、`translation-review-tools`（读批/术语摘要/修正集 apply/字符集归一/抗幻觉探针）
 - **契约与名词**：`term-contract-compiler`（编译契约）、`proper-noun-index`（源侧官方专名清点）、`dictionary-noun-audit`（译文侧漏项候选）、`noun-consistency-scan`（同源多译分裂）
 - **结构提取与查询**：`mutagen-dialogue-exporter`（秒级解析插件，取代 xEdit；`xedit-context-exporter` 已退役）、`skyrim-xml-tools`（XML 检视/未译清单/官方词典查询，只读）、`translation-fidelity-scan`、`fantasy-context-auditor`（本地 LLM 预筛）、`local-model-translator`
-- **纯规则**（无脚本）：`skyrim-translation-craft`、`skyrim-doc-system`、`skyrim-term-contract-workflow`、`skyrim-tool-dev-rules`、`skyrim-xml-verification`、`longtext-hallucination-review`、`subagent-ops`、`shuo-ren-hua`（中文文风，写/改中文文档默认应用）
+- **纯规则**（无脚本）：`skyrim-translation-craft`、`skyrim-doc-system`、`skyrim-term-contract-workflow`、`skyrim-tool-dev-rules`、`skyrim-xml-verification`、`longtext-hallucination-review`、`shuo-ren-hua`（中文文风，写/改中文文档默认应用）
 - **元 skill**：`skill-creator`（创建/修改 skill 的规范与 `quick_validate.py` / `check_env.mjs` 验证脚本）
 
 ## 必须知道的约束
@@ -138,7 +139,7 @@ Skill 分四层 + 元 skill：
 
 ## 本地数据（公开仓库不附带）
 
-`dictionary/**/*.xml`、`mods/**`、`tools/xEdit/**`、`tools/term-rules/*.txt`、`tools/Mutagen/`、`.work/`、`_tmp/`、`.agents/skills/hana-subagent-ops/` 均被 git 排除（不发布）。其中 `dictionary/**/*.xml` 的规则不在 `.gitignore`，而在本机 `.git/info/exclude-dictionary`（由 `core.excludesFile` 指向）：平台检索工具会跳过 `.gitignore` / `.git/info/exclude` 排除的文件、但不读 `core.excludesFile` 来源，规则置于该来源使 Agent 可检索词典且 git 仍不追踪。**新 clone 需重建**：将 `dictionary/**/*.xml` 写入 `.git/info/exclude-dictionary` 并执行 `git config --local core.excludesFile <repo>/.git/info/exclude-dictionary`。**全新 clone 下涉及 `mods/<plugin>/` 与 `dictionary/` 的命令无法直接运行**——需要用户自备官方英中 xTranslator XML（导出方法见 `dictionary/EXPORT_GUIDE.md`）与目标 MOD XML。
+`dictionary/**/*.xml`、`mods/**`、`tools/xEdit/**`、`tools/term-rules/*.txt`、`tools/Mutagen/`、`.work/`、`_tmp/` 均被 git 排除（不发布）。其中 `dictionary/**/*.xml` 的规则不在 `.gitignore`，而在本机 `.git/info/exclude-dictionary`（由 `core.excludesFile` 指向）：平台检索工具会跳过 `.gitignore` / `.git/info/exclude` 排除的文件、但不读 `core.excludesFile` 来源，规则置于该来源使 Agent 可检索词典且 git 仍不追踪。**新 clone 需重建**：将 `dictionary/**/*.xml` 写入 `.git/info/exclude-dictionary` 并执行 `git config --local core.excludesFile <repo>/.git/info/exclude-dictionary`。**全新 clone 下涉及 `mods/<plugin>/` 与 `dictionary/` 的命令无法直接运行**——需要用户自备官方英中 xTranslator XML（导出方法见 `dictionary/EXPORT_GUIDE.md`）与目标 MOD XML。
 
 各 MOD 工作区典型内容：`<plugin>_english_chinese.xml`（源）、`<plugin>_english_chinese_translated.xml`（canonical 成品）、插件二进制（仅结构恢复需要时）、`CONTEXT.md` / `DICTIONARY.md` / `PROGRESS.md` / `SOP.md`、`terms.json`。翻译前必须完整读取 `CONTEXT.md` 与 `DICTIONARY.md`；**任一缺失就停下询问用户是否补建，不得静默创建空模板、不得启动翻译**。接手已有 MOD 先读 `SOP.md` 与 `PROGRESS.md` 恢复上下文。
 

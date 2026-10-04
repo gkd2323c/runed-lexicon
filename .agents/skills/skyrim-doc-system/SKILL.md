@@ -107,7 +107,7 @@ MOD 原创人名、地点名等能根据全文、拼写、发音、TES 命名习
 
 每个进入实际翻译阶段的 `mods/<plugin>/` 目录维护 `SOP.md`，保存该 MOD 的**可执行操作序列**：接手顺序、每轮推进循环（备料 → 派单 → 验收 → 写回 → 快照）的命令级步骤（含本 MOD 的具体路径与参数）、派单与验收纪律的 MOD 特化、诊断命令、故障处置与收口清单。
 
-分层约定：通用方法在 `.agents/skills/`（`translation-batch-ops` §0 标准续推循环、`subagent-ops`、`hana-subagent-ops` 等）；`SOP.md` 是这些通用规则的 **MOD 实例**，同一序列不在两处各写一半。新会话接手该 MOD 时先读 `SOP.md` 与 `PROGRESS.md` 再动手，不现场拼装流程。
+分层约定：通用方法在 `.agents/skills/`（`translation-batch-ops` §0 标准续推循环、`subagent-ops` 等）；`SOP.md` 是这些通用规则的 **MOD 实例**，同一序列不在两处各写一半。新会话接手该 MOD 时先读 `SOP.md` 与 `PROGRESS.md` 再动手，不现场拼装流程。
 
 `SOP.md` 不保存：当前进度与统计数字（进 `PROGRESS.md`）、术语与语境（进 `DICTIONARY.md` / `CONTEXT.md`）、执行过程叙事。维护时机：工具命令、路径、纪律发生变更时同步更新，保证照抄可执行。
 

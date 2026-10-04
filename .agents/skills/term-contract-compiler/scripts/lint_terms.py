@@ -10,6 +10,7 @@
   FAIL（确定性错误，可硬拦）：
     - 不可见/控制字符：零宽空格/连接符、BOM、软连字符、C0/C1 控制符、行/段分隔符
     - 引号/括号不配对（栈式）：未闭合、多余闭合、错序 —— “” ‘’ （） 【】 《》 〔〕 ［］ ｛｝
+      （例外：’ 两侧均为汉字且无待闭合的 ‘ 时，视为音译隔字符，如「伊’符瑞」，不参与配对）
     - 直角引号「」『』〈〉（项目禁用形态；译文层 CHAR001 已拦，词表源头同步拦）
     - 半角双引号 " 紧邻中文（中文语境应用弯引号）
     - 繁体/异体字混入（opencc 或 zhconv 可用时；纯确定性字形检查）
@@ -104,6 +105,18 @@ def _ctx(s: str, pos: int, width: int = 14) -> str:
     return f"…{shown}…" if (lo > 0 or hi < len(s)) else shown
 
 
+def _is_translit_apostrophe(s: str, pos: int, stack) -> bool:
+    """音译隔字符豁免：’（U+2019）两侧均为 CJK 字符、且当前没有等待闭合的
+    ‘（U+2018）时，视为音译名内部隔字符，不参与引号配对。
+    事故锚定：官方译形以 U+2019 作名字内部分隔（如 Y'ffre→「伊’符瑞」），
+    无本豁免时被误报「多余关闭符」（已知 false positive）。"""
+    if s[pos] != "\u2019" or pos == 0 or pos + 1 >= len(s):
+        return False
+    if not (CJK_RE.match(s[pos - 1]) and CJK_RE.match(s[pos + 1])):
+        return False
+    return not any(open_ch == "\u2018" for open_ch, _ in stack)
+
+
 def check_pairs(s: str):
     """栈式配对检查（含直角引号对；直角引号的「禁用」由 CORNER_QUOTE 单独报告）。
     返回 [(code, pos, detail)]。"""
@@ -113,6 +126,8 @@ def check_pairs(s: str):
         if ch in PAIR_OPEN:
             stack.append((ch, pos))
         elif ch in PAIR_CLOSE:
+            if _is_translit_apostrophe(s, pos, stack):
+                continue
             want = PAIR_CLOSE[ch]
             if stack and stack[-1][0] == want:
                 stack.pop()
