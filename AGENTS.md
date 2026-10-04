@@ -167,7 +167,7 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 
 - 原始 MOD XML 文件严禁就地覆盖，工具默认输出带标记的 translated XML。
 
-- 完整推进 MOD 时以批次为单位流水线作业，不需要逐条停顿确认。批次间自主循环推进（推进 → 停等送达 → 验收 → 续推）：验收的唯一触发是子代理结果送达，派单后不得提前读产出或预验收；送达处理完毕且无在途子代理、存在可推进工作时立即续推，不等待用户开令；仅在可推进工作枯竭、门禁/裁决硬阻断或用户叫停时停下汇报。禁止「无在途任务，静候指令」式收尾。
+- 完整推进 MOD 时以批次为单位流水线作业，不需要逐条停顿确认。批次间自主**滚动循环**推进（派单 → 完成即处理 → 处理即续派）：**完成情形以盘面核验为准（实例终态 + 交付文件落盘），不以「送达通知」到达为准；已完成批次立即批量处理（验收/收口/裁决），处理完毕且存在可推进工作（待派、待审、待备料）时立即续派**，不等待用户开令。派单后不得在子代理未完成时提前读产出或预验收；子代理完成后也不得逐件等待通知、空转流水线。仅在可推进工作枯竭、门禁/裁决硬阻断或用户叫停时停下汇报；禁止「无在途任务，静候指令」式收尾。
 
 - **翻译派单分工（硬规则，无自由裁量）**：翻译批次必须轮换分派，禁止全部派给单一 agent（含「分身一致性更好」理由）。定名一致性由契约 gate + terms-slim + 独立审查兜底，不依赖单一译者。审查轮按发现与裁决分离另派。本条优先于任何效率偏好。
 
@@ -203,24 +203,24 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 | `skyrim-doc-system`             | 六文档职责划分、收录标准、术语状态生命周期与维护规范                     | 创建或修改项目/MOD 文档前；划定术语归属时                   |
 | `skyrim-term-contract-workflow` | 契约编译工作流、门禁校验步骤、PASS 准则                                  | 新 MOD 启动前；写回前；发布收敛性声明前                     |
 | `proper-noun-index`             | 官方专名索引构建与 MOD 源侧清点（人名/地名/派系名清单）                  | 新 MOD 开工前清点官方名；裁决官方名词前；词典变更后重建索引 |
-| `term-contract-compiler`        | 从 `terms.json` 编译机器契约并执行术语 lint                             | 编译契约、修改术语后重编译或运行术语 lint 时                |
-| `skyrim-xml-tools`              | 检查 xTranslator XML、未译项与官方词典                                  | 查询 XML、清点未译项或查官方译名时                          |
-| `mutagen-dialogue-exporter`     | 从插件导出 DIAL→INFO 结构及批次索引                                    | 需要插件侧对话结构或任务线证据时                            |
-| `translation-batch-preparer`    | 整理未译项并准备通用批次                                           | 创建翻译批次或补遗计划前                                  |
-| `noninfo-batch-planner`         | 规划非 INFO 记录族批次                                             | 规划非 INFO 批次前                                        |
-| `translation-context-builder`  | 合并 XML、对话上下文、术语与词典                                   | 构建 INFO 翻译上下文前                                    |
-| `translation-executor`          | 生成并检查翻译结果 JSON                                            | 开始实际翻译前                                            |
-| `local-model-translator`        | 用本地模型生成受约束的初译                                         | 调用本地翻译模型前                                        |
-| `translation-quality-gate`      | 检查术语契约、占位符与字符集                                       | 验收翻译结果或写回前                                      |
-| `translation-fidelity-scan`     | 检查源文保真、英文残留与标点                                       | 验收翻译结果或写回前执行保真检查时                        |
-| `translation-review-tools`      | 阅读批次、查询译文并生成修正集                                     | 批次审校、术语裁决或修正时                                |
-| `same-source-convergence`       | 收敛同源译文并对账批次产物                                         | 同源收敛、分片合并或批次产物对账时                        |
-| `noun-consistency-scan`         | 查找跨条目的名词译法分裂                                           | 执行名词一致性审查时                                      |
-| `dictionary-noun-audit`         | 扫描专名译文漏项候选                                               | 审查 MOD 专名完整性时                                     |
+| `term-contract-compiler`        | 从 `terms.json` 编译机器契约并执行术语 lint                              | 编译契约、修改术语后重编译或运行术语 lint 时                |
+| `skyrim-xml-tools`              | 检查 xTranslator XML、未译项与官方词典                                   | 查询 XML、清点未译项或查官方译名时                          |
+| `mutagen-dialogue-exporter`     | 从插件导出 DIAL→INFO 结构及批次索引                                      | 需要插件侧对话结构或任务线证据时                            |
+| `translation-batch-preparer`    | 整理未译项并准备通用批次                                                 | 创建翻译批次或补遗计划前                                    |
+| `noninfo-batch-planner`         | 规划非 INFO 记录族批次                                                   | 规划非 INFO 批次前                                          |
+| `translation-context-builder`   | 合并 XML、对话上下文、术语与词典                                         | 构建 INFO 翻译上下文前                                      |
+| `translation-executor`          | 生成并检查翻译结果 JSON                                                  | 开始实际翻译前                                              |
+| `local-model-translator`        | 用本地模型生成受约束的初译                                               | 调用本地翻译模型前                                          |
+| `translation-quality-gate`      | 检查术语契约、占位符与字符集                                             | 验收翻译结果或写回前                                        |
+| `translation-fidelity-scan`     | 检查源文保真、英文残留与标点                                             | 验收翻译结果或写回前执行保真检查时                          |
+| `translation-review-tools`      | 阅读批次、查询译文并生成修正集                                           | 批次审校、术语裁决或修正时                                  |
+| `same-source-convergence`       | 收敛同源译文并对账批次产物                                               | 同源收敛、分片合并或批次产物对账时                          |
+| `noun-consistency-scan`         | 查找跨条目的名词译法分裂                                                 | 执行名词一致性审查时                                        |
+| `dictionary-noun-audit`         | 扫描专名译文漏项候选                                                     | 审查 MOD 专名完整性时                                       |
 | `skyrim-xml-verification`       | 节点一致性校验、哈希比对、数据溯源                                       | 批量修改 XML 前后；出具验证报告前                           |
 | `xtranslator-xml-writer`        | 按确定性规则写回翻译结果或 patch                                         | 执行 XML 写回前                                             |
-| `review-sheet-export`            | 导出可人工审校的 xlsx                                                    | 生成 MOD 审校表时                                           |
-| `fantasy-context-auditor`        | 扫描译文中的现实语境违和候选                                             | 执行奇幻语境语义预审时                                      |
+| `review-sheet-export`           | 导出可人工审校的 xlsx                                                    | 生成 MOD 审校表时                                           |
+| `fantasy-context-auditor`       | 扫描译文中的现实语境违和候选                                             | 执行奇幻语境语义预审时                                      |
 | `skyrim-tool-dev-rules`         | 工具复用检索、性能门禁（30s 缺陷阈值 / 5s 回归线）、临时脚本边界（§2.1） | 编写数据处理脚本前；改动现有自动化工具前                    |
 | `longtext-hallucination-review` | 长文本抗幻觉审查（机械探针 + 逐段精读）、幻觉形态识别与验收纪律          | 审查长叙事译文（BOOK 书页、QUST 长日志）；收口前长文本复核  |
 | `translation-batch-ops`         | 批次验收、覆盖率核查、缺口扫描与补遗、进度快照、批次分片工具集           | 验收批次产出、核对批次状态与覆盖率、声明收敛前、记录进度时  |
