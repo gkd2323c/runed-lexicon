@@ -71,3 +71,5 @@ tools/Mutagen/
 # Semantic-gate connection config carries a live API key; never commit.
 semantic-gate.config.json
 semantic-gate.config.json.bak
+/.omx
+/.omx/state

@@ -103,8 +103,8 @@ ESP/ESM ──xTranslator──> mods/<plugin>/<plugin>_english_chinese.xml   �
 Skill 分四层 + 元 skill：
 
 - **协作编排**：`subagent-ops`（委派决策、任务卡编译与红线、体量与送达纪律、故障归因；附轨迹读取与写盘冲突守卫三个可选脚本）
-- **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`（含 `semantic_gate.py` 参考层）、`xtranslator-xml-writer`、`translation-batch-ops`（批次运维：验收/覆盖/缺口/进度/分片/收口链 round_pipeline 与 close_round）、`translation-batch-preparer`（批次切分与未译清点）、`noninfo-batch-planner`（非 INFO 批次计划）、`translation-review-tools`（读批/术语摘要/修正集 apply/字符集归一/抗幻觉探针）
-- **契约与名词**：`term-contract-compiler`（编译契约）、`proper-noun-index`（源侧官方专名清点）、`dictionary-noun-audit`（译文侧漏项候选）、`noun-consistency-scan`（同源多译分裂）
+- **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`（含 `semantic_gate.py` 参考层）、`xtranslator-xml-writer`、`translation-batch-ops`（批次运维：验收/覆盖/缺口/进度/分片/审查欠账 review_pending 与批次实况 batch_status/收口链 round_pipeline 与 close_round）、`translation-batch-preparer`（批次切分与未译清点）、`noninfo-batch-planner`（非 INFO 批次计划）、`translation-review-tools`（读批/术语摘要/修正集 apply/字符集归一/抗幻觉探针）、`review-sheet-export`（导出人工审校 xlsx）
+- **契约与名词**：`term-contract-compiler`（编译契约）、`proper-noun-index`（源侧官方专名清点）、`dictionary-noun-audit`（译文侧漏项候选）、`noun-consistency-scan`（同源多译分裂）、`same-source-convergence`（同源译文收敛、分片对账与译形裁决）
 - **结构提取与查询**：`mutagen-dialogue-exporter`（秒级解析插件，取代 xEdit；`xedit-context-exporter` 已退役）、`skyrim-xml-tools`（XML 检视/未译清单/官方词典查询，只读）、`translation-fidelity-scan`、`fantasy-context-auditor`（本地 LLM 预筛）、`local-model-translator`
 - **纯规则**（无脚本）：`skyrim-translation-craft`、`skyrim-doc-system`、`skyrim-term-contract-workflow`、`skyrim-tool-dev-rules`、`skyrim-xml-verification`、`longtext-hallucination-review`、`shuo-ren-hua`（中文文风，写/改中文文档默认应用）
 - **元 skill**：`skill-creator`（创建/修改 skill 的规范与 `quick_validate.py` / `check_env.mjs` 验证脚本）
