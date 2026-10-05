@@ -3,7 +3,7 @@ name: translation-review-tools
 description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
-  version: "0.13.0"
+  version: "0.14.0"
 ---
 
 # Translation Review Tools
@@ -15,7 +15,7 @@ metadata:
 | `read_batch.py` | 读一个批次的源译对照（验收通读标配） | 各种 `readout_*.py` |
 | `check_batch_evidence.py` | 重跑 map.json 里**若存在**的 `evidence` 字段（可选字段，派单不再索取） | 人工逐条重跑 `lookup_batch` |
 | `term_digest.py` | 把批次 context.json 编译成一屏派单摘要（每 idx 的 MOD/官方术语命中 + 语境锚点） | 各种 `dump_*terms*.py` |
-| `query.py` | 全库搜词（源/译两侧）、idx 定位、批次归属 | 各种 `check_*.py` |
+| `query.py` | 全库搜词（源/译两侧）、idx 定位、批次归属、**整批取行**（`--idx-file`） | 各种 `check_*.py` / `dump_*.py` |
 | `make_fixes_from_report.py` | 审查报告 → 修正集（fix map）：schema 解析、expected_current 回填、驳回/特裁/同源副本对齐 | 各种 `make-review*-fixes.py` |
 | `apply_fixes.py` | 修正清单联动同步 map + result + canonical patch（支持跨批仅出 patch 模式、`--subs-file` 多组替换声明） | 各种 `apply_fixes_*.py` / `fix_*.py` |
 | `normalize_charset.py` | 非简体字符检测与规范化（CHAR001 同源表），输出 apply_fixes 兼容的修正清单 | 各种手工「」→“”替换脚本 |
@@ -407,7 +407,7 @@ MOD 命中项若其词条 `note` 带**语义判据**，会在该词条后附 `�
 
 ## query.py
 
-四个模式（互斥）：
+五个模式（互斥）：
 
 ```text
 # 按源文搜（大小写不敏感，字面匹配）
@@ -418,6 +418,10 @@ py -3 .../query.py --xml <same> --dst 斯罗尔
 
 # 单行 + 邻域（--context K）
 py -3 .../query.py --xml <same> --idx <xml_index> --context 4
+
+# 整批取行：逐行读一批 idx（批次 index.txt 即可），一次打印该批全部 canonical 行
+# ——审查/对账要「取这批的 canonical 当前 Source/Dest」时直接用它，不要写 dump 脚本
+py -3 .../query.py --xml <same> --idx-file .work/<plugin>/batches/<BID>/index.txt
 
 # 批次归属（扫批次计划）
 py -3 .../query.py --locate <xml_index>

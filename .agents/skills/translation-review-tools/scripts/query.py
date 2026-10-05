@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """跨行查询 xTranslator XML 与批次计划（只读）。
 
-模式（四选一）：
+模式（五选一）：
   --src PATTERN   按源文（Source 列）搜索
   --dst PATTERN   按译文（Dest 列）搜索
   --idx N         显示第 N 行；--context K 附带上下 K 行
+  --idx-file PATH 逐行读取一批 idx（如批次 index.txt），打印这些行
   --locate N      查 idx 属于哪个批次（扫 --plans glob）
 
 Usage:
   py -3 query.py --xml mods/Artaeum.esp/Artaeum_english_chinese_translated.xml --src Thrall
   py -3 query.py --xml ... --dst 斯罗尔
   py -3 query.py --xml ... --idx 3023 --context 4
+  py -3 query.py --xml ... --idx-file .work/Artaeum/batches/NI-CELL-002/index.txt
   py -3 query.py --locate 3023
   py -3 query.py --xml ... --src "Thrall|斯罗尔" --regex --case-sensitive
 """
@@ -136,6 +138,9 @@ def main() -> int:
     parser.add_argument("--src", help="Search the Source column")
     parser.add_argument("--dst", help="Search the Dest column")
     parser.add_argument("--idx", type=int, help="Show one row by index")
+    parser.add_argument("--idx-file", help="File with one index per line (e.g. a batch index.txt); "
+                        "print those rows in file order. Covers 'dump this batch's canonical rows' "
+                        "in one call, so no ad-hoc dump script is needed.")
     parser.add_argument("--locate", type=int, help="Locate which batch an index belongs to")
     parser.add_argument("--context", type=int, default=0, help="With --idx: also show +/-K neighbouring rows")
     parser.add_argument("--plans", action="append", default=None,
@@ -164,6 +169,30 @@ def main() -> int:
         return 2
 
     rows = list(iter_rows(xml_path))
+
+    if args.idx_file:
+        try:
+            raw = resolve(args.idx_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"error: 无法读取 --idx-file: {exc}", file=sys.stderr)
+            return 2
+        wanted = []
+        for line in raw.splitlines():
+            token = line.strip().split(",")[0].split()[0] if line.strip() else ""
+            if token.isdigit():
+                wanted.append(int(token))
+        if not wanted:
+            print("error: --idx-file 未解析出任何 idx", file=sys.stderr)
+            return 2
+        oob = [i for i in wanted if not (0 <= i < len(rows))]
+        for i in wanted:
+            if 0 <= i < len(rows):
+                print(fmt_row(rows[i]))
+                print()
+        if oob:
+            print(f"warning: {len(oob)} 个 idx 越界已跳过: {oob[:6]}", file=sys.stderr)
+        print(f"共 {len(wanted)} 个 idx，打印 {len(wanted) - len(oob)} 行（扫描 {len(rows)} 行）")
+        return 0
 
     if args.idx is not None:
         if not (0 <= args.idx < len(rows)):
