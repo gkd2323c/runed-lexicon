@@ -178,7 +178,7 @@ def same_source_precheck(stem: str, batches: list[str], work: Path,
     if bad:
         print(f"error: 写回前同源预检失败：{len(bad)} 组同源多形（本批译文与 canonical 既有形不一致）",
               file=sys.stderr)
-        for s, f in bad[:10]:
+        for s, f in bad:
             print(f"  SRC: {s[:70]}", file=sys.stderr)
             for t, ks in f.items():
                 print(f"     {len(ks)}x {t[:50]} {ks[:6]}", file=sys.stderr)
