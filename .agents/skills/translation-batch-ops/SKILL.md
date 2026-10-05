@@ -274,7 +274,7 @@ immutable 字段一律以新 context 重算。mods 目录名与 stem 不一致�
 
 ## 5c. 一轮收口唯一入口（`round_pipeline.py`）
 
-把「consume→charset→check-only→写回→段核对→快照」整链收敛为**单进程严格顺序**执行，并持 `.work/<stem>/reports/pipeline.lock` 独占锁，从工具链层面拒绝并行。手动并行会反复产生覆盖时序：
+把「consume→charset→check-only→写回→段核对→快照」整链收敛为**唯一入口**执行，并持 `.work/<stem>/reports/pipeline.lock` 独占锁。**写 canonical 的阶段（write 起）严格单进程串行**——手动并行写回会反复产生覆盖时序：
 
 ```text
 py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
@@ -282,13 +282,13 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
     --xml mods/<mod>/<plugin>_english_chinese.xml \
     --contract .work/<plugin>/contracts/<plugin>.compiled.json \
     [--phases consume,charset,check,write,verify,snapshot] \
-    [--note "<快照备注>"] [--archive-keep N] [--break-lock]
+    [--note "<快照备注>"] [--archive-keep N] [--break-lock] [--jobs N]
 ```
 
 步骤（顺序固定，任一步失败即停、后续不执行，锁必然释放）：
 
-1. `consume`：逐批 consume_batch（语义/契约 FAIL 即停，打印 verify-report fails 明细交主会话裁决后重跑）；
-2. `charset`：逐批 normalize_charset 检查，有差异自动 apply + 重 consume（0 差异跳过）；
+1. `consume`：逐批 consume_batch。consume 只写本批目录、不碰 canonical，属互相独立的批处理，按 `--jobs`（默认 min(8, CPU 核数)；`--jobs 1` 回到旧串行语义）**跨批进程级并行**；并行下任一批 FAIL 也全部跑完再统一停，一次看全失败批，语义/契约 FAIL 打印 verify-report fails 明细交主会话裁决后重跑；
+2. `charset`：逐批 normalize_charset 检查，有差异自动 apply + 重 consume（0 差异跳过）；与 consume 同批并行；
 3. `check`：writer `--check-only` 预检（跨批 duplicate / scope / KEEP 冲突）；
 4. `same-source-precheck`（随 `write` 自动执行）：写回前比对本批译文与 canonical 既有同源形，不一致即停。分片批各片各定的形若无这道检查会直接进 canonical，等到下一次 `close_round` 才爆；口径与 close_round 同源对账一致，prompt 驱动的合法差异走 `same-source-exemptions.json`；
 5. `write`：逐批 writer `--in-place` 串行写回（每轮归档保留最近 `--archive-keep` 代，默认 5）；
@@ -307,7 +307,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
 
 退出码：0 全链 PASS（尾行 `PIPELINE PASS canonical=<hash8>`）/ 1 某步失败 / 2 用法或锁冲突。
 
-验证要求：全链各步骤 PASS；数十至百行规模写回时，hash 链逐段递增，段核对与快照在同一进程内对账一致。守卫测试覆盖独立拒绝、token 放行与无锁放行。性能基线：含双 consume 约 40s，耗时主要来自 consume，写回本体保持秒级。
+验证要求：全链各步骤 PASS；数十至百行规模写回时，hash 链逐段递增，段核对与快照在同一进程内对账一致。守卫测试覆盖独立拒绝、token 放行与无锁放行。性能基线：consume+charset 是耗时大头，已跨批并行（5 批由 ~6s 降至 ~2s，约 3×；批间相互独立、只写批次目录，不碰 canonical）；write/verify/snapshot 保持秒级且严格串行。
 
 ## 5d. 已写回批修正收口一条龙（`close_round.py`）
 

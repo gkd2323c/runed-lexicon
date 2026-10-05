@@ -6,10 +6,13 @@
 并行写 canonical 历史上曾回滚一批 44 行。本工具把整条收口链收敛为**单进程严格顺序**
 执行，并持有 `.work/<stem>/reports/pipeline.lock` 独占锁；write_translations 与
 progress_snapshot 内置同锁守卫（见各自 SKILL），持锁期间一切外部并发读写 canonical
-的命令一律拒绝——并行在工具链层面不可发生。
+的命令一律拒绝。唯一的例外是 consume+charset 阶段：consume 只写本批目录、不碰
+canonical，属互相独立的批处理，按 `--jobs`（默认 min(8, CPU 核数)）跨批进程级并行
+（skyrim-tool-dev-rules §2.4 明文允许）；write 起的所有阶段仍严格串行。
 
 步骤（--phases 可选子集，默认全跑，顺序固定）：
-  consume  逐批 consume_batch（语义/契约 FAIL 即停，输出明细交主会话裁决后重跑）
+  consume  逐批 consume_batch（跨批并行；任一批 FAIL 则全部跑完后统一停，
+           输出明细交主会话裁决后重跑）
   charset  逐批 normalize_charset 检查；有差异自动 apply 修复并重 consume 该批
   check    writer --check-only 预检（跨批 duplicate / scope / KEEP 冲突）
   write    逐批 write_translations --in-place 串行写回（任一批失败即停）
@@ -39,6 +42,7 @@ import os
 import subprocess
 import sys
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -219,6 +223,10 @@ def main() -> int:
     ap.add_argument("--plan", default="",
                     help="快照覆盖率口径的计划文件；默认 <stem>-info-batches.json，非 INFO 批次传 noninfo 计划")
     ap.add_argument("--break-lock", action="store_true", help="清除已存在的锁（仅 stale 时）")
+    ap.add_argument("--jobs", type=int, default=0,
+                    help="consume/charset 阶段的批级并行度（默认 min(8, CPU 核数)；"
+                         "1 = 串行，撞失败即停的旧语义）。consume 只写本批目录、"
+                         "不碰 canonical，故并行安全；write/snapshot 恒为单进程串行")
     ap.add_argument("--archive-keep", type=int, default=5,
                     help="写回归档保留的最近代数（默认 5，0=不限）。archive 每轮写回新增一份"
                          "完整 canonical 且从不清理，不设上限会随轮次无限膨胀")
@@ -251,10 +259,26 @@ def main() -> int:
         return e.code
 
     try:
-        # ---- consume + charset（批次文件侧）----
-        for b in args.batches:
+        # ---- consume + charset（批次文件侧；跨批相互独立，进程级并行）----
+        def consume_charset(b: str) -> tuple[str, str | None, str]:
+            """单批 consume→charset 串行子链；输出捕获后由主线程按批次序回放。
+
+            返回 (batch, 失败步骤或 None, 输出文本)。只读写本批目录与 reports/
+            下本批报告，不碰 canonical，故跨批并行安全（tool-dev-rules §2.4）。
+            """
+            out: list[str] = []
+
+            def run_cap(cmd: list, phase: str) -> int:
+                out.append(f"[{phase}] {' '.join(str(c) for c in cmd)}")
+                r = subprocess.run([str(c) for c in cmd], env=os.environ.copy(),
+                                   capture_output=True, text=True)
+                if r.stdout:
+                    out.append(r.stdout.rstrip("\n"))
+                if r.stderr:
+                    out.append(r.stderr.rstrip("\n"))
+                return r.returncode
+
             if "consume" in phases:
-                lock.phase(f"consume {b}")
                 consume_cmd = [sys.executable, CONSUME, "--stem", stem, "--batch", b,
                                "--xml", args.xml, "--contract", args.contract]
                 # 每批按自己的族选计划（NI-*/RN-*/GAP-* 各属不同计划文件），
@@ -263,22 +287,18 @@ def main() -> int:
                 if bplan:
                     consume_cmd += ["--plan", bplan]
                 else:
-                    print(f"warning: 批次 {b} 未找到所属计划文件，consume 将用其内置默认",
-                          file=sys.stderr)
-                rc = run(consume_cmd, "consume")
-                if rc != 0:
-                    fail_detail(work / "reports" / f"{b}-verify-report.json")
-                    raise Stop(f"{b} consume FAIL，已停在写回前；裁决（fix/waive）后重跑本命令")
+                    out.append(f"warning: 批次 {b} 未找到所属计划文件，consume 将用其内置默认")
+                if run_cap(consume_cmd, "consume") != 0:
+                    return b, "consume FAIL", "\n".join(out)
             if "charset" in phases:
-                lock.phase(f"charset {b}")
                 tjson = work / "batches" / b / "translation.json"
                 fixes = work / "batches" / b / "charset-fixes.json"
                 if fixes.exists():
                     fixes.unlink()
-                rc = run([sys.executable, NORMALIZE, "--result", str(tjson),
-                          "--fixes-out", str(fixes)], "charset")
+                rc = run_cap([sys.executable, NORMALIZE, "--result", str(tjson),
+                              "--fixes-out", str(fixes)], "charset")
                 if rc != 0:
-                    raise Stop(f"{b} charset 检查进程异常（rc={rc}）")
+                    return b, f"charset 检查进程异常（rc={rc}）", "\n".join(out)
                 if fixes.exists():
                     try:
                         fd = json.loads(fixes.read_text(encoding="utf-8"))
@@ -287,18 +307,49 @@ def main() -> int:
                         has_fixes = False
                     if not has_fixes:
                         fixes.unlink(missing_ok=True)
-                        has_fixes = False
                     else:
-                        rc = run([sys.executable, APPLY, "--stem", stem, "--batch", b,
-                                  "--fixes", str(fixes)], "charset-fix")
+                        rc = run_cap([sys.executable, APPLY, "--stem", stem, "--batch", b,
+                                      "--fixes", str(fixes)], "charset-fix")
                         fixes.unlink(missing_ok=True)
                         if rc != 0:
-                            raise Stop(f"{b} charset 修复 apply 失败")
-                        rc = run([sys.executable, CONSUME, "--stem", stem, "--batch", b,
-                                  "--xml", args.xml, "--contract", args.contract], "reconsume")
+                            return b, "charset 修复 apply 失败", "\n".join(out)
+                        rc = run_cap([sys.executable, CONSUME, "--stem", stem, "--batch", b,
+                                      "--xml", args.xml, "--contract", args.contract], "reconsume")
                         if rc != 0:
-                            fail_detail(work / "reports" / f"{b}-verify-report.json")
-                            raise Stop(f"{b} charset 修复后重 consume 仍 FAIL")
+                            return b, "charset 修复后重 consume 仍 FAIL", "\n".join(out)
+            return b, None, "\n".join(out)
+
+        if "consume" in phases or "charset" in phases:
+            jobs = args.jobs if args.jobs > 0 else min(8, os.cpu_count() or 4)
+            jobs = max(1, min(jobs, len(args.batches)))
+            todo = [p for p in ("consume", "charset") if p in phases]
+            lock.phase(f"{'+'.join(todo)} x{len(args.batches)}"
+                       + (f" (parallel x{jobs})" if jobs > 1 else ""))
+            results_cc: list[tuple[str, str | None, str]] = []
+            if jobs > 1:
+                # 并行：全部跑完再统一回放与汇总——失败批的产出依然落盘（幂等，
+                # 下轮直接复用），且一次能看到所有失败批的明细。
+                with ThreadPoolExecutor(max_workers=jobs) as ex:
+                    results_cc = list(ex.map(consume_charset, args.batches))
+            else:
+                # 串行：撞失败即停（与并行化之前的旧语义一致）
+                for b in args.batches:
+                    r = consume_charset(b)
+                    results_cc.append(r)
+                    if r[1]:
+                        break
+            failed: list[tuple[str, str]] = []
+            for b, step, text in results_cc:
+                if text:
+                    print(text)
+                if step:
+                    failed.append((b, step))
+            for b, step in failed:
+                if step in ("consume FAIL", "charset 修复后重 consume 仍 FAIL"):
+                    fail_detail(work / "reports" / f"{b}-verify-report.json")
+            if failed:
+                raise Stop("；".join(f"{b} {step}" for b, step in failed)
+                           + "，已停在写回前；裁决（fix/waive）后重跑本命令")
 
         results = [work / "batches" / b / "translation.json" for b in args.batches]
         if first_write:

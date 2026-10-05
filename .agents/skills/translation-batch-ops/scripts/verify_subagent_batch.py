@@ -19,6 +19,12 @@
 - 默认只读。--repair 时用 fill_translation_set 把 map 填入 result（只填 PENDING，
   已译条目跳过，符合幂等保护），再重跑 validate + gate。
 
+性能路径（不改变验收语义）：--xml 给出的源 XML 在整轮收口内不变，但旧实现每批
+都 ET.parse 整份 XML 只为按 idx 取 Source。现通过
+.work/<plugin>/context/<plugin>-source-index-cache.json 缓存全文档 Source 列表
+（键 = 源 XML 的 mtime_ns+size，变化即失效；原子替换写入，并发安全）。缓存是
+纯派生物，任何读写异常都退化为直接解析，验收结果与是否命中缓存无关。
+
 退出码：0 PASS（仅 WARNING），1 FAIL，2 用法错误。
 """
 import argparse
@@ -85,6 +91,71 @@ def gate_fail_detail(verdict, fail_count, warning_count, fail_lines):
     return detail[:2000]
 
 
+def _source_cache_path(xml_path):
+    """源 XML 的 idx→Source 索引缓存路径（固定输出角色，登记见 SKILL 批次验收节）。
+
+    仅当 --xml 落在 mods/<moddir>/ 结构内、且对应 .work/<plugin>/context/ 目录
+    存在时返回缓存路径；其余情形返回 None（退化为直接解析，行为与无缓存一致）。
+    """
+    parts = os.path.normpath(os.path.abspath(xml_path)).split(os.sep)
+    if 'mods' not in parts:
+        return None
+    i = len(parts) - 1 - parts[::-1].index('mods')
+    if i + 2 >= len(parts):
+        return None
+    plugin = parts[i + 1]
+    if plugin.lower().endswith(('.esp', '.esm', '.esl')):
+        plugin = plugin.rsplit('.', 1)[0]
+    ctx = os.sep.join(parts[:i] + ['.work', plugin, 'context'])
+    if not os.path.isdir(ctx):
+        return None
+    return os.path.join(ctx, '%s-source-index-cache.json' % plugin)
+
+
+def load_sources(xml_path):
+    """全文档 Source 列表（String 文档序）。命中缓存直接读；否则解析 XML 并原子重建缓存。
+
+    缓存键 = 源 XML 的 (mtime_ns, size)：源 XML 在收口链内不变，跨轮被重写时
+    mtime/size 变化即自动失效。读写缓存的任何异常都退化为直接解析，绝不阻塞验收。
+    """
+    cache = _source_cache_path(xml_path)
+    st = None
+    if cache:
+        try:
+            st = os.stat(xml_path)
+            with open(cache, encoding='utf-8') as f:
+                d = json.load(f)
+            if (d.get('mtime_ns') == st.st_mtime_ns and d.get('size') == st.st_size
+                    and isinstance(d.get('sources'), list)):
+                return d['sources']
+        except Exception:
+            pass  # 缓存缺失/损坏/失效：走解析重建
+    srcs = [s.findtext('Source') or ''
+            for s in ET.parse(xml_path).getroot().findall('.//String')]
+    if cache:
+        tmp = None
+        try:
+            if st is None:
+                st = os.stat(xml_path)
+            fd, tmp = tempfile.mkstemp(dir=os.path.dirname(cache),
+                                       prefix='.srcidx-', suffix='.tmp')
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                json.dump({'xml': os.path.abspath(xml_path),
+                           'mtime_ns': st.st_mtime_ns, 'size': st.st_size,
+                           'sources': srcs}, f, ensure_ascii=False)
+            os.replace(tmp, cache)  # 原子替换：并发进程读不到半文件
+            tmp = None
+        except Exception:
+            pass  # 缓存写不进去不阻塞验收
+        finally:
+            if tmp:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+    return srcs
+
+
 def default_report_path(a):
     """默认验收报告落点：.work/<plugin>/reports/<BID>-verify-report.json。
     插件名从 --xml / --map / --plan 路径推导；推导失败时回退 .work/<BID>-verify-report.json。"""
@@ -148,13 +219,13 @@ def main():
         fail(fails, a.batch, 'KEYS_MISALIGNED',
              'overlap %d/%d=%.2f 疑似键错位，整批不可用' % (overlap, len(expect), cover))
 
-    # 源文载入（KEEP/残留检查用）
+    # 源文载入（KEEP/残留检查用；走 mtime+size 键控索引缓存，整轮只解析一次）
     srcs = {}
     if a.xml:
-        strs = ET.parse(a.xml).getroot().findall('.//String')
+        all_srcs = load_sources(a.xml)
         for i in (int(k) for k in got | expect if str(k).isdigit()):
-            if 0 <= i < len(strs):
-                srcs[str(i)] = strs[i].findtext('Source') or ''
+            if 0 <= i < len(all_srcs):
+                srcs[str(i)] = all_srcs[i]
 
     # B. 内容初筛
     waiting, keep_bad, empty, bad_status, residue = [], [], [], [], []
