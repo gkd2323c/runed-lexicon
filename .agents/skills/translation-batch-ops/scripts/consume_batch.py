@@ -36,10 +36,44 @@ FILL = SKILLS / "translation-executor" / "scripts" / "fill_translations.py"
 TR = SKILLS / "translation-executor" / "scripts" / "translation_result.py"
 VERIFY = HERE / "verify_subagent_batch.py"
 
+# translation-executor SKILL 定义的合法 confidence 枚举（大写）
+CONFIDENCE_VALUES = {"HIGH", "MEDIUM", "LOW"}
+
 
 def fail(msg: str) -> int:
     print(f"error: {msg}", file=sys.stderr)
     return 2
+
+
+def flatten_map(raw: dict) -> tuple[dict, str | None]:
+    """把 map.json 原样展平为 filled 结构，并对 confidence 归一。
+
+    返回 `(filled, error)`；`error` 非空时调用方直接失败，不写任何文件。
+
+    为什么要归一：项目定义的合法枚举是**大写** `HIGH`/`MEDIUM`/`LOW`
+    （`translation-executor` SKILL），而 object 形态的条目原先原样透传，
+    子代理写小写 `high`/`medium`/`low` 会**静默**混进 `translation.json`
+    ——按大写比较的统计与门禁于是漏掉这批行，且没有任何环节报错。
+    实测两个子代理在同一轮里就分成了小写与大写两种写法。
+    这里统一到规范枚举；非法值直接报错而不是悄悄放过。
+    """
+    filled = {}
+    for k, v in raw.items():
+        if isinstance(v, dict):
+            entry = dict(v)
+            conf = entry.get("confidence")
+            if isinstance(conf, str) and conf.strip():
+                norm = conf.strip().upper()
+                if norm in CONFIDENCE_VALUES:
+                    entry["confidence"] = norm
+                else:
+                    return {}, f"map[{k!r}].confidence 非法枚举: {conf!r}（合法值 {sorted(CONFIDENCE_VALUES)}）"
+            filled[k] = entry
+        elif isinstance(v, str) and v.strip():
+            filled[k] = {"translation": v.strip(), "status": "TRANSLATED", "confidence": "HIGH"}
+        else:
+            return {}, f"map[{k!r}] 值既非对象也非非空字符串"
+    return filled, None
 
 
 def main() -> int:
@@ -83,16 +117,11 @@ def main() -> int:
         else:
             return fail(f"翻译产出缺失：{bmap} 与 {alt} 均不存在")
 
-    # 2) 展平为 filled（值必须为非空字符串；object 形态原样通过）
+    # 2) 展平为 filled（值必须为非空字符串；object 形态原样通过，但 confidence 归一）
     raw = json.loads(bmap.read_text(encoding="utf-8"))
-    filled = {}
-    for k, v in raw.items():
-        if isinstance(v, dict):
-            filled[k] = v
-        elif isinstance(v, str) and v.strip():
-            filled[k] = {"translation": v.strip(), "status": "TRANSLATED", "confidence": "HIGH"}
-        else:
-            return fail(f"map[{k!r}] 值既非对象也非非空字符串")
+    filled, ferr = flatten_map(raw)
+    if ferr:
+        return fail(ferr)
     fp = bdir / "map.filled.json"
     fp.write_text(json.dumps(filled, ensure_ascii=False, indent=2), encoding="utf-8")
 

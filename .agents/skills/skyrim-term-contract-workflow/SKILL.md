@@ -10,6 +10,20 @@ metadata:
 
 开始任何新 MOD 的翻译前，把官方名词建成契约与门禁，再进入实际翻译；翻译 / 整改批次完成后用同一套机制复扫确认。仅靠手工高风险名单无法覆盖整个 `dictionary/` 的官方译名体系，人工名单会持续漏项。可靠做法是让官方证据直接驱动可执行的检查，由独立核查工具发现“Source 有官方名词、译文却没有对应译名”的漏检。
 
+## 补登前先查 `terms.json` 本身，别查契约编译产物
+
+**判断「某词是否已入表」必须直接读 `terms.json`，不要拿 `adjudicate.py … contract <词>` 的「契约无此词条」或门禁报告当依据。** 契约是**编译产物**，只在编译那一刻是 `terms.json` 的快照；`terms.json` 后来加了词而契约未重编译时，契约侧一律报「无此词条」——**那不是缺口，是查询对象选错了**。
+
+实测连栽两次：`Arch Mage`（INFO-048 审查时就已补登）与 `Tusamircil` 都在 `terms.json` 里，我据契约查询的「无此词条」结论重复补登，前者还因 `Arch-Mage` 与 `Arch Mage` 规范化成同一 `term_id` 而让 `compile_contract.py` 报 `term_id 冲突`。两次都是自己的误判。
+
+另有一层：**分写变体会被规范化成同一 `term_id`** —— `Arch-Mage`／`Arch Mage`／`Arch-mage` 只能有一条，补登第二份必然冲突。源文有几种拼法就写进那唯一一条的 `note`，不要另开条目。
+
+```text
+# 正确：直接读词表
+py -3 .agents/skills/same-source-convergence/scripts/adjudicate.py --stem <S> terms <词>
+# 或直接对 terms.json 的 english 字段做匹配
+```
+
 ## 涉及的工具（均有配套 SKILL.md）
 
 - `proper-noun-index`：读 `dictionary/` 建稳定索引，扫 MOD 源 XML / translation-result JSON，列出该 MOD 实际出现的官方人名/地名/派系名（含官方中文候选、支持文件数、别名风险提示）。定位是 Source 侧候选清单生成器——不译、不改、不判决；是否录为术语由 Agent 在消解时决定。

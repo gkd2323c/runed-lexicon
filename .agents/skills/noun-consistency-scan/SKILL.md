@@ -117,6 +117,47 @@ Core pool (A, same Source → multiple Dest splits):
 --pools A --min-variants 2
 ```
 
+**池 A 的两个盲区——专名分裂会在它眼皮底下完全不可见。** 声明「专名已收敛」
+时必须配跑 F 池，否则这个声明有洞：
+
+1. **记录族**：`noun_rows` 排除 `INFO:NAM1`／`DIAL:FULL`，专名在**对白里**的
+   分裂池 A 根本不看。
+2. **分组键**：池 A 按**整句源文**分组，同一专名出现在不同句子里的分裂不在
+   任何一组内。
+
+真实锚定事故（summersetisles，2026-10-05）：`Tusamircil` 的「图／塔」分裂
+落在两条 `DIAL:FULL` 上——**对池 A 双重不可见**（既不是名词行，两句源文也
+不同）。池 A 报「1 组 9 行」（全是另一个 `Book` 问题）时，这个分裂根本没进
+过它的视野。
+
+### F 池：契约专名译形漂移
+
+反过来做：**以契约词条为锚**扫全库（含对白行），只要源文出现该专名，就查译文
+有没有落在契约译形上。
+
+```text
+# F: contract-anchored proper-noun drift — needs --terms
+--pools F --terms mods/<plugin>/terms.json [--min-drift-rows 1]
+```
+
+**能抓已写回的历史坏形**——门禁只查本批，管不到既往产物。
+
+实测（summersetisles 全库）：14 词条 / 104 行 / <1s。逐条裁决后既有真缺陷
+（`Redli` 名称行作「雷德利」而契约是「雷德莉」，一字之差，池 A 完全抓不到），
+也有该人工判读的良性类（构词变体如「八位圣灵」vs 契约「八圣灵」、「神洲萃取者」
+vs「先祖神洲」；以及合法不同译法如「各地岛屿」vs「夏暮群岛」）。**只报不
+定罪**。
+
+**实现上必须按词边界匹配**，两处踩坑记录在 `pool_f` 的 docstring 里：
+
+- 拿归一化字符串做子串 → `fish` 含 `Ish`(370 行)、`self` 含 `Elf`(205 行)、
+  `crystal` 含 `Ystal`(98 行)、`weight` 含 `Eight`(13 行)，1034 行里绝大部分
+  是词内误报。先倒排筛候选、再验完整短语变体后降到 94 行。
+- 倒排分词把撇号当**词内字符** → `Tusamircil's` 成整词，锚点查不到候选行，
+  池静默漏报真实分裂。撇号必须算分隔符。
+
+回归 `test_pool_f.py`（15 项）。
+
 Extension pools (each needs its own input; run separately when needed):
 
 ```text

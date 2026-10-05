@@ -156,14 +156,128 @@ def pool_e(noun):
     return out
 
 
+_SEP = re.compile(r"[\s\-_'’]+")
+# 分词时**撇号算分隔符**：`Tusamircil's` 切出 `tusamircil` 而不是 `tusamircil's`。
+# 否则带所有格的专名在倒排里成了整词，锚点 `tusamircil` 查不到候选行，池静默漏报
+# （实测 `Tusamircil` 的「图／塔」分裂就是这样漏掉的）。
+_WORD = re.compile(r"[a-z]+")
+
+
+def _variants(en):
+    """英文专名的分隔符变体集合：`Arch-Mage` → {arch-mage, arch mage, archmage, ...}。
+
+    本 mod 专名普遍带分写变体（`Arch-Mage`／`Arch Mage`／`Arch-mage`），
+    只按词表原形匹配会漏掉源文里的另两种拼法。
+    """
+    parts = [p for p in _SEP.split((en or "").strip().lower()) if p]
+    if not parts:
+        return set()
+    out = set()
+    for sep in ("", "-", " ", "_"):
+        v = sep.join(parts)
+        if v:
+            out.add(v)
+    return out
+
+
+def _build_inverted(rows):
+    """英文单词 → 行号倒排索引。
+
+    F 池要对「词条数 × 行数」做匹配（334 × 19668 ≈ 650 万次），逐行正则太慢。
+    先用倒排把候选行缩到个位数，再在候选行上验完整短语变体。
+    """
+    index = defaultdict(set)
+    for r in rows:
+        for w in _WORD.findall(r['src'].lower()):
+            index[w].add(r['idx'])
+    return index
+
+
+def pool_f(rows, by_en, min_rows=1, max_rows_per_term=40):
+    """契约专名译形漂移：以**契约词条为锚**扫全库，找译文没用上契约译形的行。
+
+    覆盖池 A 的两个盲区，二者都会让专名分裂彻底不可见：
+
+    1. **记录族**：`noun_rows` 排除 `INFO:NAM1`／`DIAL:FULL`，专名在**对白里**
+       的分裂池 A 根本不看。
+    2. **分组键**：池 A 按**整句源文**分组，同一专名出现在不同句子里的
+       分裂不在任何一组内。
+
+    实测 `Tusamircil` 的「图／塔」分裂正落在两条 `DIAL:FULL` 上（`4677`／
+    `6564`）——对池 A 双重不可见：既不是名词行，两句源文也不同。
+
+    F 池反过来做：不管整句、不管记录族，只要**源文含该专名**就查它的译文
+    是否落在契约译形上。**能抓已写回的历史坏形**——门禁只查本批，管不到既往。
+
+    **必须按词边界匹配**（先倒排筛候选，再验完整短语变体）。第一版直接拿
+    归一化字符串做子串，1034 行里绝大部分是词内误报：`fish` 含 `Ish`
+    （370 行）、`self` 含 `Elf`（205 行）、`crystal` 含 `Ystal`（98 行）、
+    `Interior` 含 `Terio`（34 行）、`weight`／`night` 含 `Eight`（13 行）。
+    """
+    if not by_en:
+        return []
+    index = _build_inverted(rows)
+    by_idx = {r['idx']: r for r in rows}
+    out = []
+    for en, term in by_en.items():
+        zh = (term.get('zh') or '').strip()
+        if not zh:
+            continue
+        zh_a = _SEP.sub('', zh.lower())
+        if not zh_a:
+            continue
+        variants = _variants(term.get('english', en))
+        if not variants:
+            continue
+        # 用变体里最长的那个单词做倒排锚点（专名首词通常最具区分度）
+        anchor = max((w for v in variants for w in _WORD.findall(v)),
+                     key=len, default='')
+        cand = index.get(anchor, set()) if anchor else set()
+        if not cand:
+            continue
+        pats = [re.compile(r'(?<![a-z])' + re.escape(v) + r'(?![a-z])')
+                for v in sorted(variants, key=len, reverse=True)]
+        bad = []
+        for i in sorted(cand):
+            r = by_idx[i]
+            dst = r['dst'].strip()
+            if not dst or r['dst'] == r['src']:
+                continue                      # 未译行不是漂移
+            src_low = r['src'].lower()
+            if not any(p.search(src_low) for p in pats):
+                continue                      # 倒排命中但完整短语不成立
+            if zh_a in _SEP.sub('', dst.lower()):
+                continue                      # 契约译形在场
+            bad.append(r)
+        if len(bad) < min_rows:
+            continue
+        out.append({
+            'term_en': term.get('english', en),
+            'term_zh': zh,
+            'term_id': term.get('term_id', ''),
+            'forbidden': [f for f in (term.get('forbidden') or []) if f.strip()],
+            'drift_rows': len(bad),
+            'rows': [{'idx': r['idx'], 'rec': r['rec'],
+                      'source': r['src'].strip()[:120],
+                      'dest': r['dst'].strip()[:120]}
+                     for r in bad[:max_rows_per_term]],
+        })
+    out.sort(key=lambda x: (-x['drift_rows'], x['term_en']))
+    for n, g in enumerate(out, 1):
+        g['kid'] = 'F%d' % n
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description='名词翻译一致性扫描（只读）')
     ap.add_argument('--xml', required=True, help='translated XML 路径')
     ap.add_argument('--out', default='_tmp/data/noun-scan',
                     help='输出目录（默认 _tmp/data/noun-scan）')
     ap.add_argument('--pools', default='A',
-                    help='要跑的池，逗号分隔（A/B/C/D/E，默认 A；A 为核心）')
+                    help='要跑的池，逗号分隔（A/B/C/D/E/F，默认 A；A 为核心）')
     ap.add_argument('--min-variants', type=int, default=2, help='A 池分裂阈值')
+    ap.add_argument('--min-drift-rows', type=int, default=1,
+                    help='F 池专名漂移的最小行数（默认 1，即不设阈）')
     ap.add_argument('--audit', help='dictionary-noun-audit --json 产物（C 池需要）')
     ap.add_argument('--scan', help='proper-noun-index scan --json 产物（D 池需要）')
     ap.add_argument('--terms', help='MOD terms.json（C/D 池需要）')
@@ -216,6 +330,15 @@ def main():
         pe = pool_e(noun)
         result['E'] = pe
         print('池 E 未译且无开发信号（需人判）:', len(pe))
+
+    if 'F' in pools:
+        if not by_en:
+            print('F 池需要 --terms', file=sys.stderr)
+        else:
+            pf = pool_f(rows, by_en, args.min_drift_rows)
+            result['F'] = pf
+            print('池 F 契约专名译形漂移（覆盖池 A 盲区）:', len(pf),
+                  '词条 | 涉及行:', sum(g['drift_rows'] for g in pf))
 
     # 写盘：整池 JSON + 分片（供子代理逐条判读）
     manifest = {}

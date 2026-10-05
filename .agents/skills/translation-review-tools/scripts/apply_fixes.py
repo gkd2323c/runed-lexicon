@@ -203,6 +203,23 @@ def detect_waived_tokens(source: str, translation: str) -> list[str]:
     return waived
 
 
+def result_unit_placeholder(unit: dict) -> bool:
+    """translation.json 的某个 unit 是否只是**从未填过译文的占位**。
+
+    判据是**内容**不是时间。踩过的坑：最初用 mtime 判「map.json 更新 ⇒
+    translation.json 陈旧」，但 apply_fixes 每次写 map.json 都会让 map.json 变新，
+    于是第一次调用之后**所有**调用都把 translation.json 当陈旧跳过——双侧同步
+    与 CAS 守卫一起失效，两条既有回归当场变红。
+
+    空模板的形态是 consume_batch 刚生成的样子：translation 为空串、status 为
+    PENDING（或没有 status）。这类 unit 从未持有过译文，拿它做 CAS 校验只会对着
+    「实际 ''」报「现值不符」，让收口链在交卷数据完全正确时失败。
+    """
+    if str(unit.get("translation", "")).strip():
+        return False
+    return str(unit.get("status", "")).upper() in ("", "PENDING")
+
+
 def apply_to_batch(batch_dir: Path, fixes: dict[int, dict], dry_run: bool = False) -> dict:
     """把 fixes 应用到 batch_dir 的 map.json + translation.json。
 
@@ -257,6 +274,9 @@ def apply_to_batch(batch_dir: Path, fixes: dict[int, dict], dry_run: bool = Fals
             unit = units.get(idx)
             if unit is None:
                 warnings.append(f"translation.json 无此 unit（跳过）: {idx}")
+                continue
+            if result_unit_placeholder(unit):
+                # 从未填过译文的占位行：拿它做 CAS 只会对着 '' 误报，跳过同步
                 continue
             action, new = plan_entry(unit, fix, "translation.json", idx)
             if action.startswith("error"):
@@ -743,7 +763,9 @@ def main() -> int:
                         current_by_idx[str(k)] = v.get("translation", "")
             else:
                 for u in data.get("translations", []):
-                    if "xml_index" in u:
+                    if "xml_index" in u and not result_unit_placeholder(u):
+                        # 占位行不参与现值来源：它会把 map.json 的现值覆盖成空，
+                        # 污染 expected_current 守卫
                         current_by_idx[str(u["xml_index"])] = u.get("translation", "")
     if current_by_idx:
         errors += collapse_guard(fixes, current_by_idx, args.batch or "cross-batch")

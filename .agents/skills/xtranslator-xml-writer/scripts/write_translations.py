@@ -21,6 +21,8 @@ import re
 import shutil
 import sys
 import tempfile
+import time
+import uuid
 import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
@@ -42,31 +44,86 @@ def stem_from_xml_arg() -> str | None:
     return None
 
 
-def guard_pipeline_lock(stem: str | None) -> int:
-    """round_pipeline 持锁期间拒绝外部并发写 canonical（0 放行 / 2 拒绝）。
+def guard_pipeline_lock(stem: str | None, acquire: bool = False) -> tuple[int, Path | None]:
+    """写 canonical 的互斥闸（rc 0 放行 / 2 拒绝）。
 
     锁文件 .work/<stem>/reports/pipeline.lock 由 translation-batch-ops 的
-    round_pipeline.py 创建；其子进程经 env RUNED_PIPELINE_TOKEN 继承 token 放行，
-    独立启动的命令（无 token）一律拒绝——防并行写回互相覆盖。
+    round_pipeline.py 创建；其子进程经 env RUNED_PIPELINE_TOKEN 继承 token 放行。
+
+    **两条路径都要覆盖，缺一就是并发写的漏洞**：
+    - 锁已存在：只有持 token 的（流水线父进程）放行，其余拒绝。
+    - 锁不存在 + `acquire`：直接调用的写回**自己占位**再写。原实现在这里
+      直接 `return 0` 放行，于是「没人跑流水线」（常态）时任何直接调用都能写
+      canonical——实测的并发写损坏正是这条通道：A 直接调 writer（无锁放行）与
+      B 同时起流水线（建锁）两路同写。这不是「检查有没有锁」，是**互斥**：
+      没有锁的人得先占位。
+    - 锁不存在 + 不 `acquire`（`--check-only` 等只读路径）：不占位。
+
+    返回 (rc, 本进程退出时需释放的锁路径)。
     """
     if not stem:
-        return 0
+        return 0, None
     lockp = Path(".work") / stem / "reports" / "pipeline.lock"
-    if not lockp.is_file():
-        return 0
+    if lockp.is_file():
+        try:
+            info = json.loads(lockp.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            info = {}
+        if os.environ.get("RUNED_PIPELINE_TOKEN") == info.get("token"):
+            return 0, None
+        print(
+            f"error: pipeline.lock 存在（pid={info.get('pid')} phase={info.get('phase')} "
+            f"started={info.get('started')}），拒绝并发执行以避免覆盖；"
+            f"等 round_pipeline 完成后重试，或确认进程已死后删除 {lockp}",
+            file=sys.stderr,
+        )
+        return 2, None
+    if not acquire:
+        return 0, None
+    lockp.parent.mkdir(parents=True, exist_ok=True)
+    token = uuid.uuid4().hex
+    payload = json.dumps({
+        "token": token, "pid": os.getpid(), "phase": "write (direct)",
+        "started": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }, ensure_ascii=False)
+    try:
+        fd = os.open(lockp, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        try:
+            info = json.loads(lockp.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            info = {}
+        print(
+            f"error: 抢 pipeline.lock 失败（刚被 pid={info.get('pid')} "
+            f"phase={info.get('phase')} started={info.get('started')} 占用），"
+            f"拒绝并发写回；等其完成后重试",
+            file=sys.stderr,
+        )
+        return 2, None
+    os.write(fd, payload.encode("utf-8"))
+    os.close(fd)
+    os.environ["RUNED_PIPELINE_TOKEN"] = token
+    # 返回绝对路径：释放发生在退出路径上，不受届时 cwd 影响
+    held = lockp.resolve()
+    print(f"[lock] 直接写回已占位 {held}（pid={os.getpid()}），退出时自动释放")
+    return 0, held
+
+
+def release_pipeline_lock(lockp: Path | None) -> None:
+    """释放自己占的锁。只删 token 与本进程相符的那把，避免误删他人的。"""
+    if lockp is None:
+        return
     try:
         info = json.loads(lockp.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        info = {}
-    if os.environ.get("RUNED_PIPELINE_TOKEN") == info.get("token"):
-        return 0
-    print(
-        f"error: pipeline.lock 存在（pid={info.get('pid')} phase={info.get('phase')} "
-        f"started={info.get('started')}），拒绝并发执行以避免覆盖；"
-        f"等 round_pipeline 完成后重试，或确认进程已死后删除 {lockp}",
-        file=sys.stderr,
-    )
-    return 2
+        return
+    if info.get("token") == os.environ.get("RUNED_PIPELINE_TOKEN"):
+        try:
+            lockp.unlink()
+            print(f"[lock] 已释放 {lockp}")
+        except OSError:
+            pass
+
 
 STRING_BLOCK_RE = re.compile(r"<String\b[^>]*>.*?</String>", re.DOTALL)
 DEST_RE = re.compile(r"<Dest>(.*?)</Dest>", re.DOTALL)
@@ -533,9 +590,6 @@ def prune_archive(arch_root: Path, keep: int, protect: str | None = None) -> lis
 
 
 def main() -> int:
-    g = guard_pipeline_lock(stem_from_xml_arg())
-    if g:
-        return g
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--xml", required=True,
@@ -594,6 +648,18 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="Replace existing output/report")
     args = parser.parse_args()
 
+    # 互斥闸在参数解析**之后**才判是否占位：`--check-only` 是只读预检，不该占锁
+    # （占了会白挡一条真流水线）；真写则必须自己占位，见 guard_pipeline_lock 文档。
+    rc, held_lock = guard_pipeline_lock(stem_from_xml_arg(), acquire=not args.check_only)
+    if rc:
+        return rc
+    try:
+        return _run(args)
+    finally:
+        release_pipeline_lock(held_lock)
+
+
+def _run(args: argparse.Namespace) -> int:
     try:
         xml_path = resolve_path(args.xml)
         if not xml_path.is_file():

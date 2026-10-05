@@ -13,6 +13,7 @@ metadata:
 | 脚本 | 职责 | 替代的临时代码 |
 | --- | --- | --- |
 | `read_batch.py` | 读一个批次的源译对照（验收通读标配） | 各种 `readout_*.py` |
+| `check_batch_evidence.py` | 重跑 map.json 里**若存在**的 `evidence` 字段（可选字段，派单不再索取） | 人工逐条重跑 `lookup_batch` |
 | `term_digest.py` | 把批次 context.json 编译成一屏派单摘要（每 idx 的 MOD/官方术语命中 + 语境锚点） | 各种 `dump_*terms*.py` |
 | `query.py` | 全库搜词（源/译两侧）、idx 定位、批次归属 | 各种 `check_*.py` |
 | `make_fixes_from_report.py` | 审查报告 → 修正集（fix map）：schema 解析、expected_current 回填、驳回/特裁/同源副本对齐 | 各种 `make-review*-fixes.py` |
@@ -259,6 +260,27 @@ py -3 .agents/skills/translation-review-tools/scripts/longtext_readout.py \
 **按 `[idx]` 头分块，不按空行**：BOOK:DESC / MESG:DESC 的 Dest 含 `<font>` 标记与
 空行，按空行分块会把一条切成残片，阅读者看似整段漏译。失效可在千条规模分片中造成
 数十条 Dst 缺失，且只有回查 canonical 才能确认是切片缺陷。
+
+## check_batch_evidence.py
+
+重跑并核验 `map.json` 里**若存在**的 `evidence` 字段。**`evidence` 是可选字段，派单卡不再索取它**——本脚本只用来重跑已经写在那里的结构化声明，不是验收要求。
+
+```text
+py -3 .agents/skills/translation-review-tools/scripts/check_batch_evidence.py \
+  --batch-dir .work/<plugin>/batches/<BID> [--dictionary dictionary] [--json]
+```
+
+### 它现在的定位
+
+它曾被当作派单要求，理由是「`notes` 纯中文零拉丁，物理上装不下证据，子代理要表现有据可依只剩散文一条路，而散文会被编出来」。实测确实抓出了真伪证（`神龛` 是编造：库内零命中、词表明文 forbidden），但那是在**给不可靠的举报人建核验机制**——为了防一个字段里的编造，先要求每个执行者都填这个字段，等于把编造的机会发给每一个子代理，然后靠事后抽查去抓。
+
+现行做法是反过来：**让产物里根本没有可伪证的声明**。`notes` 只写决策与不确定，禁写世界事实断言（见 `subagent-ops` §4 契约）；世界事实由机械侧产出（契约、门禁、term-digest、词典查询、各类扫描）。执行者拿不准官方译形时按词表译、用 `confidence` 表达不确定，而不是补一句「库内已定形」。
+
+因此本脚本降级为**遗留字段的抽查器**：老批次或子代理自愿填写时，重跑一遍确认没穿；`evidence` 缺失是正常状态，不是缺陷。
+
+判据三条：`lookup` 必填（否则无法重跑，该条跳过并报）；声明命中数与实测差 > 2 报错（词典会更新，个位数差异不算伪证）；`zh_forms` 与官方实际译形**完全无重合**报错（子串/单复数差异不算）。回归 `test_check_batch_evidence.py`（8 项，用假词典不依赖真实词典内容）。
+
+**只报不一致，不定罪。** 字典更新导致的漂移也会报出来，让人看一眼即可。
 
 ## read_batch.py
 
