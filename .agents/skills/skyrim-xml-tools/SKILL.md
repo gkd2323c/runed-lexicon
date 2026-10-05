@@ -29,7 +29,9 @@ metadata:
 
 ## 程序位置
 
-`scripts/skyrim_xml_tools.py`
+- `scripts/skyrim_xml_tools.py` —— `inspect` / `untranslated` / `lookup` / `termrules`
+- `scripts/lookup_batch.py` —— 批量官方查证（复用上面的词典加载与匹配，不重复实现）
+- `scripts/test_lookup_batch.py` —— 上者的 unittest（临时词典目录，不依赖真实语料）
 
 仅使用 Python 标准库，无第三方依赖。
 
@@ -93,6 +95,41 @@ python .agents/skills/skyrim-xml-tools/scripts/skyrim_xml_tools.py lookup "Aldme
 - 反例：`lookup "Dominion"`（exact）返回 0 命中，但 Dawnguard/Update/CC 词典中该词均嵌于整句源文本（如 Update 萨蒂亚线“萨蒂亚向先祖神洲出卖自己的人民”）。exact 空结果不能作为“词典无此词”的证据。
 - 禁止在未做 `--contains --ignore-case` 复查前声明“词典无词条/无官方证据”；必要时直接 grep `dictionary/` 原始 XML 交叉验证。
 - 词典命中为参考证据，不要求 MOD 中所有同形英文一律采用该译法。
+
+### `lookup_batch`（批量查证，一次调用覆盖整批词）
+
+```text
+python .agents/skills/skyrim-xml-tools/scripts/lookup_batch.py <词> [<词> ...] [--contains] [--ignore-case] [--max-forms N] [--out <单份报告>] [--json] [--terms <词表文件>]
+```
+
+词直接写在命令行上；`--terms <文件>` 只在你确实有一份想留着复跑的长名单时才用（一行一词，`#` 为注释）。默认 **exact**。
+
+**为什么不逐词 `lookup`**：逐词调用有两个问题——每次调用都重新解析 `dictionary/`
+下全部词典 XML（实测 11 词批量一次 1.7s，逐词跑是同样次数的全量重解析），以及每词
+一份重定向输出会在 `_tmp/` 里堆出几十个一次性文件。`lookup_batch` 只读一次词典、
+输出一份汇总到 stdout，**整个过程不产生任何临时文件**（除非你显式 `--out`）。
+库内侧的对应工具是 `translation-review-tools/scripts/query.py --anchors`，
+同样是「一个输入、一次输出」。
+
+**它内建了四条本项目反复踩到的判据：**
+
+1. **零命中自动复验拼写**。`lookup` 大小写敏感，零命中常是假阴性。零命中时会自动重试
+   首字母大写、全小写、全大写、去空格、连字符↔空格等形态并列出结果。因此
+   **「本工具报零」比「`lookup` 报零」可信**，但仍不等于词典里真没有这个词。
+2. **长文本提及不计入译形**。书籍正文（`BOOK:DESC` 等）里提到某个词属于顺带提及，
+   往往与该词的译法无关——`Sheza` 命中的是 `Shezarrine`（舍扎因）、`Aldmeris` 命中
+   的是「奥德莫**文**」这个语言名、`Carnage` 命中的是普通词。Dest 超过 40 字的命中
+   单独计为「长文本提及」，不当成官方译形。
+3. **exact 与 contains 的结论强度不同**。exact 命中 = 官方词典确有该词条，其 Dest
+   才是官方译形；`--contains` 命中只说明该词出现在某些 Source 里，输出里的
+   **「语境」** 一栏可能是更长名称的子串、对话正文或星辰法术名，**不构成译形实证**。
+   要断言官方译形就用 exact。
+4. **`status` 的强度要跟证据强度对齐**。实测 `Anu` exact 零命中（此前 contains 命中的
+   全是 `Anuriel` 安努瑞尔的子串），而 `Thalmor` exact 命中 1 条即「梭默」。**词表把
+   某条标成 CONFIRMED 之前，先用本工具确认它真能 exact 命中。**
+
+实测：11 词 / 99090 条目 / 1.7s（exact），零临时文件。测试：`test_lookup_batch.py`
+（14 例，用临时词典目录，不依赖真实 `dictionary/` 语料）。
 
 ### `termrules`（启发式术语规则扫描）
 

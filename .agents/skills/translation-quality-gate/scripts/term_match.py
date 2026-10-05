@@ -803,10 +803,15 @@ def _cross_term_target_covered(source: str, dest: str, variant: str,
 
 
 def check_unit(source: str, dest: str, resolved: List[ResolvedTerm],
-               extra_terms: Optional[Dict[str, Dict]] = None) -> List[Dict]:
+               extra_terms: Optional[Dict[str, Dict]] = None,
+               exempt_index: Optional[Dict[str, List[Dict]]] = None) -> List[Dict]:
     """Run term checks for one unit against its resolved bindings.
 
     Returns list of issue dicts: {code, term_id, severity, detail, expected}.
+
+    exempt_index 是统一豁免索引（index_global_ban_exemptions 建在契约的豁免形态上）。
+    它同样作用于 TERM002：MOD 词条的禁形也能被同一张 {english, forbidden, reason, scope}
+    表声明为合法形态——一张表、一条路，命中降 WARNING（保留在报告里）而非 FAIL。
     """
     issues = []
     for rt in resolved:
@@ -821,7 +826,21 @@ def check_unit(source: str, dest: str, resolved: List[ResolvedTerm],
                 })
         # forbidden always checked for bound terms
         for f in find_forbidden_hits(dest, term):
-            # 跨条 target 豁免：形态是另一条的合法 target 且其锚点在源文出现
+            # 统一豁免表（R21 扩展）：MOD 词条禁形也能被声明为合法形态。命中降
+            # WARNING 并回显 reason，不跳过——留档可审计，白名单不退化盲区。
+            if exempt_index:
+                ex = find_global_ban_exemption(source, dest, f, exempt_index)
+                if ex is not None:
+                    issues.append({
+                        'code': 'TERM002', 'term_id': tid, 'severity': 'WARNING',
+                        'detail': (f"forbidden 变体出现但命中 MOD 级声明豁免（不拦截，留档）: "
+                                   f"{f!r} —— {ex.get('reason') or '未注明理由'}"),
+                        'expected': 'not in ' + repr(term.get('forbidden', [])),
+                        'variant': f,
+                        'exempted_by': CONTRACT_GLOBAL_BAN_EXEMPTIONS_KEY,
+                    })
+                    continue
+            # 跨条 target 豁免（兜底）：形态是另一条的合法 target 且其锚点在源文出现
             if _cross_term_target_covered(source, dest, f, extra_terms, tid):
                 continue
             issues.append({

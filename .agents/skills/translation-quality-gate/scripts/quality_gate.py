@@ -374,7 +374,7 @@ def run_gate(results: list, contract: dict, keep_list: list, xml_text=None,
             # untranslated technical strings and must not be auto-checked.
             resolved = _resolve_auto(term_index, src, auto_candidates)
             unit_auto = bool(resolved)
-        chk = check_unit(src, dst, resolved, term_index)
+        chk = check_unit(src, dst, resolved, term_index, global_ban_exemptions)
         if unit_auto:
             # in auto-bind mode, missing-target findings are review candidates (WARNING)
             # unless the term is declared strict. forbidden hits stay FAIL.
@@ -392,7 +392,8 @@ def run_gate(results: list, contract: dict, keep_list: list, xml_text=None,
             # whenever the term's English anchor appears in source
             # (FORBIDDEN_ONLY / risk-flagged terms never auto-bind).
             issues += standalone_forbidden_issues(
-                src, dst, term_index, {rt.term_id for rt in resolved})
+                src, dst, term_index, {rt.term_id for rt in resolved},
+                global_ban_exemptions)
             g_issues = global_ban_issue(src, dst, global_bans, global_ban_exemptions)
             g_issues += global_keep_issue(src, dst, global_keep)
             # a concrete wrong form can be both a local term's forbidden variant
@@ -477,7 +478,7 @@ def stale_contract_issue(contract, contract_path):
 
 
 def standalone_forbidden_issues(src: str, dst: str, term_index: dict,
-                                bound_ids: set) -> list:
+                                bound_ids: set, exempt_index: dict = None) -> list:
     """R19 (v0.2.0): forbidden variants of unbound terms are enforced on
     translated lines whenever the term's English anchor appears in source.
 
@@ -517,6 +518,20 @@ def standalone_forbidden_issues(src: str, dst: str, term_index: dict,
                                bool(term.get('case_sensitive'))):
             continue
         for f in find_forbidden_hits(dst, term):
+            # 统一豁免表（R21 扩展）：与 check_unit 的 TERM002 路径共用同一索引，
+            # 命中降 WARNING 留痕（不跳过）。
+            if exempt_index:
+                ex = find_global_ban_exemption(src, dst, f, exempt_index)
+                if ex is not None:
+                    out.append({
+                        'code': 'TERM002', 'term_id': tid, 'severity': 'WARNING',
+                        'detail': (f"forbidden 变体出现但命中 MOD 级声明豁免（不拦截，留档）: "
+                                   f"{f!r} —— {ex.get('reason') or '未注明理由'}"),
+                        'expected': 'not in ' + repr(term.get('forbidden', [])),
+                        'variant': f,
+                        'exempted_by': CONTRACT_GLOBAL_BAN_EXEMPTIONS_KEY,
+                    })
+                    continue
             if _cross_term_target_covered(src, dst, f, term_index, tid):
                 continue
             out.append({

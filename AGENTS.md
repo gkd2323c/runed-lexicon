@@ -189,6 +189,7 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 - **已写回批的审查修正走 `close_round.py`（硬规则）**：该链已工具化为 `translation-batch-ops/scripts/close_round.py` 一条龙（fixes 分组 → apply_fixes 出 patch → patch 写回 → 段核对与快照 → readout 重生成 → 同源组对账 → `new` 断言自动生成）。手串该链的失效形态：忘 regen readout 致审查读旧稿、断言 token 手误假红、同源副本行漂移到收口才发现；而改 `round_pipeline` 的 result 模式会被 `original_dest` 软保护整批拒写。改译文字段名恒为 `new`，传 `translation` 在 `apply_fixes` 入口即被拒（该字段名错传会静默丢弃，patch 全部「已就位」0 生效，表面成功实际未改）。
 
 - **词形/子串修正禁用 `new` 整句通道（硬规则）**：`new` 是整句替换语义，传裸词会把完整译文整句覆盖（失效形态：词形修正把裸词当 `new`，多行完整译文被整句覆盖为裸词写回 canonical，靠下游 semgate 才事后发现）。执行层：机械检查——`apply_fixes.py` 入口整句覆盖守卫（G1 单键坍缩拦截 / G2 同值裸词批拦截）；词形修正走 `--find/--replace` 或 `--subs-file`，真短句替换须在 fix 加 `allow_collapse: true` 显式放行。
+- **未启用功能不得催促启用（硬规则）**：处于关闭/未接入状态的功能（如语义门 `semantic-gate.config.json` 未配置，流水线每批报 `SEMGATE_UNCHECKED`）按**既定现状**处理，正常降级放行，不视为缺陷、不列为待办、不作阻塞项。**禁止**在进度汇报、todo 清单、汇报收尾段反复提及或劝用户开启；**禁止**在 `PROGRESS.md`／`SOP.md` 等仓库文档里留「待用户裁定（阻塞项）」式的常驻催促条目。只在用户主动问起时回答。涉及凭据文件（如含 API key 的 `.bak`）只保留一条安全提示（勿提交勿外传），**不附带**轮换／改名／落成正式名等处置建议。失效形态：把一项用户已明确决定不启用的功能，每轮报告重复当阻塞项抛出，等于用无效议题消耗用户注意力。
 
 ## A. 规则技能与强制加载路由
 

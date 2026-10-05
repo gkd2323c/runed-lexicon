@@ -382,7 +382,22 @@ def build_terms_json(raw_terms, conf=None, id_prefix='', source_tag='', source_h
         # 显式登记 substring_match=true 退回宽松子串匹配。
         if item.get('substring_match') is True or ov.get('substring_match') is True:
             definition['substring_match'] = True
-        terms[definition['term_id']] = definition
+        # term_id 碰撞：_slug() 把连续非字母数字一律折成 '-' 再小写，所以
+        # `Ra' Hna` 与 `Ra Hna` 规范化后得到同一个 id。若放任赋值，后写的
+        # 会静默覆盖先写的——词表作者以为两条都生效了，实际只有一条进了契约，
+        # 而分写变体恰恰最容易连着写两条（撇号有无、空格有无、连字符有无）。
+        # 这是静默失败，必须报错而不是覆盖。
+        tid = definition['term_id']
+        if tid in terms:
+            raise SystemExit(
+                f'error: term_id 冲突：{tid!r} 同时来自 '
+                f'{terms[tid]["source"]!r} 与 {eng!r}。\n'
+                f'  两条不同的 english 规范化成了同一个 term_id，'
+                f'继续编译会静默丢掉其中一条。\n'
+                f'  处理：把分写变体合并进同一条目（在该条 note 里列全所有变体），'
+                f'或只保留其中一种拼写；不要靠再开一条来覆盖。'
+            )
+        terms[tid] = definition
     return terms, keep
 
 
@@ -477,6 +492,20 @@ def build_terms(entries, conf_overrides=None, source_tag='', source_hash=''):
         # 子串匹配逃生口（v0.4.3）：见 build_terms 路径的同名注释。
         if e.get('substring_match') is True or ov.get('substring_match') is True:
             definition['substring_match'] = True
+        # term_id 碰撞：_slug() 把非字母数字一律折成 '-' 再小写，所以
+        # `Ra' Hna` 与 `Ra Hna` 规范化后得到同一个 id。若放任赋值，后写的
+        # 会静默覆盖先写的——词表作者以为两条都生效了，实际只有一条进了契约，
+        # 而分写变体恰恰最容易连着写两条（撇号有无、空格有无、连字符有无）。
+        # 这属于静默失败，必须报错而不是覆盖。
+        if tid in terms:
+            raise SystemExit(
+                f'error: term_id 冲突：{tid!r} 同时来自 '
+                f'{terms[tid]["source"]!r} 与 {eng!r}。\n'
+                f'  两条不同的 english 规范化成了同一个 term_id，'
+                f'继续编译会静默丢掉其中一条。\n'
+                f'  处理：把分写变体合并进同一条目（在该条 note 里说明所有变体），'
+                f'或改用其中一种拼写；不要靠再开一条来覆盖。'
+            )
         terms[tid] = definition
     return terms, keep_sources
 
@@ -634,8 +663,8 @@ def load_global_ban_exemptions(path, bans):
         if owner is None:
             near = difflib.get_close_matches(f, list(form_owner), n=3, cutoff=0.4)
             hint = ('；库中相近形态: ' + ', '.join(repr(x) for x in near)) if near else \
-                   '（该形态不在任何 ban 的 forbidden 里，豁免永远不会生效）'
-            problems.append(f'  [{i}] forbidden {f!r} 不在全局禁用词库中{hint}')
+                   '（该形态不在任何 ban 或 MOD 词条的 forbidden 里，豁免永远不会生效）'
+            problems.append(f'  [{i}] forbidden {f!r} 不在全局禁用词库或本 MOD 词条 forbidden 中{hint}')
             continue
         eng = str(e.get('english') or '').strip()
         if eng and eng != owner:
@@ -866,7 +895,16 @@ def main():
         if not args.global_bans:
             raise SystemExit('error: --global-ban-exemptions 需要与 --global-bans 同用'
                              '（豁免条目要对照真实 ban 表校验，单独给会失去意义）')
-        gex = load_global_ban_exemptions(args.global_ban_exemptions, gbans)
+        # 统一豁免表（R21 扩展）：form_owner 取「全局禁用形 ∪ 本 MOD 词条 forbidden」。
+        # 同一张表既能为跨 MOD 禁用词（TERM004）声明合法形态，也能为 MOD 词条禁形
+        # （TERM002）声明——「写一条 {english, forbidden, reason, scope} 即降 WARNING 留痕」
+        # 因此成为两层共用的唯一显式通道，不必再靠「造同义 target 词条凑跨条覆盖」。
+        exempt_owners = list(gbans)
+        for _t in terms.values():
+            _fb = _t.get('forbidden')
+            if isinstance(_fb, list) and _fb:
+                exempt_owners.append({'english': _t.get('source') or '', 'forbidden': _fb})
+        gex = load_global_ban_exemptions(args.global_ban_exemptions, exempt_owners)
         compiled = json.load(open(args.output, encoding='utf-8'))
         if gex:
             compiled['global_ban_exemptions'] = gex

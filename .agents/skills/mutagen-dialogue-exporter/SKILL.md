@@ -78,8 +78,10 @@ python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py <st
   产出 `.work/<plugin>/context/<plugin>-info-batches.json`（批次 → line/dials/unique_src）。
 
   **切分单位必须是源句**：INFO 与 NAM1 行是 1:N 关系，同一句台词可能被引擎按条件复制成多条
-  记录，实测平均约 4 条、最高 20 余条。按 `len(infos)` 切分会让每片仍携带
-  上百个唯一源句，并产生大量超 CAP 批次。正确做法：按 INFO 逐条累加新增源句数，
+  记录。在 summersetisles.esp 这类高复述语料上实测平均约 4 条、最高 20 余条，
+  **但这是本语料的统计量不是引擎常量**——别的 MOD 可能远低于此。结论不依赖具体
+  数字：只要存在任何 1:N 复述，按 `len(infos)` 切分就会让每片携带远超预期数量的
+  唯一源句，并产生大量超 CAP 批次。正确做法：按 INFO 逐条累加新增源句数，
   装满 CAP 切一刀，片内去重、切片后重置计数器。
   验收：`max(unique_src) <= CAP` 且 `sum(len(b.idx))` 与 split 侧未译 idx 唯一数守恒。
 
