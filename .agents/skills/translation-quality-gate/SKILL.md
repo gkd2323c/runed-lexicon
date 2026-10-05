@@ -110,7 +110,7 @@ completed batch), add `--auto-bind`:
   candidates, because legal ellipsis (回指 / 同胞称谓) can legitimately omit the
   target. Terms listed in `--auto-strict` stay FAIL (reserved for must-appear
   unambiguous terms).
-- Forbidden-variant hits (`TERM002`) always stay FAIL.
+- Forbidden-variant hits (`TERM002`) stay FAIL **unless** a declared exemption matches: since R21 covers both layers (see below), a MOD term's banned shape declared legal in the MOD exemption table is downgraded to WARNING (kept in the report, not skipped).
 - Units where `dest == source` (KEEP / untranslated technical strings) are skipped.
 - Exit code stays 0 when only WARNINGs are present; review candidates are printed
   and written to `--report` for human triage.
@@ -298,7 +298,7 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
 每处 TERM004 命中都带该条目的 `reason`，方便 Agent 判断是误报还是真回归。
 收录/维护边界见 GLOSSARY.md §7 与 `global-forbidden-words.json` 顶部 doc。
 
-#### 6. MOD 级声明式豁免（R21, v0.3.0）——「合法形态」白名单通道
+#### 6. MOD 级声明式豁免（R21, v0.3.0；v0.5.0 起统一覆盖 TERM002/TERM004）——「合法形态」白名单通道
 
 前五道防护都建立在「dest 里的这个中文形是/不是那根词」上。但 TERM004 的中文侧是
 **纯子串检查**（`find_global_ban_hits`：`Chinese side is a substring check`），而中文
@@ -315,6 +315,16 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
    别的 MOD 的真实误报也一起消失。
 
 现在有第三条：**把「合法形态」显式声明出来，落在 MOD 级**。
+
+**一张表管两层（v0.5.0）**：这张表不只服务 TERM004。编译器的归属集合取「全局禁用形 ∪
+本 MOD 词条 `forbidden`」，所以同一条 `{english, forbidden, reason, scope}` 也能为
+**TERM002**（词条禁形）声明合法形态——`check_unit` 与 `standalone_forbidden_issues`
+两条 TERM002 路径消费同一豁免索引，命中同样降 `WARNING` 留痕。这让「写一条豁免即放行」
+成为两层共用的唯一显式通道，替代了此前「造一条同义 target 词条去凑
+`_cross_term_target_covered` 锚点」那种隐式绕法；跨条覆盖退为兜底。典型场景：
+`Altmer` 条禁「精灵」是为防把傲特莫抹平成泛称，但同族合法译形「高精灵」（High Elf）
+也含「精灵」子串——一条 `{english: Altmer, forbidden: 精灵, scope: {source_contains: [elves]}}`
+即放行，无需再造词条。
 
 契约字段 `global_ban_exemptions`（由编译器 `--global-ban-exemptions` 嵌入）。
 每条：`{ english, forbidden, reason, scope: { source_contains[], dest_left[], dest_right[] } }`
@@ -346,7 +356,7 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
 合法形态」才不会变成「宣布该词随便用」。
 
 **门的另一边（编译器侧）**：`term-contract-compiler` 的 `load_global_ban_exemptions`
-对**无效豁免一律 `SystemExit(1)`**——`forbidden` 不在 bans 词库里（带相近形态提示）、
+对**无效豁免一律 `SystemExit(1)`**——`forbidden` 既不在全局禁用词库、也不在本 MOD 词条 forbidden 里（带相近形态提示）、
 `english` 与该形态的实际归属不符、无 scope、scope 有未知键、重复条目。
 **一条静默不生效的豁免比没有豁免更危险：它读起来像保护，实际什么也没做。**
 

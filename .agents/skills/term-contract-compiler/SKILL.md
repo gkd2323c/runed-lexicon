@@ -160,7 +160,7 @@ cross-MOD official-name error forms, NOT a full term dictionary — see
 GLOSSARY.md §7 for收录边界. The compiler only validates/normalizes it; the
 curation happens by editing the JSON (each term carries its reason).
 
-### MOD-level ban whitelist (`--global-ban-exemptions`, R21)
+### MOD-level declared exemption table (`--global-ban-exemptions`, R21 — one table for TERM004 and TERM002)
 
 `global_bans` is a **cross-MOD** list of wrong forms. It has no way to express
 "this banned shape has a legitimate form here" — and TERM004's Chinese side is a
@@ -174,6 +174,19 @@ Without a whitelist the only workarounds are both wrong: distort the wording to
 dodge the check, or retract the entry from the cross-MOD list (which disables
 the real detection every other MOD depends on). `--global-ban-exemptions` adds
 the third option — declare the legitimate form, scoped to one MOD.
+
+**One table, both layers (v0.5.0).** The table is not limited to TERM004: the
+loader's form table is built from "global ban forbidden forms ∪ this MOD's term
+`forbidden` forms", so the same `{english, forbidden, reason, scope}` record can
+also legalize a **TERM002** (term-level) banned variant. The gate consumes the
+same exemption index on both TERM002 paths (`check_unit` and
+`standalone_forbidden_issues`), downgrading to `WARNING` and echoing the reason.
+This replaces the implicit workaround of fabricating a synonym target term to
+satisfy the anchor-based `_cross_term_target_covered` fallback (still kept as a
+safety net, no longer the primary path). Example: `Altmer` forbids 「精灵」 to
+stop the false-generic flattening, but the sibling race's official form 「高精灵」
+(High Elf) also substrings 「精灵」 — one `{english: Altmer, forbidden: 精灵,
+scope: {source_contains: [elves]}}` clears it.
 
 ```bash
 py -3 .agents/skills/term-contract-compiler/scripts/compile_contract.py \
@@ -198,12 +211,13 @@ Input file (per MOD, **not** in the cross-MOD `global-forbidden-words.json`):
 tag-stripped source) and `dest_left` / `dest_right` (characters immediately
 adjoining the hit — the clause that separates a cross-word artifact from a real
 word). **At least one scope key is required.** The result is embedded in the
-contract as `global_ban_exemptions`; the gate downgrades matching TERM004 hits to
-`WARNING` rather than dropping them, so exemptions stay auditable.
+contract as `global_ban_exemptions`; the gate downgrades matching TERM004 **and
+TERM002** hits to `WARNING` rather than dropping them, so exemptions stay auditable.
 
 **Validation is deliberately unforgiving** — `load_global_ban_exemptions` raises
-`SystemExit(1)` on: `forbidden` not present in any ban's forbidden list (with
-close-match suggestions), `english` inconsistent with the ban that owns the form,
+`SystemExit(1)` on: `forbidden` not present in any global ban's forbidden list **or
+this MOD's term `forbidden` forms** (with close-match suggestions), `english`
+inconsistent with the owner of the form,
 missing/empty `scope`, unknown key inside `scope`, or a duplicate
 `(forbidden, scope)` pair. A whitelist entry that silently never fires is worse
 than no entry at all — it reads as protection while providing none.
