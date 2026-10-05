@@ -210,7 +210,10 @@ def _registry_section(registry: dict, entries: list) -> list:
     return lines
 
 
-def digest(context: dict, registry: dict | None = None) -> str:
+def digest(context: dict, registry: dict | None = None,
+           canonical_path: str | None = None,
+           source_xml: str | None = None,
+           registry_english: set | None = None) -> str:
     lines = []
     all_entries = []
     batches = context.get("batches") or []
@@ -238,7 +241,38 @@ def digest(context: dict, registry: dict | None = None) -> str:
     if sec:
         lines.append("")
         lines.extend(sec)
+    if canonical_path:
+        extra = _noun_lookup_section(context, canonical_path,
+                                     registry_english or set(), source_xml)
+        if extra:
+            lines.append("")
+            lines.extend(extra)
     return "\n".join(_legend() + lines) + ("\n" if lines else "")
+
+
+def _noun_lookup_section(context, canonical_path, registry_english, source_xml):
+    """「本批专名速查」：词表没收录、但库内已有译形（或确属全新）的专名。
+
+    为什么必须有这一段：`MOD:` 行只给**词表已收录**的专名，词表没收录的专名在
+    digest 里一个字都不出现，译者只能自己猜译形。实测这正是新造形的来源——
+    `Shimmerene's Seaview` 被新拟成「微光海景居」（库内既成面是「海景」）、
+    `Dro Darrj` 被新拟成「德罗'达吉」（既成面「德罗·达里'奇」，音与撇号位置都错）。
+    **派单材料缺这一段时，子代理每批都会新拟专名。**
+
+    判据用**结构证据**（源 XML 的名称行 = 玩家在界面里看到的名字）而不是形态
+    猜测：英文的「首字母大写/驼峰」不足以判专名，实测两侧都错（漏掉句中的
+    `Palamay if you were I`，又把 `I've`/`That's`/`can't` 全当成专名）。
+    详见 `noun_lookup` 模块 docstring。
+    """
+    try:
+        from noun_lookup import unregistered_nouns_section
+    except ImportError:
+        return []
+    try:
+        return unregistered_nouns_section(context, canonical_path,
+                                          registry_english, source_xml)
+    except Exception as exc:                      # 速查段挂了不能拖垮 digest
+        return [f"== 本批专名速查 ==", f"  （生成失败，不影响上方逐行内容：{exc}）"]
 
 
 def _legend() -> list:
@@ -276,13 +310,29 @@ def discover_spell_registry(context_path: Path, explicit: str | None = None) -> 
     return None
 
 
-def build_digest(context_path: str | Path, spell_registry: str | None = None) -> str:
+def build_digest(context_path: str | Path, spell_registry: str | None = None,
+                 canonical_xml: str | None = None,
+                 source_xml: str | None = None,
+                 terms_path: str | None = None) -> str:
     """context.json 路径 → digest 文本。CLI 与新鲜度检查共用这一条路径。"""
     p = Path(context_path)
     data = json.loads(p.read_text(encoding="utf-8"))
     reg_path = discover_spell_registry(p, spell_registry)
     registry = load_spell_registry(reg_path) if reg_path else {}
-    return digest(data, registry)
+    reg_english = _registry_english(terms_path)
+    return digest(data, registry, canonical_xml, source_xml, reg_english)
+
+
+def _registry_english(terms_path: str | None) -> set:
+    """terms.json 里已收录的英文专名（小写）。用于速查段排除「词表已有」的。"""
+    if not terms_path:
+        return set()
+    tp = Path(terms_path)
+    if not tp.is_file():
+        return set()
+    t = json.loads(tp.read_text(encoding="utf-8"))
+    items = t.get("terms", t) if isinstance(t, dict) else t
+    return {x["english"].lower() for x in items if isinstance(x, dict) and "english" in x}
 
 
 def main() -> int:
@@ -293,6 +343,10 @@ def main() -> int:
     ap.add_argument("--out", help="write digest here instead of stdout")
     ap.add_argument("--no-judge-notes", action="store_true",
                     help="不带出判据型 note（默认带出；关掉等于把分域判据藏回词表）")
+    ap.add_argument("--canonical", help="translated XML；给了才生成「本批专名速查」段")
+    ap.add_argument("--source-xml",
+                    help="源 XML（专名集合取它的名称行，译没译都算）；默认用 --canonical")
+    ap.add_argument("--terms", help="terms.json；给了才能排除「词表已收录」的专名")
     a = ap.parse_args()
 
     global _SHOW_JUDGE
@@ -305,7 +359,8 @@ def main() -> int:
 
     reg_path = discover_spell_registry(p, a.spell_registry)
     registry = load_spell_registry(reg_path) if reg_path else {}
-    text = digest(json.loads(p.read_text(encoding="utf-8")), registry)
+    text = digest(json.loads(p.read_text(encoding="utf-8")), registry,
+                  a.canonical, a.source_xml, _registry_english(a.terms))
 
     if a.out:
         out = Path(a.out)
