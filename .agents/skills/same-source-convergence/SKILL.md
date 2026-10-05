@@ -39,33 +39,41 @@ D=.agents/skills/same-source-convergence/scripts
 py -3 $D/sync_batch_artifacts.py --stem $S --batch $B
 
 # 1. 判组：列出全部同源多形组（canonical ∪ 本批；批内分裂一并收）
-py -3 $D/same_source_groups.py --stem $S --batch $B --out _tmp/data/ssg.txt --show-all
+py -3 $D/same_source_groups.py --stem $S --batch $B... --out _tmp/data/ssg.txt --show-all
 
 # 2. 每组下判断前，两把尺（契约 + 盘面）
 py -3 $D/adjudicate.py --stem $S contract harvest distinction maker
 py -3 $D/adjudicate.py --stem $S census bearer --form 承载者 --form 承担者 --show 3
 
-# 3. 把裁决写成表 JSON（{batch, rationale, table, exempt_prompt_fix?}），
+# 3. 把裁决写成表 JSON（{batch|batches, rationale, table, exempt_prompt_fix?}），
 #    然后预检：列缺表的多形组 + 机械核契约
-py -3 $D/converge_batch.py --stem $S --table _tmp/data/table.json
+py -3 $D/converge_batch.py --stem $S --batch $B... --table _tmp/data/table.json
 
 # 4. 改写（会一并写穿 map-part-*.json）
-py -3 $D/converge_batch.py --stem $S --table _tmp/data/table.json --apply
+py -3 $D/converge_batch.py --stem $S --batch $B... --table _tmp/data/table.json --apply
 
 # 5. 复验，再走写回
-py -3 $D/converge_batch.py --stem $S --table _tmp/data/table.json --verify
+py -3 $D/converge_batch.py --stem $S --batch $B... --table _tmp/data/table.json --verify
 py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py --stem $S --batches $B ...
 ```
+
+**`--batch` 收多个批次，共用一张裁决表**。同源分裂天然跨批（一句呼喝散落在几十个 INFO 批里），而裁决只有一份，所以批次列表要和裁决表走同一个口径，别拆成 N 张几乎相同的表。表里写 `batches` 数组也行，**表内声明优先于命令行**（表才是这次裁决的权威范围，命令行只是手滑时的入口）。
+
+收多个还有一层收益：**「未裁决即中止」是全量判的**。逐批各跑一次时，批 A 收敛完，批 B 才暴露出的新组要等下一轮才被看见（实测跨 8 批收敛时反复重发表两次）。一次跑全部批次，缺表项一次性全列出。
 
 批已写回、需要按裁决表收口时（canonical 上已有别的形）：
 
 ```bash
-py -3 $D/make_close_fixes.py --stem $S --batch $B --table _tmp/data/table.json
-py -3 .agents/skills/translation-batch-ops/scripts/prune_close_patch.py --stem $S --batches $B --prune --drop-stale
-py -3 .agents/skills/translation-batch-ops/scripts/close_round.py --stem $S --batches $B \
+py -3 $D/make_close_fixes.py --stem $S --batch $B... --table _tmp/data/table.json
+py -3 .agents/skills/translation-batch-ops/scripts/prune_close_patch.py --stem $S --batches $B... --prune --drop-stale
+py -3 .agents/skills/translation-batch-ops/scripts/close_round.py --stem $S --batches $B... \
    --fixes .work/$S/batches/close-round-fixes.json --xml mods/$S.esp/${S}_english_chinese.xml \
    --contract .work/$S/contracts/${S}.compiled.json
 ```
+
+`make_close_fixes.py` 的 `--batch` **也要一次给全**。它只写一个 fixes 文件，逐批调用会用同一个默认路径**互相覆盖**，最后只剩最后一批的修正，前面几批得人肉合并——那一步不含任何判断，纯搬运，却最容易漏批。收多个之后一次调用直接产出合并好的全量 fixes，末尾还会打印该喂给 `close_round --batches` 的完整批次列表。
+
+`close_round` 会在 `--batches` 漏了 fixes 里的批次时直接拒绝（`fixes 含未声明的批次`），所以批次列表以 `make_close_fixes` 打印的那行为准。
 
 分片与收口侧的配套：
 

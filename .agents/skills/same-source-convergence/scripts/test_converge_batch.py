@@ -119,5 +119,32 @@ class TestContractCheck(unittest.TestCase):
         self.assertEqual(out, [])
 
 
+class TestResolveBatches(unittest.TestCase):
+    """跨批裁决时「这次处理哪几批」的取来源逻辑。
+
+    取错的后果是静默漏批：少收敛的那批照样显示 PASS，所以这几条盯的是来源优先级。
+    """
+
+    def test_cli_single_batch(self):
+        self.assertEqual(cb.resolve_batches({'table': {}}, ['INFO-1']), ['INFO-1'])
+
+    def test_cli_multiple_batches(self):
+        self.assertEqual(
+            cb.resolve_batches({'table': {}}, ['INFO-1', 'INFO-2', 'INFO-3']),
+            ['INFO-1', 'INFO-2', 'INFO-3'])
+
+    def test_spec_wins_over_cli(self):
+        spec = {'batches': ['INFO-9'], 'table': {}}
+        self.assertEqual(cb.resolve_batches(spec, ['INFO-1', 'INFO-2']), ['INFO-9'])
+
+    def test_empty_spec_batch_key_falls_back_to_cli(self):
+        spec = {'batch': 'INFO-legacy', 'batches': [], 'table': {}}
+        self.assertEqual(cb.resolve_batches(spec, ['INFO-1']), ['INFO-1'],
+                         'batches 存在但为空时应回落命令行，而不是收敛零批')
+
+    def test_no_source_yields_empty(self):
+        self.assertEqual(cb.resolve_batches({'table': {}}, []), [])
+
+
 if __name__ == '__main__':
     unittest.main()
