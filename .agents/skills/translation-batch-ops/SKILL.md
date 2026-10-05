@@ -351,6 +351,10 @@ py -3 .agents/skills/translation-batch-ops/scripts/prune_close_patch.py \
 
 **这条能力若只有 SOP 条文、没有工具**，每轮撞 stale 都在 `_tmp/` 手搓一次性脚本——是典型的跨 MOD 通用缺口。
 
+**收口已自动兜住（`close_round.py` 的 `auto_prune_patch`）**：`close_round` 调 `apply_fixes` 之前会自己对账，把 `close-round-patch.json` 的残留（已就位 + 老值两类全清）清空并逐条打印，等本轮 fixes 按现值重建。`--no-auto-prune` 可关，留给要人工逐条核的场景；手工跑过 `prune_close_patch` 时也用它避免重复清理。
+**为什么收进收口而不是只写文档**：处置原本是「记得单独跑两步、缺一不可」，实测连续两轮都卡在这里、每次都要回头查台账才知道该跑哪两步。收口是主会话独占动作，把这步收进去比写在文档里等人记得可靠。回归见 `test_close_round_auto_prune.py`（9 项：已就位 / 老值 / 混合 / list 容器形态保持 / 损坏文件不崩 / idx 越界归老值）。
+
+
 ## 5e. 同源继承预填与折叠（`inherit_prefill.py`）
 
 派单前把两件纯机械劳动从译者实例里移出来：**继承**（批次内 canonical 已有同源译文的键直接填好）与**折叠**（批内同源重复句合成唯一句清单，只把代表键交给译者）。MOD 文本重复率往往很高（应答句、公式收束句、矩阵批基句反复出现），旧流程让译者照抄并复制这些行，白烧实例预算、也把复制错位留在 LLM 侧。

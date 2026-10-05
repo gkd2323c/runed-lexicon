@@ -45,6 +45,49 @@ WRITER = ROOT / ".agents/skills/xtranslator-xml-writer/scripts/write_translation
 ROUND = ROOT / ".agents/skills/translation-batch-ops/scripts/round_pipeline.py"
 READOUT = ROOT / ".agents/skills/translation-review-tools/scripts/read_batch.py"
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from prune_close_patch import _as_items, _rebuild, classify, load_canonical_map  # noqa: E402
+
+
+def auto_prune_patch(patch: Path, translated_xml: Path, bid: str) -> int:
+    """收口前自动对账：把上一轮遗留的 patch 残留清空，让本轮 fixes 重建。
+
+    **为什么必须自动**：patch 是**追加**而非重建，残留条目会让 writer 的
+    compare-and-swap 整轮 FAIL，而处置要人手动跑两步
+    （`prune_close_patch --prune` 删已就位、再 `--drop-stale` 删老值，缺一不可）。
+    这是典型的「工具有了、但要人记得单独跑」缺口——实测连续两轮都卡在这里，
+    每次都要回头查台账才知道该跑哪两步。收口是主会话独占动作，把这步收进去
+    比写在文档里等人记得可靠。
+
+    两类都清：
+    - **已就位**（`translation` == canonical 现值）：上一轮已写进去了，纯残留。
+    - **老值**（`expected_dest` 已过期）：留着必然让 writer CAS 失败，而本轮
+      fixes 会按现值重新算 `expected_dest` 追加，不需要旧的。
+
+    每条丢弃都打印，可审计。`--no-auto-prune` 可关（留给需要人工逐条核的场景）。
+    """
+    if not patch.is_file():
+        return 0
+    try:
+        data = json.loads(patch.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0
+    items = _as_items(data)
+    if not items:
+        return 0
+    dests = load_canonical_map(translated_xml)
+    applied, stale = classify(items, dests)
+    if not (applied or stale):
+        return 0
+    patch.write_text(json.dumps(_rebuild(data, []), ensure_ascii=False), encoding="utf-8")
+    print(f"  [auto-prune:{bid}] 清理上轮残留 已就位 {len(applied)} 条 / 老值 {len(stale)} 条"
+          f"（本轮 fixes 将按现值重建）")
+    for key, entry, why in applied:
+        print(f"    [已就位] idx={key} {entry.get('translation', '')!r:.40} {why}")
+    for key, entry, why in stale:
+        print(f"    [老值  ] idx={key} {why}")
+    return len(applied) + len(stale)
+
 
 def run(cmd: list[str], label: str) -> None:
     r = subprocess.run([str(c) for c in cmd], cwd=ROOT, capture_output=True, text=True)
@@ -182,6 +225,9 @@ def main() -> int:
     ap.add_argument("--stem", required=True)
     ap.add_argument("--batches", nargs="+", required=True)
     ap.add_argument("--fixes", action="append", required=True)
+    ap.add_argument("--no-auto-prune", action="store_true",
+                    help="关闭收口前的 patch 残留自动对账（默认开；"
+                         "手工跑 prune_close_patch 时用它避免重复清理）")
     ap.add_argument("--xml", required=True, help="源 XML（_english_chinese.xml）")
     ap.add_argument("--contract", required=True)
     ap.add_argument("--translated-xml", default=None)
@@ -226,6 +272,8 @@ def main() -> int:
         fx_path = workb / bid / "close-round-fixes.json"
         fx_path.write_text(json.dumps(by_batch[bid], ensure_ascii=False), encoding="utf-8")
         patch = workb / bid / "close-round-patch.json"
+        if not args.no_auto_prune:
+            auto_prune_patch(patch, translated, bid)
         run([sys.executable, APPLY, "--stem", stem, "--batch", bid,
              "--fixes", fx_path, "--translated-xml", translated, "--patch-out", patch],
             f"apply:{bid}")

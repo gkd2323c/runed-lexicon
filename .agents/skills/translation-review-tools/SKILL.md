@@ -262,7 +262,9 @@ py -3 .agents/skills/translation-review-tools/scripts/longtext_readout.py \
 
 ## read_batch.py
 
-读单个批次的源文/译文对照。数据源优先 `translation.json`（含 source/status），退化到 `map.json` + `--xml`。
+读单个批次的源文/译文对照。数据源**按新鲜度**取（`map.json` 与 `translation.json` 都在时比 mtime），退化到另一份 + `--xml`；实际用了哪份打在 stderr。
+
+**为什么不只判存在**：`translation.json` 是上一轮 `consume_batch` 的产物，子代理随后写的 `map.json` 更新。只判「存在」会让陈旧的那份遮蔽刚交卷的那份——失效形态是读到一堆 `PENDING` 空占位，当成交卷读，据此做的判断全错。取 `map.json` 时若没给 `--xml`，报错会说明是「translation.json 比它旧，不采信」而不是含糊的「缺源文」。回归见 `test_read_batch_freshness.py`（6 项）。
 
 ```text
 py -3 .agents/skills/translation-review-tools/scripts/read_batch.py \

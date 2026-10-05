@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """读取单个翻译批次的源文/译文对照（只读）。
 
-数据源优先级：
-  1. <batch>/translation.json 的 translations[]（含 source/translation/status）
-  2. <batch>/map.json + --xml（map 仅有译文，源文从 XML 取）
+数据源按**新鲜度**优先（不只看存在）：
+
+  1. `map.json` 与 `translation.json` 都在 → 取 mtime 较新者，并在 stderr 打印实际用了哪份
+  2. 只有 `translation.json` → 用它
+  3. 只有 `map.json` → 用它（需 `--xml` 取源文）
+
+**为什么按新鲜度而不是存在性**：`translation.json` 是上一轮 `consume_batch` 的产物，
+子代理随后改的 `map.json` 更新。只判「存在」会让陈旧的 `translation.json`
+遮蔽刚交卷的 `map.json`——实测踩过一次，把 4:33 的空模板当成交卷读了。
+`--status` 过滤与 digest 新鲜度检查不受影响。
 
 Usage:
   py -3 read_batch.py --stem Artaeum --batch NI-CELL-002
@@ -171,6 +178,23 @@ def load_xml_sources(xml_path: Path) -> dict[int, str]:
     return {i: (node.findtext("Source") or "") for i, node in enumerate(root.iter("String"))}
 
 
+def pick_data_source(result_path: Path, map_path: Path) -> str:
+    """选数据源：'translation' / 'map' / None（都没有）。按 mtime 新鲜度，不只判存在。
+
+    `translation.json` 是上一轮 consume 的产物，子代理随后改的 `map.json` 更新；
+    只判「存在」会让陈旧的那份遮蔽刚交卷的那份。返回值只表示用哪份，
+    「为什么」由调用方打印（要连 xml 缺失的处置一起说）。
+    """
+    have_result, have_map = result_path.is_file(), map_path.is_file()
+    if have_map and have_result:
+        return "map" if map_path.stat().st_mtime > result_path.stat().st_mtime else "translation"
+    if have_map:
+        return "map"
+    if have_result:
+        return "translation"
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stem", required=True, help="Work stem under the work root (e.g. Artaeum)")
@@ -201,7 +225,17 @@ def main() -> int:
     result_path = batch_dir / "translation.json"
     map_path = batch_dir / "map.json"
 
-    if result_path.is_file():
+    # 新鲜度优先：只判「存在」会被上一轮 consume 产出的陈旧 translation.json
+    # 遮蔽子代理刚写的 map.json——实测踩过一次：拿空模板当交卷读。
+    have_result, have_map = result_path.is_file(), map_path.is_file()
+    use_map = pick_data_source(result_path, map_path) == "map"
+    if use_map and have_result:
+        print("source: map.json（比 translation.json 新；后者是上一轮 consume 的陈旧产物，"
+              "本次不采信）", file=sys.stderr)
+    elif have_result:
+        print("source: translation.json", file=sys.stderr)
+
+    if not use_map and have_result:
         data = json.loads(result_path.read_text(encoding="utf-8"))
         for unit in data.get("translations", []):
             rows.append({
@@ -211,9 +245,10 @@ def main() -> int:
                 "status": unit.get("status", ""),
             })
         source_desc = "translation.json"
-    elif map_path.is_file():
+    elif use_map:
         if not args.xml:
-            print("error: 批次只有 map.json，需要 --xml 取源文", file=sys.stderr)
+            print("error: 本批以 map.json 为数据源，需要 --xml 取源文"
+                  "（translation.json 比它旧，不采信）", file=sys.stderr)
             return 2
         sources = load_xml_sources(resolve(args.xml))
         data = json.loads(map_path.read_text(encoding="utf-8"))
