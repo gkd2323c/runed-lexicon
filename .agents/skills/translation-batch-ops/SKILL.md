@@ -491,3 +491,17 @@ py -3 .agents/skills/translation-batch-ops/scripts/rebuild_context.py --stem <pl
 批次消费链、context 重建、分片合并均有正式命令（5a/5b/§5）；**禁止再为同类需求手写
 一次性脚本**。遇到流水线断点时的正确顺序：先查本 SKILL 与相关 skill 是否已有对应能力
 → 无则在本 skill 内扩展子命令 → 确无通用性才落 `_tmp/scripts/` 且当轮清理。
+
+**收口前不得自建预检**：`round_pipeline` 的六个阶段已经覆盖收口前能查的全部项——
+`consume`（gate 的 TERM/KEEP/占位符/枚举/键集 + `original_dest mismatch` 占用面）、
+`charset`（normalize_charset：引号/繁简，有差异自动修复后重 consume）、
+`check`（writer `--check-only`：scope/重复/KEEP 冲突）、`same-source-precheck`（同源多形）、
+`verify`（段核对 Source==Dest 必须为 0）。**自建预检不产生额外拦截力，只产生额外故障面。**
+
+实测失效形态（2026-10-05 summersetisles）：在 `_tmp/scripts/` 手搓一个六项预检逐轮重写，
+每次既不沉淀也不复用；手写正则解析 canonical 得出「18 批 100% 被占用」的假信号，
+与同一轮刚跑过的 `batch_status.py`（全为 0/N 未译）直接打架，白烧一个来回才收口。
+真缺陷（`province` 写成「行省」）由 `consume` 的 TERM002 当场拦下，预检并未提前一刻。
+
+需要“收口前先看一眼某批状态”时，用 `batch_status.py --only untranslated` 与
+`check_batch_coverage.py --xml`，不要新写解析器。
