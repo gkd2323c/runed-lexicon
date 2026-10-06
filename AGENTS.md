@@ -213,6 +213,7 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 | `skill-creator`                 | Skill 创建、修改、校验与评估                                             | 创建、修改或评估 Skill 前                                   |
 | `skyrim-translation-craft`      | 翻译风格、保真基准落地、语境通读、防剧透原则、各类 REC 处理策略          | 开始或审校翻译批次前；裁决歧义译名与语域时                  |
 | `skyrim-doc-system`             | 六文档职责划分、收录标准、术语状态生命周期、维护规范、文档污染自查（§13） | 创建或修改项目/MOD 文档前；划定术语归属时                   |
+| `skyrim-mod-onboarding`        | 新 MOD 初始化：现场诊断、结构导出、官方专名清点、四文档初建、术语底座与首批次计划 | 接入还没有四文档 / `terms.json` 的 MOD 前；备料工具因缺文档拒绝运行时 |
 | `skyrim-term-contract-workflow` | 契约编译工作流、门禁校验步骤、PASS 准则                                  | 新 MOD 启动前；写回前；发布收敛性声明前                     |
 | `proper-noun-index`             | 官方专名索引构建与 MOD 源侧清点（人名/地名/派系名清单）                  | 新 MOD 开工前清点官方名；裁决官方名词前；词典变更后重建索引 |
 | `term-contract-compiler`        | 从 `terms.json` 编译机器契约并执行术语 lint                              | 编译契约、修改术语后重编译或运行术语 lint 时                |
