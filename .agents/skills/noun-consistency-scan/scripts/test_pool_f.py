@@ -99,6 +99,42 @@ class PoolFCatchesWhatPoolACannotTests(unittest.TestCase):
         self.assertEqual(out[0]['forbidden'], ['塔萨米尔西尔'])
 
 
+class PoolFMultiwordTests(unittest.TestCase):
+    """多词词条的 F 池覆盖（倒排锚点回归）。
+
+    锚点曾取「变体里最长的单词」，而多词词条的连写变体（`strategic planning`
+    → `strategicplanning`）恒为最长 token，锚点落在源文不存在的连写形上，
+    候选集恒空、词条被静默跳过。实测 EmissarysDaughter 全库多词专名
+    （Northwatch Keep / Strategic Planning / White-Gold Concordat）覆盖为零且无告警。
+    """
+
+    def setUp(self):
+        self.terms = {'strategic planning': term('Strategic Planning', '战略规划局')}
+
+    def test_spaced_source_form_is_checked(self):
+        rows = [
+            row(325, 'BOOK:DESC', 'From: Strategic Planning, Skyrim Theater',
+                '自：战略规划局，天际战区'),
+            row(588, 'INFO:NAM1',
+                'The analytical model has been forwarded to strategic planning '
+                'for policy integration.',
+                '分析模型已移交战略规划部门，用于政策整合。'),
+        ]
+        out = pool_f(rows, self.terms)
+        self.assertEqual(len(out), 1)
+        self.assertEqual([r['idx'] for r in out[0]['rows']], [588])
+
+    def test_clean_when_contract_form_present(self):
+        rows = [row(325, 'BOOK:DESC', 'From: Strategic Planning', '自：战略规划局')]
+        self.assertEqual(pool_f(rows, self.terms), [])
+
+    def test_joined_source_form_still_matches(self):
+        rows = [row(7, 'INFO:NAM1', 'Forwarded to StrategicPlanning today.',
+                    '今天已移交战略规划部门。')]
+        out = pool_f(rows, self.terms)
+        self.assertEqual([r['idx'] for r in out[0]['rows']], [7])
+
+
 class PoolFNoiseTests(unittest.TestCase):
     """词内子串不得被当成专名命中。"""
 

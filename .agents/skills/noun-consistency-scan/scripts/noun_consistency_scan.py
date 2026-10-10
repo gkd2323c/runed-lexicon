@@ -229,10 +229,15 @@ def pool_f(rows, by_en, min_rows=1, max_rows_per_term=40):
         variants = _variants(term.get('english', en))
         if not variants:
             continue
-        # 用变体里最长的那个单词做倒排锚点（专名首词通常最具区分度）
-        anchor = max((w for v in variants for w in _WORD.findall(v)),
-                     key=len, default='')
-        cand = index.get(anchor, set()) if anchor else set()
+        # 倒排候选取「变体里全部单词」的并集，不能只取最长单词：多词词条的连写
+        # 变体（`strategic planning` → `strategicplanning`，17 字符）恒为最长
+        # token，锚点会落在源文根本不存在的连写形上，候选集恒空、词条被 continue
+        # 静默跳过（实测多词专名的 F 池覆盖全为零且无告警）。并集多出的行由下面的
+        # 完整短语校验过滤。
+        anchors = {w for v in variants for w in _WORD.findall(v)}
+        cand = set()
+        for a in anchors:
+            cand |= index.get(a, set())
         if not cand:
             continue
         pats = [re.compile(r'(?<![a-z])' + re.escape(v) + r'(?![a-z])')
