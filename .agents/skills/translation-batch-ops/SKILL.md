@@ -16,7 +16,7 @@ metadata:
 | 批次推进到哪了？         | `scripts/check_batch_coverage.py`  | 每批状态（VERIFIED / TRANSLATED / PREPPED / MISSING）+ 未写回告警 |
 | 还有未译行没有归属吗？   | `scripts/scan_plan_gaps.py`        | 缺口清单 + 补遗批次（GAP- 前缀）+ 机械匹配孤儿清点与核验卡点       |
 | 整体进度如何？           | `scripts/progress_snapshot.py`     | 快照日志 `.work/<plugin>/reports/<plugin>-progress-log.json`      |
-| 待审还有多少？           | `scripts/review_pending.py`          | 已写回批 − 有报告批的**集合差**（written / reviewed / PENDING 三个数 + 清单） |
+| 待审还有多少？           | `scripts/review_pending.py`          | canonical 已写回批 − 已审批批的**集合差**（written / reviewed / PENDING 三个数 + 清单） |
 | 哪些批真译了？           | `scripts/batch_status.py`         | **以 canonical 为准**逐批报 已全译/部分译/未译（Dest≠Source 行数）；**派单前先跑**，不拿派生物状态当结论 |
 | 批次太大怎么派？         | `scripts/shard_batch.py`           | 按字符权重的 index 分片与 map 合并                                |
 | 子代理交付怎么消费？     | `scripts/consume_batch.py`         | map 归位 → 展平 → immutable 同步 → fill → verify 一键链           |
@@ -110,6 +110,18 @@ py -3 ... review_coverage.py --stem <plugin> --json
 `status` 用“未完成态白名单”而不是枚举完成态：没有 `status` 字段的兼容记录按已完成处理；新增完成态名时也不应让批次凭空消失。
 
 凡是每轮都要用的统计口径，统一走本脚本，不写一次性版本。回归测试 `scripts/test_review_coverage.py`（19 项）覆盖 status 分类与在途计数。
+
+### 2.1b 审查欠账清单（`review_pending.py`）
+
+与 `review_coverage.py` 的分工：coverage 报「覆盖率」（分母 = 已备料批，看审查动作做了多少）；pending 报「欠账清单」（分母 = **canonical 已写回批**，看多少已进 canonical 的译文还没被审）。两者共享同一「已审」判定（pending 直接 import coverage 的 `read_reviewed()`，同一函数不另写），reviewed 集合永远一致。
+
+```text
+py -3 .agents/skills/translation-batch-ops/scripts/review_pending.py --stem <plugin> [--xml <canonical>] [--json]
+```
+
+口径（机械）：**已写回批** = 该批 index.txt 的每个 idx 在 canonical 中 Dest≠Source，**或** Dest==Source 且该 idx 在批次 translation.json 中 status==KEEP（KEEP 行本就应保留原文；纯 KEEP 批在 canonical 无痕，故豁免依赖消费痕迹，translation.json 缺失/损坏/PENDING 残留按未写回处理，保守侧倒）。欠账 PENDING = written − reviewed；IN_PROGRESS 占位记录的批计入欠账并单列「在途」；「已审但未写回」的批（审查先于写回、或写回被回滚）单列提示不计欠账。
+
+派审查单前用本脚本拿欠账清单；刷新文档「审查进度」段用 coverage。回归测试 `scripts/test_review_pending.py`（7 项：KEEP 豁免、未消费纯 KEEP 不算写回、备料未派不算写回、在途计入欠账、已审未写回单列）。
 
 ## 2.2 查 xml_index 的批次归属（`locate_idx.py`）
 
@@ -452,7 +464,8 @@ py -3 .../make_patch_from_maps.py --canonical <translated.xml> --out <patch.json
 ```text
 cd .agents/skills/translation-batch-ops/scripts
 py -3 -m unittest test_batch_coverage test_batch_coverage_consumed test_scan_plan_gaps \
-  test_batch_sync test_close_round test_prune_close_patch test_progress_snapshot_scope
+  test_batch_sync test_close_round test_prune_close_patch test_progress_snapshot_scope \
+  test_review_pending
 ```
 
 `test_batch_coverage_consumed.py`（22 项）锁定 consume 痕迹判定（§2“`VERIFIED` 的两条通路”）：
