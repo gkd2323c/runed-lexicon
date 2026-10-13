@@ -54,14 +54,22 @@ STANDALONE_SCRIPTS = [
 # so a 3.10/3.11 leg is what actually catches that class of regression.
 FLOOR_MAX = (3, 12)
 
-# A repo path whose basename starts with this is a shell accident, not an
-# asset: an unquoted PowerShell redirection target writes stdout to a real
-# file named after the variable. `> $null` is the void device in everyone's
-# memory but a path on disk; only `>$null` (no space) is the null device.
-# Incident: a committed `$null` file at the repo root, holding the stdout of
-# a mavis-trash call, shipped in 085cbb7. `$` is legal in a filename but
-# never legitimate here, so the match stays as narrow as the accident.
+# Two shell-accident families share one shape: a redirect meant to reach the
+# void device becomes an ordinary file, because the spelling is host-bound.
+#
+# 1. Basename starts with `$`: an unquoted PowerShell redirection target writes
+#    stdout to a real file named after the variable. `> $null` is the void
+#    device in everyone's memory but a path on disk; only `>$null` (no space)
+#    is the null device. Incident: a committed `$null` file at the repo root,
+#    holding the stdout of a mavis-trash call, shipped in 085cbb7.
+# 2. Basename is a reserved device name: `>nul` is a device only under cmd.exe;
+#    under a POSIX shell (Git Bash, MSYS, WSL) it is a real file on disk.
+#    Incident: a `nul` file at the repo root and under .work/, left by a
+#    Git Bash command run on Windows.
+# Both are on record under corpus/engineering-incidents/.
 ARTEFACT_PREFIX = "$"
+RESERVED_NAMES = {"nul", "con", "aux", "prn"} | {
+    "com%d" % i for i in range(1, 10)} | {"lpt%d" % i for i in range(1, 10)}
 
 # Fallback-only: used when git is unavailable, since git normally supplies the
 # exact first-party file list (tracked + untracked, ignored excluded).
@@ -294,41 +302,67 @@ def step_syntax_floor(failures):
         failures.append(f"syntax floor (Python {ver_str})")
 
 
-def find_redirect_artefacts():
-    """Repo paths whose basename starts with ARTEFACT_PREFIX, sorted.
+def _walk_longpath_names():
+    r"""Repo-relative file names read through the \\?\ prefix.
 
-    The file set is git-defined (tracked plus untracked-but-not-ignored), the
-    same contract as iter_repo_py_files: ignored runtime trees such as _tmp/
-    and .work/ stay out, so the check matches what a fresh clone would see.
-    An unstaged artefact still counts, because that is exactly the state the
-    next `git add .` sweeps into history.
+    git is the primary source, but `git ls-files` cannot see every
+    device-named file: a reserved name with an extension (`con.log`) is
+    invisible to git's lstat on Windows while the file is plainly on disk.
+    Only the extended-length prefix reads the real directory entries, so the
+    artefact set is the union of both sources.
     """
-    names = None
+    names = []
+    prefix = "\\\\?\\" + ROOT
+    for dirpath, dirnames, filenames in os.walk(prefix):
+        dirnames[:] = [d for d in dirnames if d not in SYNTAX_SKIP_DIRS]
+        rel_dir = dirpath[len(prefix):].lstrip("\\")
+        if rel_dir and any(rel_dir == q or rel_dir.startswith(q + os.sep)
+                           for q in SYNTAX_SKIP_REL):
+            dirnames[:] = []
+            continue
+        for name in filenames:
+            names.append(name if not rel_dir
+                         else os.path.join(rel_dir, name))
+    return names
+
+
+def find_redirect_artefacts():
+    r"""Repo paths whose basename is a shell redirect accident, sorted.
+
+    Two enumeration sources are unioned: git's tracked + untracked-but-not-
+    ignored file list (the contract a fresh clone sees, and exactly what the
+    next `git add .` would sweep in), plus a \\?\ directory walk for the
+    device-named files git's lstat cannot report. One artefact being invisible
+    to one source is the whole failure mode, so both run unconditionally.
+    """
+    names = set()
     try:
         p = subprocess.run(
             ["git", "ls-files", "-z", "--cached", "--others",
              "--exclude-standard"],
             cwd=ROOT, capture_output=True, timeout=60)
         if p.returncode == 0:
-            names = [n for n in p.stdout.decode("utf-8", "replace").split("\0")
-                     if n]
+            names.update(n for n in p.stdout.decode("utf-8", "replace")
+                         .split("\0") if n)
     except (OSError, subprocess.SubprocessError):
         pass
-    if names is None:
-        # git unavailable: fall back to a plain walk, same skip rules as
-        # _walk_py_files so a fresh clone without git still gets checked.
-        names = []
-        for dirpath, dirnames, filenames in os.walk(ROOT):
-            dirnames[:] = [d for d in dirnames if d not in SYNTAX_SKIP_DIRS]
-            rel = os.path.relpath(dirpath, ROOT)
-            if rel != "." and any(rel == q or rel.startswith(q + os.sep)
-                                  for q in SYNTAX_SKIP_REL):
-                dirnames[:] = []
-                continue
-            for name in filenames:
-                names.append(name if rel == "." else os.path.join(rel, name))
-    return sorted(n for n in names
-                  if os.path.basename(n).startswith(ARTEFACT_PREFIX))
+    try:
+        names.update(_walk_longpath_names())
+    except OSError:
+        pass
+
+    def is_artefact(name):
+        base = os.path.basename(name)
+        # `nul.txt` counts too: Windows resolves the device name before the
+        # extension, and a POSIX shell writes the whole string as one file.
+        stem = base.split(".", 1)[0].lower()
+        return base.startswith(ARTEFACT_PREFIX) or stem in RESERVED_NAMES
+
+    # Normalise separators before dedup: git reports forward slashes, the
+    # long-path walk reports backslashes, and the same file must not be
+    # counted twice.
+    normalised = {n.replace("\\", "/") for n in names}
+    return sorted(n for n in normalised if is_artefact(n))
 
 
 def run_hygiene_only():
@@ -350,6 +384,8 @@ def step_hygiene(failures):
         print(f"    suspicious: {rel}")
     print("    PowerShell: `> $null` (with a space) writes stdout to a real "
           "file named $null; the null device is `>$null`.")
+    print("    cmd vs POSIX: `>nul` is a device only under cmd.exe; under a "
+          "POSIX shell (Git Bash, MSYS, WSL) it is a real file named nul.")
     print("    Delete the artefact, then `git rm --cached` it if tracked, so "
           "a later `git add .` cannot sweep it back in.")
     failures.append(f"shell redirect artefacts: {len(bad)} path(s)")
