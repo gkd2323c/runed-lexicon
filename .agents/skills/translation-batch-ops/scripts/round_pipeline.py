@@ -170,7 +170,10 @@ def same_source_precheck(stem: str, batches: list[str], work: Path,
         for k, v in json.loads(mf.read_text(encoding="utf-8")).items():
             i = int(k)
             src = srcs[i] if i < len(srcs) else ""
-            dst = str((v or {}).get("translation") or "").strip()
+            # 口径与 close_round.same_source_split 及 writer 的 original_dest 精确比较保持一致：
+            # 两侧都不做 strip。此前仅 map 侧 strip 会造成假分裂——canonical 行尾空白
+            # （如 </p>\n、中文句末空格）被剥掉后与 map 值不等，同一行被记成两个译形。
+            dst = str((v or {}).get("translation") or "")
             if src and dst:
                 forms.setdefault(src, {}).setdefault(dst, []).append(k)
     try:
