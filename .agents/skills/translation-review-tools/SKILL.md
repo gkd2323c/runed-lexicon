@@ -1,6 +1,6 @@
 ---
 name: translation-review-tools
-description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
+description: "Review and revise translation batch artefacts without hand-writing one-off scripts: read a batch's source/translation pairs (read_batch.py), compile a batch context into a per-idx terminology digest (term_digest.py), search the translated XML with REC/EDID/batch attribution (query.py), generate fix lists from review reports (make_fixes_from_report.py), apply correction lists to a batch's map.json + translation.json with an optional canonical patch (apply_fixes.py), normalize non-simplified characters (normalize_charset.py), scan for out-of-GB2312 outlier characters / near-form typos (charset_outlier_scan.py), run anti-hallucination probes (hallucination_probe.py), and slice source-vs-destination readouts (longtext_readout.py). Use during translation acceptance (三查验收通读), terminology adjudication, cross-batch consistency checks, dispatch preparation (pre-chewing context.json), anti-hallucination review of long texts, review-report reconciliation (报告→修正集), and post-review corrections. The standard toolkit replacing ad-hoc throwaway scripts. Read-only except apply_fixes.py."
 compatibility: Requires Python 3.10+. Uses only the Python standard library.
 metadata:
   version: "0.14.0"
@@ -642,6 +642,34 @@ py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --fixes _tmp/data/charset
 ```
 
 边界：长度不等的转换（罕见）不自动替换、列 manual review 输出；不修改任何输入文件，只写 `--fixes-out` 指定的路径。
+
+## charset_outlier_scan.py
+
+扫描译文中**超出合法字集合**的汉字（生僻字/生造字/形近错字候选）。
+
+与 `normalize_charset.py` 的分工：后者处理「zh-cn 转换表能转换的字符」（繁体、标点、台港用词），对表里没有的生僻字零命中；本工具用**数据驱动的闭集判据**，不硬编码词表：
+
+```text
+合法字集 = GB2312 一级+二级（6763 现代通用汉字）
+         ∪ 官方词典语料（dictionary/*.xml 的全部汉字）
+```
+
+任何超出该并集的汉字即候选。判据已实证：合法词（瞭/祇/啰/窸/窣/蚺/嗫/嚅）全部在官方语料内；真错字（讱/蚖/刭/捿/蝑/睖/霤/敉/眙/瞱/喍/呹）全部在集外，零误杀。
+
+```text
+# 全库扫描 canonical（只读，exit 1 = 有候选）
+py -3 .agents/skills/translation-review-tools/scripts/charset_outlier_scan.py --xml mods/<plugin>/<plugin>_english_chinese_translated.xml
+
+# 扫批次结果 JSON
+py -3 .../charset_outlier_scan.py --result .work/<plugin>/batches/<BID>/translation.json
+
+# 指定语料目录（默认 dictionary/）
+py -3 .../charset_outlier_scan.py --xml <canonical.xml> --dictionary <dir> --json _tmp/data/outliers.json
+```
+
+候选需逐个判定「合法边界字」或「真错字」——本工具是发现器，不判正确性（如「祂」是官方语料外的神学用字，属合法边界案例）。
+
+边界：只读，不修改任何输入文件；退出码 1 表示有候选需人工判定。
 
 ## dump_review_findings.py
 
