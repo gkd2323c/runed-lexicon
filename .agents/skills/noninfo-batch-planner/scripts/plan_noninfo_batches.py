@@ -37,6 +37,12 @@ def text_of(node: ET.Element | None) -> str:
     return node.text
 
 
+# 长文本分流阈值，与 translation-batch-preparer 的 LONGTEXT_THRESHOLD 保持一致。
+# 单条 Source 达到该长度的行不进常规非 INFO 批次，
+# 由 long-book-translation skill 按分片流程认领。
+LONGTEXT_THRESHOLD = 2000
+
+
 def resolve_path(value: str) -> Path:
     path = Path(value)
     if not path.is_absolute():
@@ -45,14 +51,16 @@ def resolve_path(value: str) -> Path:
 
 
 def load_untranslated(xml_path: Path, rec_filter: set[str],
-                      include_info: set[str] | None = None) -> list[dict]:
+                      include_info: set[str] | None = None,
+                      deferred: list[dict] | None = None) -> list[dict]:
     try:
         root = ET.parse(xml_path).getroot()
     except ET.ParseError as exc:
         raise ValueError(f"Invalid XML in {xml_path}: {exc}") from exc
 
     info_ok = {r for r in (include_info or set()) if r.startswith("INFO")}
-    rows = []
+    rows: list[dict] = []
+    deferred = deferred if deferred is not None else []
     for index, node in enumerate(root.findall("./Content/String")):
         source = text_of(node.find("Source"))
         dest = text_of(node.find("Dest"))
@@ -67,8 +75,15 @@ def load_untranslated(xml_path: Path, rec_filter: set[str],
             continue
         if rec_filter and rec not in rec_filter:
             continue
+        if len(source) >= LONGTEXT_THRESHOLD:
+            # 超长行分流给 long-book-translation；由调用方在计划里显式登记，
+            # 避免规划未译数与 XML 实际未译数对不上而漏掉整条长文本。
+            deferred.append({"index": index, "rec": rec,
+                             "edid": text_of(node.find("EDID")),
+                             "source_chars": len(source)})
+            continue
         rows.append({"index": index, "rec": rec, "source": source})
-    return rows
+    return rows, deferred
 
 
 def group_by_source(rows: list[dict]) -> list[tuple[str, list[int], str]]:
@@ -169,7 +184,8 @@ def main() -> int:
                 raise ValueError(
                     f"--include-info-recs only accepts INFO-family RECs; got {unknown}")
 
-        rows = load_untranslated(xml_path, rec_filter, info_recs)
+        deferred: list[dict] = []
+        rows, deferred = load_untranslated(xml_path, rec_filter, info_recs, deferred)
         if not rows:
             raise ValueError("No untranslated non-INFO rows matched the filter")
 
@@ -211,7 +227,12 @@ def main() -> int:
                 "include_info_recs": sorted(info_recs) if info_recs else [],
                 "max_unique": args.max_unique,
                 "max_rows": args.max_rows,
+                "longtext_threshold": LONGTEXT_THRESHOLD,
+                "longtext_deferred_count": len(deferred),
             },
+            # 分流给 long-book-translation 的超长行。显形是必须的：
+            # 静默排除会让批次未译数与 XML 实际未译数对不上，下一轮以为不存在。
+            "longtext_deferred": deferred,
             "batches": plan_batches,
         }
 
@@ -220,6 +241,15 @@ def main() -> int:
         print(f"families: {len(families)}, batches: {len(plan_batches)}, "
               f"unique: {total_unique}, rows: {total_rows}")
         print("\n".join(lines))
+        if deferred:
+            # 按字符量倒序，最大的排在前面：那是分片压力最高的
+            print(f"长文本分流 {len(deferred)} 条 -> long-book-translation：")
+            for d in sorted(deferred, key=lambda x: -x["source_chars"])[:10]:
+                print(f"  [{d['index']}] {d['rec']} {d['edid']} "
+                      f"{d['source_chars']:,} chars")
+            if len(deferred) > 10:
+                print(f"  ... 另 {len(deferred) - 10} 条见 plan 的 "
+                      f"longtext_deferred 段")
 
         if args.dry_run:
             print("(dry-run: nothing written)")

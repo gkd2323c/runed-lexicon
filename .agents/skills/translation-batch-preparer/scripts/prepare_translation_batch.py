@@ -17,6 +17,11 @@ import xml.etree.ElementTree as ET
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_DICTIONARY_DIR = PROJECT_ROOT / "dictionary"
 WORD_RE = re.compile(r"[A-Za-z0-9À-ÖØ-öø-ÿ'’]+")
+# 长文本分流阈值。单条 Source 达到该长度的行不进常规批次，
+# 由 long-book-translation skill 按分片流程认领。
+# 与 .agents/skills/long-book-translation/SKILL.md §7 的触发线一致。
+LONGTEXT_THRESHOLD = 2000
+
 TERM_RECORD_PREFIXES = {
     "ACTI", "ALCH", "ARMO", "BOOK", "CELL", "CLAS", "CONT", "DOOR",
     "ENCH", "FACT", "FLOR", "FURN", "INGR", "LCTN", "MGEF", "MISC",
@@ -214,6 +219,7 @@ def select_entries(
         for entry in entries
         if entry.source
         and entry.source == entry.dest
+        and len(entry.source) < LONGTEXT_THRESHOLD
         and (not rec_filters or entry.rec in rec_filters)
     ]
 
@@ -279,6 +285,23 @@ def build_batch(
     untranslated_total = sum(
         1 for entry in entries if entry.source and entry.source == entry.dest
     )
+    # 被分流的超长未译行。必须显形：静默排除会让本 planned 未译数与 XML 实际
+    # 未译数对不上，下一轮 agent 会以为这些行不存在，从而漏掉整条长文本。
+    # 这里按条目列出，收口时用 --orphan-list 或本段核对余额归零。
+    longtext_deferred = [
+        {
+            "index": entry.index,
+            "edid": entry.edid,
+            "rec": entry.rec,
+            "source_chars": len(entry.source),
+            "dest": entry.dest,
+        }
+        for entry in entries
+        if entry.source
+        and entry.source == entry.dest
+        and len(entry.source) >= LONGTEXT_THRESHOLD
+        and (not rec_filters or entry.rec in rec_filters)
+    ]
 
     return {
         "schema_version": 1,
@@ -289,7 +312,10 @@ def build_batch(
             "rec": sorted(rec_filters),
             "selected_count": len(selected),
             "untranslated_candidate_total": untranslated_total,
+            "longtext_threshold": LONGTEXT_THRESHOLD,
+            "longtext_deferred_count": len(longtext_deferred),
         },
+        "longtext_deferred": longtext_deferred,
         "entries": batch_entries,
     }
 

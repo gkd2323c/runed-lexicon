@@ -118,6 +118,7 @@ Agent 在任何环节输出的文件，语义、角色、路径三者必须确�
   - 备料前读 `translation-batch-preparer`；规划非 INFO 批次再读 `noninfo-batch-planner`。构建 INFO 对话上下文前读 `translation-context-builder`。
   - 开始翻译前读 `skyrim-translation-craft` 与 `translation-executor`；使用本地模型时再读 `local-model-translator`。派单前读 `subagent-ops`。
   - 进入批次循环前读 `translation-batch-ops` §0。验收前读 `translation-quality-gate` 与 `translation-fidelity-scan`；审校、修正或同源收敛时读 `translation-review-tools` 与 `same-source-convergence`。长文本审查仍按 `longtext-hallucination-review` 执行。
+  - **单条长文本不进常规批次**：规划器已按阈值机械分流（>=2000 字符的未译行），分流行见批次/计划的 `longtext_deferred` 段。这批行的翻译按 `long-book-translation` 的切片流程单独认领，不在常规批次内派单。
   - 写回前读 `skyrim-term-contract-workflow`、`skyrim-xml-verification` 与 `xtranslator-xml-writer`。
 
 ### 2.3 全局禁用词有一条带作用域的 MOD 级白名单通道（R21）
@@ -248,6 +249,7 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 | `fantasy-context-auditor`       | 扫描译文中的现实语境违和候选                                             | 执行奇幻语境语义预审时                                      |
 | `skyrim-tool-dev-rules`         | 工具复用检索、性能门禁（30s 缺陷阈值 / 5s 回归线）、临时脚本边界（§2.1） | 编写数据处理脚本前；改动现有自动化工具前                    |
 | `longtext-hallucination-review` | 长文本抗幻觉审查（机械探针 + 逐段精读）、幻觉形态识别与验收纪律          | 审查长叙事译文（BOOK 书页、QUST 长日志）；收口前长文本复核  |
+| `long-book-translation`        | 长文本分片翻译：恒定额局部预算、分层记忆、占位符保护格式标记、拼回守恒校验 | 翻译单条超长文本（书籍巨著、长描述）前；常规批次未译数与 XML 对不上时 |
 | `translation-batch-ops`         | 批次验收、覆盖率核查、缺口扫描与补遗、进度快照、批次分片工具集           | 验收批次产出、核对批次状态与覆盖率、声明收敛前、记录进度时  |
 | `subagent-ops`                  | 任务卡编译与模板红线、体量上限、并行与送达纪律、审查/审计/裁决卡变体     | 派任何子代理单之前；验收子代理产出；子代理崩溃无产出归因时  |
 

@@ -16,6 +16,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import subprocess
+import sys
+
+import xml.etree.ElementTree as ET
+
 import scan_plan_gaps as G
 
 MINI_XML = """<?xml version="1.0" encoding="utf-8"?>
@@ -92,7 +97,7 @@ class ScanGapsTest(unittest.TestCase):
     def test_detects_unclaimed_rows(self):
         rows = G.load_untranslated(self.xml)
         self.assertEqual([r["index"] for r in rows], [0, 2, 3, 4])
-        planned, _ = G.load_planned([self.plan])
+        planned, _, _ = G.load_planned([self.plan])
         self.assertEqual(planned, {2})
         gaps = [r for r in rows if r["index"] not in planned]
         self.assertEqual([r["index"] for r in gaps], [0, 3, 4])
@@ -161,7 +166,7 @@ class ScanGapsTest(unittest.TestCase):
         self.assertEqual([r["index"] for r in untranslated], [0, 2, 3, 4])
         # idx1 (Beta line -> 译文乙) 已译且不在计划内：机械匹配孤儿
         self.assertEqual([r["index"] for r in matched], [1])
-        planned, _ = G.load_planned([self.plan])
+        planned, _, _ = G.load_planned([self.plan])
         orphans = [r for r in matched if r["index"] not in planned]
         self.assertEqual([r["index"] for r in orphans], [1])
 
@@ -191,6 +196,73 @@ class ScanGapsTest(unittest.TestCase):
         p.write_text(json.dumps([5, {"idx": 7}]), encoding="utf-8")
         self.assertEqual(G.load_verified_orphans(str(p)), {5, 7})
         self.assertEqual(G.load_verified_orphans(None), set())
+
+
+class LongtextClaimTest(unittest.TestCase):
+    """longtext_deferred 段必须被认领，否则误报缺口与假孤儿。
+
+    背景：规划器按长度阈值（>=2000 字符）把超长未译行分流给
+    long-book-translation，这些行有意不进常规批次。若认领集合只收集
+    batches[*].idx，会产生两个假告警：
+    - 译前：Source == Dest 且无批次认领，算成 gap，--fail-on-gaps 误失败
+    - 译后：Source != Dest 且无批次认领，算成机械匹配孤儿，
+      --fail-on-orphans 要求逐行核验一条已正确译完的长文本
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        self.xml = root / "MiniMOD_english_chinese.xml"
+        # idx 0: 短行（进批次）；idx 1: 超长行（分流）；idx 2: 另一短行
+        long_src = "L" * 2500
+        self.xml.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n<Content>\n'
+            + f'  <String><EDID>A</EDID><REC>BOOK:FULL</REC>'
+              f'<Source>short</Source><Dest>short</Dest></String>\n'
+            + f'  <String><EDID>BIG</EDID><REC>BOOK:DESC</REC>'
+              f'<Source>{long_src}</Source><Dest>{long_src}</Dest></String>\n'
+            + f'  <String><EDID>C</EDID><REC>BOOK:FULL</REC>'
+              f'<Source>short2</Source><Dest>short2</Dest></String>\n'
+            + '</Content>\n', encoding="utf-8")
+        self.plan = root / "MiniMOD-noninfo-batches.json"
+        self.plan.write_text(json.dumps({
+            "batches": [{"id": "NI-BOOK-001", "idx": [0, 2]}],
+            "longtext_deferred": [
+                {"index": 1, "edid": "BIG", "rec": "BOOK:DESC",
+                 "source_chars": 2500},
+            ],
+        }), encoding="utf-8")
+        self.work_root = root / ".work"
+        self.stem = "MiniMOD"
+
+    def _run(self, *extra):
+        proc = subprocess.run(
+            [sys.executable, str(Path(__file__).with_name("scan_plan_gaps.py")),
+             "--xml", str(self.xml), "--plan", str(self.plan),
+             "--work-root", str(self.work_root), "--stem", self.stem, *extra],
+            capture_output=True, text=True, encoding="utf-8")
+        return proc.returncode
+
+    def test_deferred_not_a_gap_when_untranslated(self):
+        # 译前：长文本应计入 covered，不是 gap
+        planned, _, lt = G.load_planned([self.plan])
+        self.assertIn(1, planned, "longtext_deferred 的 index 必须被认领")
+        self.assertEqual(lt, 1)
+        rc = self._run("--fail-on-gaps")
+        self.assertEqual(rc, 0, "分流行未译时不得触发 --fail-on-gaps")
+
+    def test_deferred_not_an_orphan_when_translated(self):
+        # 译后：把长文本的 Dest 改成中文，不得算成孤儿
+        text = self.xml.read_text(encoding="utf-8")
+        node = ET.fromstring(text)
+        strings = list(node.iter("String"))
+        d = strings[1].find("Dest")
+        d.text = "已译长文本。" * 20
+        ET.ElementTree(node).write(str(self.xml), encoding="utf-8")
+        rc = self._run("--fail-on-orphans")
+        self.assertEqual(rc, 0,
+                         "已译长文本不得被当成机械匹配孤儿触发核验卡点")
 
 
 if __name__ == "__main__":

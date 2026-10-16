@@ -126,9 +126,24 @@ def load_verified_orphans(path_value: str | None) -> set[int]:
     return out
 
 
-def load_planned(plan_paths: list[Path]) -> tuple[set[int], list[str]]:
+def load_planned(plan_paths: list[Path]) -> tuple[set[int], list[str], int]:
+    """收集被计划认领的 idx 集合。
+
+    两个来源，缺一不可：
+
+    1. `batches[*].idx` —— 常规批次。
+    2. `longtext_deferred[*].index` —— 规划器按长度阈值分流给
+       long-book-translation 的超长未译行。这些行**有意不进批次**
+       （它们走分片流程），若不认领会产生两个假告警：
+       - 译前：算成 gap（未译且无计划认领），`--fail-on-gaps` 误失败；
+       - 译后：`Source != Dest` 且不在批次内，算成机械匹配孤儿，
+         `--fail-on-orphans` 要求逐行核验明明已正确译完的长文本。
+
+    返回 (planned, labels, longtext_claimed)。
+    """
     planned: set[int] = set()
     labels: list[str] = []
+    longtext_claimed = 0
     for path in plan_paths:
         with path.open("r", encoding="utf-8") as f:
             plan = json.load(f)
@@ -138,8 +153,19 @@ def load_planned(plan_paths: list[Path]) -> tuple[set[int], list[str]]:
                 if i not in planned:
                     planned.add(i)
                     n += 1
-        labels.append(f"{path.name}({len(plan.get('batches', []))} batches)")
-    return planned, labels
+        deferred = plan.get("longtext_deferred") or []
+        for row in deferred:
+            i = row.get("index")
+            if i is None:
+                continue
+            if i not in planned:
+                planned.add(i)
+                longtext_claimed += 1
+        suffix = f"({len(plan.get('batches', []))} batches"
+        if deferred:
+            suffix += f" +{len(deferred)} longtext"
+        labels.append(f"{path.name}{suffix})")
+    return planned, labels, longtext_claimed
 
 
 def family_slug(rec: str) -> str:
@@ -307,11 +333,11 @@ def main() -> int:
         if gaps_plan_path.is_file():
             resolved = {str(p) for p in plan_paths}
             if str(gaps_plan_path) not in resolved:
-                gset, _ = load_planned([gaps_plan_path])
+                gset, _, _ = load_planned([gaps_plan_path])
                 claimed_by_gaps = len(gset)
                 plan_paths.append(gaps_plan_path)
 
-        planned, plan_labels = load_planned(plan_paths)
+        planned, plan_labels, longtext_claimed = load_planned(plan_paths)
         untranslated, matched, total_strings = load_all_rows(xml_path)
         cov = [r for r in untranslated if r["index"] in planned]
         gaps = [r for r in untranslated if r["index"] not in planned]
@@ -336,6 +362,7 @@ def main() -> int:
             "total_strings": total_strings,
             "untranslated": len(untranslated),
             "covered": len(cov),
+            "longtext_claimed": longtext_claimed,
             "gap_rows": len(gaps),
             "gap_unique_sources": len({r["source"] for r in gaps}),
             "matched_translated": len(matched),
@@ -386,6 +413,9 @@ def main() -> int:
                   + (f" (+{claimed_by_gaps} claimed by gaps plan)" if claimed_by_gaps else ""))
             print(f"untranslated: {out['untranslated']} | covered: {out['covered']} "
                   f"| GAPS: {out['gap_rows']} rows / {out['gap_unique_sources']} unique sources")
+            if longtext_claimed:
+                print(f"  (covered 中含 {longtext_claimed} 行 longtext_deferred："
+                      f"已认领，走 long-book-translation 分片流程，不在常规批次内)")
             for fam in out["families"]:
                 sample = next((r["source"] for r in gaps if r["rec"] == fam["rec"]), "")
                 print(f"  {fam['rec']:12s} {fam['rows']:4d} rows / {fam['unique']:4d} unique"
