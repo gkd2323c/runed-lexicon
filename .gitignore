@@ -74,3 +74,4 @@ semantic-gate.config.json.bak
 /.omx
 /.omx/state
 .devin/hooks.v1.json
+*.lock

@@ -78,6 +78,8 @@ for line in sorted(split):
     for tp0 in split[line]:
         for tp in topic_units(tp0):
             srcs = topic_unique_untranslated(tp) - seen_global
+            if not srcs:
+                continue
             if cur and len(cur_srcs) + len(srcs) > CAP:
                 batches.append({'line': line, 'topics': cur, 'srcs': sorted(cur_srcs)})
                 seen_global |= cur_srcs
