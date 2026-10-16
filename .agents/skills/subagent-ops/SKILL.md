@@ -257,6 +257,34 @@ set(output.keys) == set(input.keys)
 - **本地模型按内容分派（批量苦力，不做复杂对白）**：适合规模大、结构简单、语义风险低的内容，模板化文本、格式化条目、重复结构段落、纯名录/清单类；角色语气/语境判断/术语敏感内容不交给它（繁体混出、英文残留、漏行等返工率高）。
 - **本地模型小批次**：确需编排者跑本地模型时每段最多推 1~2 批，跑完立即回到「检查交卷 → 验收 → 续派/补位」循环，不在实例在途时连续推 3 批以上。长调用会锁住编排者，结果通知与验收全部滞后。
 
+### 多会话并发的工作面分配（`claim_batches.py`）
+
+跨会话并发推进同一 MOD 时，每条会话线开工前先认领自己的批次段，台账落 `.work/<stem>/context/<stem>-lines.json`：
+
+```text
+py -3 .agents/skills/subagent-ops/scripts/claim_batches.py \
+    --stem <STEM> --owner <会话标识> --range INFO-001 INFO-050
+
+# 非 INFO 批次要显式传计划文件
+py -3 claim_batches.py --stem <S> --owner <NAME> \
+    --plan .work/<S>/context/<S>-noninfo-batches.json --batches NI-CELL-001
+
+# 试算冲突（不认领）--check；查看台账 --list；释放 --release
+```
+
+认领做两道机械校验，任一不过即拒绝：
+
+1. **批次不重复**：目标批次未被其他 owner 认领。
+2. **源句不相交**：认领批次的源句集合与他人已认领批次的源句集合无交集。同源句跨线必然分裂译形，这是跨会话并发最主要的污染面，必须在派工前拦住。
+
+配套约定（不属于本脚本职责，靠文档自觉）：
+
+- **批次计划与契约编译单写者**：`*-batches.json` 计划文件与 `*.compiled.json` 契约在开工前由一方生成并冻结；另一线不重新生成、不重新编译。
+- **PROGRESS.md / SOP.md / terms.json / GLOSSARY.md 单写者**：由主会话（或约定的治理位）统一维护；其他线把状态留在 `reports/` 自己的报告里。
+- **canonical 写回已有 `pipeline.lock` 互斥**，撞锁即换批不排队。
+- **工作面切片原则**：按 quest 族 / EDID 段 / REC 记录族切，内容不相交才安全；批号相邻不构成隔离。
+- **切完先跑 `--check`**：确认两份切片之间无共享源句再正式认领。
+
 ## 7. 产出验收（三查）
 
 产出验收不能只看格式，也不能只看报告。
@@ -317,6 +345,12 @@ py -3 .agents/skills/subagent-ops/scripts/conflict_guard.py --stem <stem> --batc
 # 默认警告模式：信号全部输出为 WARN、exit 0（不阻断）；--strict 出现任一信号即 exit 1
 
 py -3 .agents/skills/subagent-ops/scripts/extract_session_maps.py --session <session.jsonl> --stem <stem> --batches <BID...> --out <dir>
+
+# 多会话并发：批次领地认领与同源冲突校验
+py -3 .agents/skills/subagent-ops/scripts/claim_batches.py --stem <stem> --owner <NAME> --range A B
+py -3 claim_batches.py --stem <stem> --owner <NAME> --batches B1 B2 --check   # 只校验
+py -3 claim_batches.py --stem <stem> --list                                    # 台账
+py -3 claim_batches.py --stem <stem> --owner <NAME> --release [--batches ...]  # 释放
 ```
 
 安全边界：
@@ -332,6 +366,7 @@ py -3 .agents/skills/subagent-ops/scripts/extract_session_maps.py --session <ses
 py -3 .agents/skills/subagent-ops/scripts/test_conflict_guard.py
 py -3 .agents/skills/subagent-ops/scripts/test_trace_session.py
 py -3 .agents/skills/subagent-ops/scripts/test_extract_session_maps.py
+py -3 .agents/skills/subagent-ops/scripts/test_claim_batches.py
 ```
 
 ### 审查位降级链（审查者消失时）
