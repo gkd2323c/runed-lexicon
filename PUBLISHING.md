@@ -33,6 +33,74 @@ git check-ignore -v tools/xEdit/<binary>.exe
 
 确认真正准备提交的集合只包含原创代码、公开文档、允许再分发的 fixtures 和保留完整许可证的第三方代码，再执行第一次 commit。
 
+## MOD 汉化发布流程
+
+每个完成首轮收口的 MOD 走向 Nexus / 社区发布时走同一条链。以下各项按顺序执行；任何一步不达标就不进入下一步。
+
+### 1. 收口状态核验（机器）
+
+发布前置条件，全部机器可查：
+
+- `scan_plan_gaps --fail-on-gaps` 缺口为 0
+- `scan_plan_gaps --fail-on-orphans` 孤儿核验余额为 0
+- `progress_snapshot --record` 最新快照显示的覆盖率与目标口径一致
+- canonical XML 通过 writer 的 post-write validation（写回链已完成）
+- `.work/<stem>/contracts/<stem>.compiled.json` 是当前 terms.json 的最新编译产物
+
+任何一项不满足，回到 `translation-batch-ops` 与 `skyrim-term-contract-workflow` 补齐，不进入发布。
+
+### 2. 独立审查完成（质量）
+
+- 全局终审（整篇 canonical 通读，发现跨批/跨层问题）至少一轮，所有 high/medium 级问题已回正，low 级酌情处理或记录。
+- 审查报告落盘 `.work/<stem>/reports/review-final-global.json`（或同语义命名），问题与处置可追溯。
+
+### 3. 产物归置
+
+- canonical：`mods/<plugin>/<plugin>_english_chinese_translated.xml`（xTranslator 可直接导入）
+- 四文档：`CONTEXT.md` / `DICTIONARY.md` / `PROGRESS.md` / `SOP.md` 留在 `mods/<plugin>/`
+- `terms.json` 留在 `mods/<plugin>/`（机器侧术语源）
+- 发布简介：`<plugin>/NEXUS-INTRO.md`（或同语义命名）
+- 封面图：归资料库（`OH-媒体库` 或同级集中区），不进 `mods/` 工作区
+- 审查报告、专名清点、孤儿核验清单、进度日志留在 `.work/<stem>/reports/` 与 `.work/<stem>/notes/`
+
+### 4. 发布简介必备要素
+
+简介面向 Nexus 玩家，按以下结构写（顺序可调，要素不可缺）：
+
+- 原 MOD 名 + 作者名 + 原址链接（占位符 `XXXX` 必须替换）
+- 一句话剧情钩子（不剧透 boss / 反转）
+- MOD 内容列表（任务规模、新增地点、敌族、机制、特殊文本）
+- 汉化覆盖范围（总字符串数 / 类别分布 / KEEP 原则说明）
+- 关键译名裁决（专名主线的取舍依据一句话）
+- 使用说明（ESP 装入方式 / xTranslator 回导方式 / 起点提示）
+- 已知问题与刻意设计（KEEP 项、语域分层、分支结构）
+- 版权与致谢（原作者署名、汉化项目名、反馈渠道）
+
+### 5. 封面图
+
+- 比例 16:9 横构图，符合 Nexus 头图惯例；PNG 格式。
+- 内容要求：能一眼识别 MOD 核心意象（主角/地点/核心怪物或奇观）；避免依赖文字标题传达题材（Nexus 列表缩略图下文字不可读）。
+- 禁忌：不出现字幕、不出现屏幕文字、不出现水印、不出现真实厂商 logo、不直接拼接游戏截图。
+- 审美倾向：符合 MOD 题材气氛（恐怖/航海/雪原等），不用通用奇幻模板凑数。
+
+### 6. ESP 回导
+
+- 用 xTranslator 将 canonical XML 导回 `.esp`（工具行为属外部流程，由发布者操作）。
+- 回导前先开游戏或 xEdit 验证插件可加载、任务可触发；汉化文本显示无乱码（控制台 `sqv <quest>` 可核）。
+- 发布物打包为「汉化 ESP」或「汉化 XML + 使用说明」，不打包原英文 ESP。
+
+### 7. 署名与版权
+
+- 简介与发布页必须保留原作者署名与原 MOD 链接。
+- 汉化项目署名（runed-lexicon 或实际使用者）单独一行，不覆盖原作者位置。
+- 若 MOD 作者另有授权要求（如需联系作者再发布），按作者条款执行。
+
+### 8. 版本管理
+
+- canonical SHA-256 记入 `PROGRESS.md`，每次发布后递增版本号（v1.0 / v1.1 …）。
+- 发布后的每次 canonical 修改都走同一条「consume → write → verify → snapshot」链，不绕过 writer 直改 XML。
+- 术语决策更新走 `terms.json` 修改 → 重编译契约 → 新一轮写回，不手工同步。
+
 ## 发布后建议
 
 - 给仓库启用 secret scanning / dependency alert（托管平台支持时）。
