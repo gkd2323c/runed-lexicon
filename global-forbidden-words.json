@@ -9906,6 +9906,62 @@
       "target": "艾沙",
       "reason": "GLENMORIL 底座 8 处主形作「艾沙」（NPC_:FULL/DIAL），底座 CONT:FULL 一处孤形「艾莎的遗物」是错形；UNSLAAD 兄弟层亦裁「艾沙」。Vicn 世界观跨 MOD 角色，2026-09-29 回填。",
       "category": "lore-name"
+    },
+    {
+      "english": "anachronism:皇上",
+      "forbidden": [
+        "皇上",
+        "朕"
+      ],
+      "target": "皇帝（指称） / 陛下（呼语）",
+      "reason": "中华内廷对君称呼与帝王自称。TES 帝制为罗马式位格：第三人称指称（the Emperor）与第二人称呼语（Your Majesty）分立，「皇上」一词把两种语用抹平，并把叙事视角从局外挪进朝堂；「朕」是中华天子自称，对应英文 I，无对应位格。对应语境用「皇帝」作指称、「陛下」作呼语。",
+      "category": "anachronism-court",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:圣旨",
+      "forbidden": [
+        "圣旨",
+        "圣裁",
+        "钦此"
+      ],
+      "target": "敕令 / 谕令 / 裁决 / 定夺",
+      "reason": "中华帝制的下行文书与御断用语：圣旨为诰命文书、圣裁为御断、钦此为诏书结束语。TES 帝国无此文书体系与诏令格式，对应语境用「敕令／谕令」「裁决／定夺」以及常规落款。",
+      "category": "anachronism-court",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:微臣",
+      "forbidden": [
+        "微臣",
+        "爱卿"
+      ],
+      "target": "属下 / 在下 / 直呼职衔",
+      "reason": "中华朝仪对答词：微臣为臣子对君的自称，爱卿为君主对臣的称呼。TES 无此朝仪规格，对应语境用「属下／在下」自称，君主一侧直呼姓名或职衔。",
+      "category": "anachronism-court",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:娘娘",
+      "forbidden": [
+        "娘娘"
+      ],
+      "target": "夫人 / 女士",
+      "reason": "中华内廷后妃称谓，预设后宫建制，TES 无后宫体系。边界：「太后」不入禁——Queen Mother / Empress Dowager 在欧洲史中文里即译「太后」，属跨文化通用位格；「陛下」「殿下」「大人」同样属通用敬称，不收。",
+      "category": "anachronism-court",
+      "unconditional": true
+    },
+    {
+      "english": "anachronism:龙颜",
+      "forbidden": [
+        "龙颜",
+        "龙袍",
+        "江山社稷"
+      ],
+      "target": "面色 / 帝袍 / 疆土 / 帝国版图",
+      "reason": "中华皇权隐喻：龙颜、龙袍借中华龙作为君权符号，而 TES 的 dragon 是独立物种与龙裔崇拜对象，「龙」字在 TES 语境只承载物种义，不作君权徽记；江山社稷借中华社稷祭祀指代国家。注意边界：「龙裔」「龙语」「龙吼」是官方译法，不在禁列。",
+      "category": "anachronism-court",
+      "unconditional": true
     }
   ],
   "keep": [],
