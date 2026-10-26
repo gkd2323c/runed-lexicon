@@ -231,6 +231,10 @@ def main() -> int:
     ap.add_argument("--xml", required=True, help="源 XML（_english_chinese.xml）")
     ap.add_argument("--contract", required=True)
     ap.add_argument("--translated-xml", default=None)
+    ap.add_argument("--plan", default="",
+                    help="批次计划（快照覆盖率口径）；非 INFO 批次须传 <stem>-noninfo-batches.json。"
+                         "不传时 round 阶段按 <stem>-info-batches.json 默认值找，纯非 INFO 的 MOD "
+                         "会在写回已完成之后卡在快照一步（FileNotFoundError），写回本身不回滚")
     ap.add_argument("--note", default="close_round")
     ap.add_argument("--archive-keep", type=int, default=5,
                     help="写回归档保留的最近代数（默认 5，0=不限）；archive 只增不减会随轮次无限膨胀")
@@ -294,9 +298,15 @@ def main() -> int:
              "--patch", patch], f"patch:{bid}")
 
     # 3) round verify,snapshot（不带 write：result 模式对已写回键会拒）
-    run([sys.executable, ROUND, "--stem", stem, "--batches", *args.batches,
-         "--xml", source, "--contract", contract,
-         "--phases", "verify,snapshot", "--note", args.note], "round")
+    # canonical 与 plan 都显式透传：stem 与 mods 目录名不一致、或计划只有非 INFO 一份时，
+    # 让下游自己推导会在写回已经生效之后才报错，把一次成功的修正报成整轮失败。
+    round_cmd = [sys.executable, ROUND, "--stem", stem, "--batches", *args.batches,
+                 "--xml", source, "--contract", contract,
+                 "--phases", "verify,snapshot", "--note", args.note,
+                 "--canonical", str(translated)]
+    if args.plan:
+        round_cmd += ["--plan", args.plan]
+    run(round_cmd, "round")
 
     # 4) readout regen（防审查读旧稿）
     if not args.no_readout:
