@@ -232,12 +232,17 @@ def batch_in_info_family(batch):
     `NI-DIAL-*` 混进来（DIAL 是独立族）。
 
     INFO:NAM1 计划（info-batches）不带 `recs`（它用 `dials` 描述对话线），
-    按 INFO 族计。
+    按 INFO 族计。但 `NI-*` 是非 INFO 批的固定命名空间（BOOK/QUST/TES4/MESG
+    记录族），它同样可能不带 `recs`：一律按 True 处理会把它们全部计入 INFO
+    战役口径，而纯非 INFO 的 MOD 在 canonical 侧的 INFO 恒为 0，pipeline 侧却是
+    全部已译行——每轮快照都报一条无法消解的「口径不一致」。NI-* 与 INFO 家族
+    在定义上不相交，前缀在这里是可靠判据。
     """
     recs = batch.get('recs')
-    if not recs:
-        return True
-    return any(str(r).startswith('INFO') for r in recs)
+    if recs:
+        return any(str(r).startswith('INFO') for r in recs)
+    bid = str(batch.get('id') or batch.get('batch') or '')
+    return not bid.startswith('NI-')
 
 
 def info_scoped_batches(batches):
@@ -294,14 +299,17 @@ def build_snapshot(args):
         snap['batches'] = batch_summary(merged, args.batches_dir, canonical)
         snap['plan'] = plan_totals(plans)
         if 'info_crosscheck' in snap:
-            # 左侧必须与右侧同量纲（都只算 INFO 族），否则三计划齐传时恒报不一致
+            # 左右两侧必须同量纲（都只算 INFO 家族）。右侧 campaign_from_canonical
+            # 取的是 canonical 的 INFO 家族，左侧也必须只算 INFO 族批。
+            # 三计划齐传时这是已知必需（info+noninfo+info-rec 合计恒不等）；
+            # 单计划同样需要——整份非 INFO 计划（纯书籍 / 任务 / 消息 MOD）若不过滤，
+            # 全部已译行都被记成 INFO 战役完成数，而该 MOD 的 canonical INFO 恒为 0，
+            # 于是每轮快照都报一条无法消解的「口径不一致」。
+            info_only = info_scoped_batches(merged['batches'])
+            from_pipe = batch_summary({'batches': info_only},
+                                      args.batches_dir, canonical)['filled_lines']
             if len(plans) > 1:
-                info_only = info_scoped_batches(merged['batches'])
-                from_pipe = batch_summary({'batches': info_only},
-                                          args.batches_dir, canonical)['filled_lines']
                 snap['info_crosscheck']['pipeline_scope'] = 'INFO 族'
-            else:
-                from_pipe = snap['batches']['filled_lines']
             from_canon = snap['info_crosscheck']['campaign_from_canonical']
             snap['info_crosscheck']['campaign_from_pipeline'] = from_pipe
             snap['info_crosscheck']['consistent'] = (from_pipe == from_canon)

@@ -266,6 +266,8 @@ py -3 .agents/skills/translation-batch-ops/scripts/consume_batch.py \
 前置条件：批次目录已有 `context.json` 与 `translation.json`（备料产物）；context 必须
 单批结构（见 5b）。退出码：0 PASS / 1 链中失败 / 2 用法错误。
 
+`--report <path>` 透传给内部 verify，显式指定验收报告落点；不传时由 verify 自行推导。
+
 **非 INFO 批次须显式 `--plan`**：计划自动探测只认 `GAP-` 前缀（→ gaps 计划）与默认 info 计划；`NI-*` 等非 INFO 批次必须传 `--plan .work/<plugin>/context/<plugin>-noninfo-batches.json`，否则 verify 报 `unknown batch`。拆半批次先 `shard_batch.py merge` 归并 `map.json` 再消费。
 
 ## 5b. context 单批重建（`rebuild_context.py`）
@@ -292,10 +294,18 @@ immutable 字段一律以新 context 重算。mods 目录名与 stem 不一致�
 py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
     --stem <plugin> --batches INFO-XXX INFO-YYY \
     --xml mods/<mod>/<plugin>_english_chinese.xml \
+    [--canonical mods/<mod>/<plugin>_english_chinese_translated.xml] \
     --contract .work/<plugin>/contracts/<plugin>.compiled.json \
     [--phases consume,charset,check,write,verify,snapshot] \
     [--note "<快照备注>"] [--archive-keep N] [--break-lock] [--jobs N]
 ```
+
+**`--canonical`：显式给写回产物路径，给了就不推导。** stem 与 `mods/` 目录名不一致的 MOD
+（如 `.work/MTD` 对应 `mods/More Thalmor Dossiers`）**必须显式传**：否则工具按 stem 猜目录名，
+猜不到就回落成 `mods/<stem>/`，在 `mods/` 下新建一个只装 canonical 的孤儿目录——
+工具报 PASS、产物却不在该在的地方。省略时才从 `--xml` 推导（源 XML 在 `mods/<plugin>/xml/`
+或 `mods/<plugin>/` 两种布局都认）。同理 `consume_batch.py --report <path>` 也是显式通道，
+不传则 verify 自行推导报告落点。
 
 步骤（顺序固定，任一步失败即停、后续不执行，锁必然释放）：
 
