@@ -805,7 +805,12 @@ def _run(args: argparse.Namespace) -> int:
         if output_path == xml_path and not args.in_place:
             raise WritebackError(
                 "Refusing to overwrite the baseline XML in place without --in-place")
-        canonical_re = re.compile(r"^[A-Za-z0-9_.\-]+_english_chinese_translated\.xml$")
+        # `<plugin>` 是 mods 目录名，目录名可以带空格（如 More Thalmor Dossiers）。
+        # 早期正则只收 `[A-Za-z0-9_.\-]`，带空格的 MOD 目录名永远无法写回：
+        # 工具报「must be named <plugin>_english_chinese_translated.xml」，而它给出的
+        # 正是这个名字。防的是版本/标签后缀，那由尾部的 `_english_chinese_translated.xml`
+        # 锚定，与中间是否含空格无关，所以空格应当允许。
+        canonical_re = re.compile(r"^[A-Za-z0-9_.\- ]+_english_chinese_translated\.xml$")
         if not canonical_re.fullmatch(output_path.name):
             raise WritebackError(
                 f"Writeback output must be named <plugin>_english_chinese_translated.xml "

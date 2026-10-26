@@ -72,6 +72,24 @@ def mod_dir_for(stem: str) -> str:
     return next((m for m in cands if (Path("mods") / m).is_dir()), stem)
 
 
+def canonical_for(stem: str, xml_arg: str) -> Path:
+    """写回产物路径：mods/<plugin>/<源文件名>_translated.xml。
+
+    从 --xml 推导，不从 stem 猜目录名。stem 是 `.work` 里的工作名，与 mods 目录名
+    可以完全不同（mods/More Thalmor Dossiers 的 stem 是 MTD）；按 stem 猜会命中
+    `next(..., stem)` 回落分支，于是在 mods/ 下新建一个只有写回产物的 stem 目录，
+    真正的 MOD 目录里始终没有 canonical——工具报 PASS，产物却不在该在的地方。
+    已知失效：stem 与 mods 目录名分离的 MOD 首次写回会在 mods/<stem>/ 生成孤儿产物。
+
+    源 XML 可能在 `mods/<plugin>/xml/`（本项目当前布局）或直接在 `mods/<plugin>/`。
+    """
+    src = Path(xml_arg)
+    base = src.parent.parent if src.parent.name.lower() == "xml" else src.parent
+    if not (base.parent.name == "mods" or base.parent == Path(".")):
+        base = Path("mods") / mod_dir_for(stem)
+    return base / f"{src.stem}_translated.xml"
+
+
 def run(cmd: list, phase: str) -> int:
     print(f"[{phase}] {' '.join(str(c) for c in cmd)}")
     r = subprocess.run([str(c) for c in cmd], env=os.environ.copy())
@@ -220,6 +238,9 @@ def main() -> int:
     ap.add_argument("--stem", required=True)
     ap.add_argument("--batches", nargs="+", required=True, help="批次号列表（执行顺序）")
     ap.add_argument("--xml", required=True, help="源 XML")
+    ap.add_argument("--canonical", default="",
+                    help="写回产物路径（canonical）。给了就用它，不再推导；"
+                         "stem 与 mods 目录名不一致的 MOD 请显式传")
     ap.add_argument("--contract", required=True, help="编译契约 JSON")
     ap.add_argument("--phases", default=",".join(ALL_PHASES))
     ap.add_argument("--note", default="", help="快照备注")
@@ -236,8 +257,7 @@ def main() -> int:
     args = ap.parse_args()
 
     stem = args.stem
-    mod = mod_dir_for(stem)
-    canonical = Path(f"mods/{mod}/{stem}_english_chinese_translated.xml")
+    canonical = Path(args.canonical) if args.canonical else canonical_for(stem, args.xml)
     work = Path(".work") / stem
     phases = [p.strip() for p in args.phases.split(",") if p.strip()]
     bad = [p for p in phases if p not in ALL_PHASES]
@@ -283,7 +303,9 @@ def main() -> int:
 
             if "consume" in phases:
                 consume_cmd = [sys.executable, CONSUME, "--stem", stem, "--batch", b,
-                               "--xml", args.xml, "--contract", args.contract]
+                               "--xml", args.xml, "--contract", args.contract,
+                               "--report",
+                               str(work / "reports" / f"{b}-verify-report.json")]
                 # 每批按自己的族选计划（NI-*/RN-*/GAP-* 各属不同计划文件），
                 # 否则 consume 会拿 info 计划去找非 INFO 批次，报 unknown batch。
                 bplan = plan_for_batch(work, stem, b, args.plan)
@@ -317,7 +339,10 @@ def main() -> int:
                         if rc != 0:
                             return b, "charset 修复 apply 失败", "\n".join(out)
                         rc = run_cap([sys.executable, CONSUME, "--stem", stem, "--batch", b,
-                                      "--xml", args.xml, "--contract", args.contract], "reconsume")
+                                      "--xml", args.xml, "--contract", args.contract,
+                                      "--report",
+                                      str(work / "reports" / f"{b}-verify-report.json")],
+                                     "reconsume")
                         if rc != 0:
                             return b, "charset 修复后重 consume 仍 FAIL", "\n".join(out)
             return b, None, "\n".join(out)
@@ -384,16 +409,27 @@ def main() -> int:
         # ---- 串行写回 ----
         written = []
         if "write" in phases:
-            for b, rj in zip(args.batches, results):
-                lock.phase(f"write {b}")
+            if first_write:
+                # 首次写回必须**一次性**传入全部批。逐批跑 writer 时第二批仍以源 XML 为
+                # baseline，而 canonical 已存在（只含第一批）——writer 的 full-rebuild 保护
+                # 会正确地拒绝它，表现为「第一批写了、第二批报 Writeback blocked」。
+                lock.phase("write all")
                 cmd = [sys.executable, WRITER, *writer_common]
-                if not first_write:
-                    cmd += ["--in-place", "--archive-to", str(work / "archive"),
-                            "--archive-keep", str(args.archive_keep)]
-                cmd += ["--result", str(rj)]
+                for rj in results:
+                    cmd += ["--result", str(rj)]
                 if run(cmd, "write") != 0:
-                    raise Stop(f"{b} 写回失败；已停，后续批未写")
-                written.append(b)
+                    raise Stop("首次写回失败（全批合并 full rebuild），未写部分批")
+                written = list(args.batches)
+            else:
+                for b, rj in zip(args.batches, results):
+                    lock.phase(f"write {b}")
+                    cmd = [sys.executable, WRITER, *writer_common,
+                           "--in-place", "--archive-to", str(work / "archive"),
+                           "--archive-keep", str(args.archive_keep),
+                           "--result", str(rj)]
+                    if run(cmd, "write") != 0:
+                        raise Stop(f"{b} 写回失败；已停，后续批未写")
+                    written.append(b)
 
         # ---- 段核对 ----
         if "verify" in phases:

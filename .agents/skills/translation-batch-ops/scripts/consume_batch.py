@@ -86,6 +86,9 @@ def main() -> int:
     ap.add_argument("--work-root", default=".work")
     ap.add_argument("--waivers", default=None,
                     help="语义门豁免文件路径（透传 verify；缺省自动探测）")
+    ap.add_argument("--report", default=None,
+                    help="验收报告落点（透传 verify）。缺省时 verify 自行推导；"
+                         "stem 与 mods 目录名不一致的 MOD 请显式传，别让它猜")
     args = ap.parse_args()
 
     root = Path(args.work_root)
@@ -161,7 +164,8 @@ def main() -> int:
         [sys.executable, str(VERIFY), "--plan", str(plan), "--batch", args.batch,
          "--map", str(fp), "--xml", args.xml, "--result", str(tp),
          "--context", str(ctx_p), "--contract", args.contract]
-        + (["--waivers", args.waivers] if args.waivers else []),
+        + (["--waivers", args.waivers] if args.waivers else [])
+        + (["--report", args.report] if args.report else []),
         capture_output=True, text=True, encoding="utf-8")
     out = (r.stdout or r.stderr).strip().splitlines()
     for line in out[-3:]:
