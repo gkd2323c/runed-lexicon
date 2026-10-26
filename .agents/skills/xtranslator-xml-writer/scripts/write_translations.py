@@ -816,10 +816,21 @@ def _run(args: argparse.Namespace) -> int:
                 f"Writeback output must be named <plugin>_english_chinese_translated.xml "
                 f"(no version/label suffixes; version history lives in PROGRESS.md): {output_path.name}"
             )
+        # 同目录下同一插件只许一份 canonical，但一个 MOD 可以带多个子插件：
+        # 多个 `<子插件>_english_chinese_translated.xml` 共存于同一个 mods/<MOD>/ 是
+        # 合规形态（本项目的 xTranslator `<Params><Addon>` 就是逐子插件导出的）。
+        # 按前缀模糊比会把主插件的 canonical 当成子插件的版本，两边互相误拦；
+        # 改为按 `_english_chinese_translated` 之前的部分**精确相等**判同一个插件。
+        def _canonical_base(name: str) -> str | None:
+            marker = "_english_chinese_translated"
+            pos = name.find(marker)
+            return name[:pos] if pos >= 0 else None
+
+        base = _canonical_base(output_path.name)
         siblings = [
             item
             for item in output_path.parent.glob("*_translated*.xml")
-            if item != output_path
+            if item != output_path and _canonical_base(item.name) == base
         ]
         if siblings:
             names = ", ".join(sorted(relative(item) for item in siblings))
