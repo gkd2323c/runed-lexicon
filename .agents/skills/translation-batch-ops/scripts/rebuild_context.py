@@ -50,6 +50,9 @@ def main() -> int:
     ap.add_argument("--batch", required=True)
     ap.add_argument("--mod", default=None, help="mods/ 下目录名；缺省取 --stem 同名")
     ap.add_argument("--xml", default=None, help="源 XML；缺省 mods/<mod>/<mod>_english_chinese.xml")
+    ap.add_argument("--dialogue-context", default=None,
+                    help="对话结构 JSON；缺省 <work>/<stem>/context/<stem>-dialogue-context.json。"
+                         "纯书籍/非 INFO MOD 无对话结构，该文件本就不存在，缺省即跳过（builder 侧可选）")
     ap.add_argument("--mod-terms", default=None, help="terms.json；缺省 mods/<mod>/terms.json")
     ap.add_argument("--work-root", default=".work")
     args = ap.parse_args()
@@ -62,23 +65,28 @@ def main() -> int:
     terms = args.mod_terms or DEFAULT_TERMS.format(mod=mod_dir)
     work = Path(args.work_root)
     stem = args.stem
-    dc = DEFAULT_DC.format(work=work, stem=stem)
+    dc = args.dialogue_context or DEFAULT_DC.format(work=work, stem=stem)
 
     bdir = work / stem / "batches" / args.batch
     idx_p = bdir / "index.txt"
     if not idx_p.is_file():
         return fail(f"index.txt 缺失: {idx_p}")
-    for p in (xml, terms, dc):
+    # xml / terms 必需；dc（对话结构）仅 INFO/DIAL MOD 才有，纯书籍非 INFO MOD 缺省即跳过。
+    for p in (xml, terms):
         if not Path(p).is_file():
             return fail(f"输入缺失: {p}")
+    dc_present = Path(dc).is_file()
+    if args.dialogue_context and not dc_present:
+        return fail(f"显式指定的 dialogue-context 不存在: {dc}")
 
-    # 1) 重建 context（单批全量）
+    # 1) 重建 context（单批全量）；无对话结构时不传 --dialogue-context（builder 侧可选）
     ctx_out = bdir / "context.json"
-    r = subprocess.run(
-        [sys.executable, str(BUILDER), "--xml", xml, "--dialogue-context", str(dc),
-         "--mod-terms", str(terms), "--index-file", str(idx_p), "--batch-size", "0",
-         "--output", str(ctx_out), "--force"],
-        capture_output=True, text=True, encoding="utf-8")
+    cmd = [sys.executable, str(BUILDER), "--xml", xml,
+           "--mod-terms", str(terms), "--index-file", str(idx_p), "--batch-size", "0",
+           "--output", str(ctx_out), "--force"]
+    if dc_present:
+        cmd += ["--dialogue-context", str(dc)]
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
         print((r.stderr or r.stdout)[-400:], file=sys.stderr)
         return 1
