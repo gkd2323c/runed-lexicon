@@ -158,8 +158,14 @@ def load_sources(xml_path):
 
 def default_report_path(a):
     """默认验收报告落点：.work/<plugin>/reports/<BID>-verify-report.json。
-    插件名从 --xml / --map / --plan 路径推导；推导失败时回退 .work/<BID>-verify-report.json。"""
-    for s in (a.xml, a.map, a.plan):
+
+    插件名优先从 --plan / --map 推导，--xml 只作兜底：批次计划与 map 的路径里
+    `.work/<stem>/` 段就是权威 stem；而 mods 目录名是显示名，与 stem 可以不同
+    （如 mods/More Thalmor Dossiers 的 stem 是 MTD）。按 xml 优先推导会在这种
+    分离场景下指向不存在的 `.work/<目录名>/reports/`，json.dump 抛 FileNotFoundError，
+    验收本身已 PASS 却以 rc=1 收场，上游 consume/round_pipeline 因此误判整批失败。
+    推导失败时回退 .work/<BID>-verify-report.json。"""
+    for s in (a.plan, a.map, a.xml):
         if not s:
             continue
         t = str(s).replace('\\', '/')
@@ -168,7 +174,9 @@ def default_report_path(a):
             p = m.group(1)
             if p.lower().endswith(('.esp', '.esm', '.esl')):
                 p = p.rsplit('.', 1)[0]
-            return os.path.join('.work', p, 'reports', '%s-verify-report.json' % a.batch)
+            out = os.path.join('.work', p, 'reports', '%s-verify-report.json' % a.batch)
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            return out
     return os.path.join('.work', '%s-verify-report.json' % a.batch)
 
 
