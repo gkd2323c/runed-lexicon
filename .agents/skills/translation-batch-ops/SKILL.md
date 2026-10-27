@@ -301,8 +301,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py \
 ```
 
 **`--canonical`：显式给写回产物路径，给了就不推导。** stem 与 `mods/` 目录名不一致的 MOD
-（如 `.work/MTD` 对应 `mods/More Thalmor Dossiers`）**必须显式传**：否则工具按 stem 猜目录名，
-猜不到就回落成 `mods/<stem>/`，在 `mods/` 下新建一个只装 canonical 的孤儿目录——
+**必须显式传**：否则工具按 stem 猜目录名，猜不到就回落成 `mods/<stem>/`，在 `mods/` 下新建一个只装 canonical 的孤儿目录——
 工具报 PASS、产物却不在该在的地方。省略时才从 `--xml` 推导（源 XML 在 `mods/<plugin>/xml/`
 或 `mods/<plugin>/` 两种布局都认）。同理 `consume_batch.py --report <path>` 也是显式通道，
 不传则 verify 自行推导报告落点。
@@ -471,7 +470,7 @@ py -3 .../make_patch_from_maps.py --canonical <translated.xml> --out <patch.json
 
 **路径不猜（MOD 目录解析的唯一事实来源）**：`scripts/mod_paths.py` 提供 `resolve_mod_dir` / `resolve_source_xml` / `resolve_canonical` 三个函数，是全部流水线工具定位 `mods/<MOD目录>/` 的唯一入口。
 
-失效机制：stem 是 `.work/` 下的工作名，与 `mods/` 下的目录名可以完全不同（`mods/Maslea.esm` 的 stem 是 `Maslea`，`mods/More Thalmor Dossiers` 的 stem 是 `MTD`）。历史上多个工具按 `mods/<stem>.esp/` 硬拼路径，失效形态不是报错而是**静默给出一个不存在的路径**：写回类在 `apply_fixes` 阶段报 `--translated-xml 不存在`，只读类报 `canonical 不存在` 后退出码 2 把本该执行的剪枝静默跳过，最坏的方向是回落分支 `next(..., stem)` 在 `mods/` 下新建一个只装产物的孤儿目录——工具报 PASS 而真正的 MOD 目录里始终没有 canonical。
+失效机制：stem 是 `.work/` 下的工作名，与 `mods/` 下的目录名可以完全不同（前者是短标识，后者是插件全名，两者既可能差后缀也可能完全不相似）。多个工具按 `mods/<stem>.esp/` 硬拼路径，失效形态不是报错而是**静默给出一个不存在的路径**：写回类在 `apply_fixes` 阶段报 `--translated-xml 不存在`，只读类报 `canonical 不存在` 后退出码 2 把本该执行的剪枝静默跳过，最坏的方向是回落分支 `next(..., stem)` 在 `mods/` 下新建一个只装产物的孤儿目录——工具报 PASS 而真正的 MOD 目录里始终没有 canonical。
 
 规则：调用方显式给出（`--mod` / `--xml` / `--translated-xml` / `--canonical`）一律以它为准；没有显式路径时从源 XML 路径反推；两者都没有时按候选目录（`<stem>`、`<stem>.esp`、`<stem>.esm`、`<stem>.esl`）探测，**探测不到即报错退出，不回落、不静默、不新建目录**。新增工具不得自行拼接 MOD 路径。
 
@@ -527,10 +526,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/rebuild_context.py --stem <pl
 `check`（writer `--check-only`：scope/重复/KEEP 冲突）、`same-source-precheck`（同源多形）、
 `verify`（段核对 Source==Dest 必须为 0）。**自建预检不产生额外拦截力，只产生额外故障面。**
 
-实测失效形态（2026-10-05 summersetisles）：在 `_tmp/scripts/` 手搓一个六项预检逐轮重写，
-每次既不沉淀也不复用；手写正则解析 canonical 得出「18 批 100% 被占用」的假信号，
-与同一轮刚跑过的 `batch_status.py`（全为 0/N 未译）直接打架，白烧一个来回才收口。
-真缺陷（`province` 写成「行省」）由 `consume` 的 TERM002 当场拦下，预检并未提前一刻。
+失效形态：在 `_tmp/scripts/` 手搓一个多项预检逐轮重写，每次既不沉淀也不复用；手写正则解析 canonical 得出的占用比例是假信号，与同一轮刚跑过的 `batch_status.py`（全为 0/N 未译）直接打架，白烧一个来回才收口。而真缺陷（专名错形）由 `consume` 的 TERM002 当场拦下，预检并未提前一刻。
 
 需要“收口前先看一眼某批状态”时，用 `batch_status.py --only untranslated` 与
 `check_batch_coverage.py --xml`，不要新写解析器。

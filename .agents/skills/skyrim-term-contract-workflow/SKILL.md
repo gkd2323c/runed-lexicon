@@ -14,7 +14,7 @@ metadata:
 
 **判断「某词是否已入表」必须直接读 `terms.json`，不要拿 `adjudicate.py … contract <词>` 的「契约无此词条」或门禁报告当依据。** 契约是**编译产物**，只在编译那一刻是 `terms.json` 的快照；`terms.json` 后来加了词而契约未重编译时，契约侧一律报「无此词条」——**那不是缺口，是查询对象选错了**。
 
-实测连栽两次：`Arch Mage`（INFO-048 审查时就已补登）与 `Tusamircil` 都在 `terms.json` 里，我据契约查询的「无此词条」结论重复补登，前者还因 `Arch-Mage` 与 `Arch Mage` 规范化成同一 `term_id` 而让 `compile_contract.py` 报 `term_id 冲突`。两次都是自己的误判。
+误判的典型形态：某个已入 `terms.json` 的专名（大小写与连写变体各一）被重复补登，导致同一专名开两条、规范化后 `term_id` 冲突。判断「是否已入表」必须以 `terms.json` 为准，不能以契约侧结论为据。
 
 另有一层：**分写变体会被规范化成同一 `term_id`** —— `Arch-Mage`／`Arch Mage`／`Arch-mage` 只能有一条，补登第二份必然冲突。源文有几种拼法就写进那唯一一条的 `note`，不要另开条目。
 
