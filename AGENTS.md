@@ -259,6 +259,7 @@ xTranslator 导出的 XML 中，`Source != Dest` 的条目为导出流程的词�
 | `skyrim-xml-verification`       | 节点一致性校验、哈希比对、数据溯源                                                | 批量修改 XML 前后；出具验证报告前                                     |
 | `xtranslator-xml-writer`        | 按确定性规则写回翻译结果或 patch                                                  | 执行 XML 写回前                                                       |
 | `review-sheet-export`           | 导出可人工审校的 xlsx                                                             | 生成 MOD 审校表时                                                     |
+| `skyrim-mod-release`            | 汉化发布物料：玩家向文案、封面底图、中文标题与标准国旗合成                        | 汉化收口后准备发布物时                                                |
 | `fantasy-context-auditor`       | 扫描译文中的现实语境违和候选                                                      | 执行奇幻语境语义预审时                                                |
 | `skyrim-tool-dev-rules`         | 工具复用检索、性能门禁（30s 缺陷阈值 / 5s 回归线）、临时脚本边界（§2.1）          | 编写数据处理脚本前；改动现有自动化工具前                              |
 | `longtext-hallucination-review` | 长文本抗幻觉审查（机械探针 + 逐段精读）、幻觉形态识别与验收纪律                   | 审查长叙事译文（BOOK 书页、QUST 长日志）；收口前长文本复核            |
