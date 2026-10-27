@@ -360,9 +360,7 @@ def main() -> int:
     if args.xml:
         xml_p = args.xml
     elif args.stem:
-        xml_p = root / "mods" / f"{args.stem}.esp" / f"{args.stem}_english_chinese_translated.xml"
-        if not xml_p.exists():
-            xml_p = root / "mods" / args.stem / f"{args.stem}_english_chinese_translated.xml"
+        xml_p = resolve_canonical(None, args.stem, resolve_mod_dir(None, args.stem, root), None)
     else:
         print("error: 需要 --stem 或 --xml", file=sys.stderr)
         return 2
@@ -375,7 +373,7 @@ def main() -> int:
         w = root / ".work" / args.stem
         inv = [w / "reports" / f"{args.stem}-noun-inventory.json",
                w / "contracts" / f"{args.stem}.compiled.json",
-               root / "mods" / f"{args.stem}.esp" / "terms.json"]
+               resolve_mod_dir(None, args.stem, root) / "terms.json"]
         inv = [p for p in inv if p.is_file()]
 
     result = scan(xml_p, inv, args.min_occurrences, args.min_group,
