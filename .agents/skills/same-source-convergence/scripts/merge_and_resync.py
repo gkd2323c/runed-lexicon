@@ -41,8 +41,8 @@ def main():
     ap.add_argument('--no-resync', action='store_true')
     a = ap.parse_args()
 
-    base = Path('mods') / (a.stem + '.esp')
-    canon = base / (a.stem + '_english_chinese_translated.xml')
+    base = resolve_mod_dir(getattr(a, 'mod', None), a.stem, Path('.'))
+    canon = resolve_canonical(getattr(a, 'canonical', None), a.stem, base)
     out = Path(a.out) if a.out else Path('.work') / a.stem / 'batches' / 'close-round-fixes.json'
 
     merged = defaultdict(dict)

@@ -45,7 +45,7 @@ def main() -> int:
     ap.add_argument('--idx-file', default=None, help='每行一个 xml_index 的文件')
     ap.add_argument('--batches-dir', default=None)
     ap.add_argument('--xml', default=None,
-                    help='canonical XML（默认由 --stem 推导 mods/<stem>.esp/<stem>_..._translated.xml）')
+                    help='canonical XML 路径（缺省按 MOD 目录推导）')
     args = ap.parse_args()
 
     want = set()
@@ -60,7 +60,7 @@ def main() -> int:
     if args.xml:
         xml = Path(args.xml)
     else:
-        xml = Path('mods') / f'{stem}.esp' / f'{stem}_english_chinese_translated.xml'
+        xml = resolve_canonical(None, stem, resolve_mod_dir(None, stem, Path('.')))
     if not xml.exists():
         raise SystemExit(f'error: canonical XML 不存在: {xml}（可用 --xml 显式指定）')
     srcs, dests = [], []

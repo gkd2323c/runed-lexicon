@@ -20,7 +20,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
-from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402, resolve_source_xml
 
 BATCHOPS = Path('.agents/skills/translation-batch-ops/scripts')
 
@@ -91,9 +91,9 @@ def main():
                     help='打印每一组的全部形态明细（默认每组只显示各形的行号列表）')
     a = ap.parse_args()
 
-    base = Path('mods') / (a.stem + '.esp')
-    srcxml = base / (a.stem + '_english_chinese.xml')
-    canon = base / (a.stem + '_english_chinese_translated.xml')
+    base = resolve_mod_dir(getattr(a, 'mod', None), a.stem, Path('.'))
+    srcxml = resolve_source_xml(getattr(a, 'xml', None), a.stem, base)
+    canon = resolve_canonical(getattr(a, 'canonical', None), a.stem, base, srcxml)
     for p in (srcxml, canon):
         if not p.is_file():
             print('!! 缺文件：%s' % p, file=sys.stderr)

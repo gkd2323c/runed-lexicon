@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
-from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402, resolve_source_xml
 
 
 def split_en(s: str) -> list[str]:
@@ -47,12 +47,9 @@ def main() -> int:
         stem = args.stem
         bid = args.batch
         idxp = args.index or (root / ".work" / stem / "batches" / bid / "index.txt")
-        src_xml = args.source_xml or (root / "mods" / f"{stem}.esp" / f"{stem}_english_chinese.xml")
-        if not src_xml.exists():
-            src_xml = root / "mods" / stem / f"{stem}_english_chinese.xml"
-        canon_xml = args.canonical or (root / "mods" / f"{stem}.esp" / f"{stem}_english_chinese_translated.xml")
-        if not canon_xml.exists():
-            canon_xml = root / "mods" / stem / f"{stem}_english_chinese_translated.xml"
+        mod_dir = resolve_mod_dir(None, stem, root)
+        src_xml = args.source_xml or resolve_source_xml(None, stem, mod_dir)
+        canon_xml = args.canonical or resolve_canonical(None, stem, mod_dir, src_xml)
         outp = args.out or (root / ".work" / stem / "batches" / bid / "canon-hints.md")
     elif args.index and args.source_xml and args.canonical and args.out:
         bid = args.batch or args.index.parent.name

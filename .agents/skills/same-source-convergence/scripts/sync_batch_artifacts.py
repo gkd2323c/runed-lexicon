@@ -46,9 +46,9 @@ def canon_dests(stem):
     必须拿 Source 一起比：xTranslator 源 XML 的 <Dest> 里放的是英文原文，
     只看 Dest 非空会把「还没写回的行」当成有译文，产生一片假阳性。
     """
-    base = Path('mods') / (stem + '.esp')
+    base = resolve_mod_dir(None, stem, Path('.'))
     out = []
-    for s in ET.parse(base / (stem + '_english_chinese_translated.xml')).getroot().iter('String'):
+    for s in ET.parse(resolve_canonical(None, stem, base)).getroot().iter('String'):
         src = (s.findtext('Source') or '').strip()
         dst = (s.findtext('Dest') or '').strip()
         out.append(dst if (dst and dst != src) else None)

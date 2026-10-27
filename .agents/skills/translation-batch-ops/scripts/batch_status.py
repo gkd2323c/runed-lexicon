@@ -69,11 +69,8 @@ def main() -> int:
     if a.xml:
         xml = pathlib.Path(a.xml)
     else:
-        # mod 目录名可能是 <stem> 或 <stem>.esp/.esm/.esl，自动探测
-        cands = []
-        for suffix in ("", ".esp", ".esm", ".esl"):
-            cands.append(pathlib.Path(f"mods/{a.stem}{suffix}/{a.stem}_english_chinese_translated.xml"))
-        xml = next((c for c in cands if c.is_file()), cands[0])
+        base = resolve_mod_dir(None, a.stem, pathlib.Path.cwd())
+        xml = base / f"{a.stem}_english_chinese_translated.xml"
     if not xml.is_file():
         print(f"找不到 canonical: {xml}", file=sys.stderr)
         return 2

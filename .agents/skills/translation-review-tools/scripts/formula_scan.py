@@ -112,9 +112,7 @@ def main() -> int:
 
     if args.stem:
         stem = args.stem
-        xml_p = args.xml or (root / "mods" / f"{stem}.esp" / f"{stem}_english_chinese_translated.xml")
-        if not xml_p.exists():
-            xml_p = root / "mods" / stem / f"{stem}_english_chinese_translated.xml"
+        xml_p = args.xml or resolve_canonical(None, stem, resolve_mod_dir(None, stem, root))
         out_p = args.out or (root / ".work" / stem / "maps" / f"{stem}-fix-map-formula.json")
     elif args.xml:
         xml_p = args.xml
@@ -122,9 +120,7 @@ def main() -> int:
     else:
         # Default fallback
         stem = "TheKalpicAnomaly_GLENMORIL"
-        xml_p = root / "mods" / f"{stem}.esp" / f"{stem}_english_chinese_translated.xml"
-        if not xml_p.exists():
-            xml_p = root / "mods" / stem / f"{stem}_english_chinese_translated.xml"
+        xml_p = resolve_canonical(None, stem, resolve_mod_dir(None, stem, root))
         out_p = root / ".work" / stem / "maps" / f"{stem}-fix-map-formula.json"
 
     if not xml_p.exists():

@@ -45,7 +45,8 @@ def main() -> int:
     if not replaced:
         notes.append({'topic': args.note_topic, 'body': body})
 
-    xml = Path('mods') / f'{args.stem}.esp' / f'{args.stem}_english_chinese_translated.xml'
+    xml = resolve_canonical(getattr(args, 'canonical', None), args.stem,
+                           resolve_mod_dir(getattr(args, 'mod', None), args.stem, Path('.')))
     sha = hashlib.sha256(xml.read_bytes()).hexdigest()[:8]
     data['canonical_at_adjudication'] = sha
     if args.verification:

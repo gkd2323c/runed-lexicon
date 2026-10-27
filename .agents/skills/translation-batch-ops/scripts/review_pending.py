@@ -40,11 +40,8 @@ from review_coverage import read_reviewed  # noqa: E402
 def find_canonical(stem: str, xml_arg: str | None) -> pathlib.Path:
     if xml_arg:
         return pathlib.Path(xml_arg)
-    for suffix in ("", ".esp", ".esm", ".esl"):
-        c = pathlib.Path(f"mods/{stem}{suffix}/{stem}_english_chinese_translated.xml")
-        if c.is_file():
-            return c
-    return pathlib.Path(f"mods/{stem}/{stem}_english_chinese_translated.xml")
+    base = resolve_mod_dir(None, stem, pathlib.Path.cwd())
+    return base / f"{stem}_english_chinese_translated.xml"
 
 
 def load_rows(xml_path: pathlib.Path) -> list[tuple[str, str]]:

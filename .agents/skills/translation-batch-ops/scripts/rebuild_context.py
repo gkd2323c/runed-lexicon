@@ -26,6 +26,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from mod_paths import resolve_mod_dir  # noqa: E402
 SKILLS = HERE.parent.parent
 BUILDER = SKILLS / "translation-context-builder" / "scripts" / "build_translation_context.py"
 TR = SKILLS / "translation-executor" / "scripts" / "translation_result.py"
@@ -57,12 +59,9 @@ def main() -> int:
     ap.add_argument("--work-root", default=".work")
     args = ap.parse_args()
 
-    mod = args.mod or args.stem
-    # mods 目录名常带 .esp 后缀而 stem 不带：缺省时两种目录名都试
-    candidates = [mod, f"{mod}.esp", mod.removesuffix(".esp")]
-    mod_dir = next((m for m in candidates if (Path("mods") / m).is_dir()), mod)
-    xml = args.xml or DEFAULT_XML.format(mod=mod_dir, stem=args.stem)
-    terms = args.mod_terms or DEFAULT_TERMS.format(mod=mod_dir)
+    mod_dir = resolve_mod_dir(args.mod, args.stem, Path.cwd())
+    xml = args.xml or DEFAULT_XML.format(mod=mod_dir.name, stem=args.stem)
+    terms = args.mod_terms or DEFAULT_TERMS.format(mod=mod_dir.name)
     work = Path(args.work_root)
     stem = args.stem
     dc = args.dialogue_context or DEFAULT_DC.format(work=work, stem=stem)

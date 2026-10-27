@@ -46,6 +46,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from mod_paths import resolve_canonical, resolve_mod_dir, resolve_source_xml  # noqa: E402
 SKILLS = HERE.parent.parent
 CONSUME = HERE / "consume_batch.py"
 SNAPSHOT = HERE / "progress_snapshot.py"
@@ -67,11 +69,6 @@ def sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def mod_dir_for(stem: str) -> str:
-    cands = [stem, f"{stem}.esp", stem.removesuffix(".esp")]
-    return next((m for m in cands if (Path("mods") / m).is_dir()), stem)
-
-
 def canonical_for(stem: str, xml_arg: str) -> Path:
     """写回产物路径：mods/<plugin>/<源文件名>_translated.xml。
 
@@ -86,7 +83,7 @@ def canonical_for(stem: str, xml_arg: str) -> Path:
     src = Path(xml_arg)
     base = src.parent.parent if src.parent.name.lower() == "xml" else src.parent
     if not (base.parent.name == "mods" or base.parent == Path(".")):
-        base = Path("mods") / mod_dir_for(stem)
+        base = resolve_mod_dir(None, stem, Path.cwd())
     return base / f"{src.stem}_translated.xml"
 
 

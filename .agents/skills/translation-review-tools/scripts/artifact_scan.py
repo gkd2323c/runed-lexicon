@@ -97,9 +97,7 @@ def main() -> int:
 
     if args.stem:
         stem = args.stem
-        xml_p = args.xml or (root / "mods" / f"{stem}.esp" / f"{stem}_english_chinese_translated.xml")
-        if not xml_p.exists():
-            xml_p = root / "mods" / stem / f"{stem}_english_chinese_translated.xml"
+        xml_p = args.xml or resolve_canonical(None, stem, resolve_mod_dir(None, stem, root))
         keep_p = args.keep or (root / ".work" / stem / "contracts" / f"{stem}.keep.json")
     elif args.xml:
         xml_p = args.xml
@@ -107,9 +105,7 @@ def main() -> int:
     else:
         # Default auto-discovery from current dir if TheKalpicAnomaly_GLENMORIL exists
         stem = "TheKalpicAnomaly_GLENMORIL"
-        xml_p = root / "mods" / f"{stem}.esp" / f"{stem}_english_chinese_translated.xml"
-        if not xml_p.exists():
-            xml_p = root / "mods" / stem / f"{stem}_english_chinese_translated.xml"
+        xml_p = resolve_canonical(None, stem, resolve_mod_dir(None, stem, root))
         keep_p = root / ".work" / stem / "contracts" / f"{stem}.keep.json"
 
     if not xml_p.exists():

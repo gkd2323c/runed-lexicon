@@ -64,7 +64,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
-from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402, resolve_source_xml
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -245,9 +245,9 @@ def main(argv=None) -> int:
     ap.add_argument("--out", help="普查结果 JSON 落盘路径")
     args = ap.parse_args(argv)
 
-    mod = args.stem + ".esp"
-    xml = Path(args.xml) if args.xml else Path("mods") / mod / "{}_english_chinese_translated.xml".format(args.stem)
-    src = Path(args.source_xml) if args.source_xml else Path("mods") / mod / "{}_english_chinese.xml".format(args.stem)
+    mod_dir = resolve_mod_dir(getattr(args, 'mod', None), args.stem, Path('.'))
+    xml = Path(args.xml) if args.xml else resolve_canonical(None, args.stem, mod_dir)
+    src = Path(args.source_xml) if args.source_xml else resolve_source_xml(None, args.stem, mod_dir)
     contract = Path(args.contract) if args.contract else Path(".work") / args.stem / "contracts" / "{}.compiled.json".format(args.stem)
     batches_dir = Path(args.batches_dir) if args.batches_dir else None
 
