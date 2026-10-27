@@ -132,6 +132,19 @@ Agent 在任何环节输出的文件，语义、角色、路径三者必须确�
   - 进入批次循环前读 `translation-batch-ops` §0。验收前读 `translation-quality-gate` 与 `translation-fidelity-scan`；审校、修正或同源收敛时读 `translation-review-tools` 与 `same-source-convergence`。长文本审查仍按 `longtext-hallucination-review` 执行。
   - **单条长文本不进常规批次**：规划器已按阈值机械分流（>=2000 字符的未译行），分流行见批次/计划的 `longtext_deferred` 段。这批行的翻译按 `long-book-translation` 的切片流程单独认领，不在常规批次内派单。
   - 写回前读 `skyrim-term-contract-workflow`、`skyrim-xml-verification` 与 `xtranslator-xml-writer`。
+  - **强制加载的 SKILL 必须读到末尾，读到出现「验证方式 / Safety boundaries」等收尾段才算读完**。读开头用法示例即上手属未读：skill 的字段契约、模板红线、字符坑前置都在后半部分，而契约写错不会在执行时报错，会在 consume 或 gate 阶段才炸（`invalid confidence 0.95`、`CHAR001 直角引号`）。失效形态：派单时凭印象写 map 字段格式与禁词清单，子代理照错模板产出，整批返工；已实测过同类失效——任务卡把 `confidence` 写成小数、把验收侧禁词枚举进执行侧、漏附模板三句与库内既成面，四个缺陷全部来自未读完对应 SKILL。
+
+### 2.2.1 派单前的固定预检（编译任务卡之前跑完）
+
+派任何子代理单之前，按序确认以下五项，缺一项不发卡：
+
+1. **`subagent-ops` 与 `translation-executor` 已完整读取**（本会话内至少各一次完整读取）。
+2. **字段契约从执行器源码或 SKILL 核出，不凭记忆写**：`status` ∈ TRANSLATED / KEEP / REVIEW，`confidence` ∈ HIGH / MEDIUM / LOW 大写字符串，二者均不接受小数。
+3. **库内既成面已查证并附进任务卡**：用确定性工具按「源文出现 + 库内已译」反查本批专名，连同既定译形写成表格，标注「照用勿自造」。查不到译形的自拟并标 MEDIUM，不升级 REVIEW。
+4. **字符坑前置**：弯引号 “” （禁 「」）、简体、全角括号、占位符原样保留，作为「出现即事故」级短清单写进卡片。
+5. **模板三句原样附上**：范围句、脚本上报句、生成纪律句（原文见 `subagent-ops` §4）。
+
+  另：**卡片不枚举禁词**。枚举禁令诱导执行者专注避线而忘掉正确形态；术语只走「落盘词表 + 任务上下文检索字段」两条通路，任务卡内零术语清单。
 
 ### 2.3 全局禁用词有一条带作用域的 MOD 级白名单通道（R21）
 
