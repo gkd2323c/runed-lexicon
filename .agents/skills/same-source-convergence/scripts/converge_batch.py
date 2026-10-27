@@ -45,6 +45,9 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
+from mod_paths import resolve_canonical, resolve_mod_dir, resolve_source_xml  # noqa: E402
+
 BATCHOPS = Path('.agents/skills/translation-batch-ops/scripts')
 WORD = re.compile(r"[A-Za-z][A-Za-z'-]*")
 
@@ -164,6 +167,9 @@ def resolve_batches(spec, cli_batches):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--stem', required=True)
+    ap.add_argument('--mod', default=None, help='MOD 目录名或路径（默认按 stem 探测）')
+    ap.add_argument('--source-xml', dest='source_xml', default=None, help='源 XML 路径')
+    ap.add_argument('--canonical', default=None, help='canonical XML 路径（默认按 MOD 目录推导）')
     ap.add_argument('--table', required=True, help='裁决表 JSON')
     ap.add_argument('--batch', required=True, nargs='+',
                     help='一个或多个批次，共用同一张裁决表；表内 "batches" 可覆盖')
@@ -183,9 +189,9 @@ def main():
     PF = spec.get('exempt_prompt_fix') or {}
 
     work = Path('.work') / a.stem
-    base = Path('mods') / (a.stem + '.esp')
-    srcxml = base / (a.stem + '_english_chinese.xml')
-    canon = base / (a.stem + '_english_chinese_translated.xml')
+    base = resolve_mod_dir(getattr(a, 'mod', None), a.stem, Path('.'))
+    srcxml = resolve_source_xml(getattr(a, 'xml', None), a.stem, base)
+    canon = resolve_canonical(getattr(a, 'canonical', None), a.stem, base, srcxml)
     srcs = [s.findtext('Source') or '' for s in ET.parse(srcxml).getroot().iter('String')]
 
     exempt = load_exemptions(work, a.stem)

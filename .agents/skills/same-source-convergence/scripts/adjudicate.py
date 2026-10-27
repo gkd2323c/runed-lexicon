@@ -18,6 +18,9 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+
 # 英文常见屈折后缀。契约写词元（harvest / maker），源句写屈折形（harvests / makers）。
 # 不做还原的话词表核对会静默漏检——看起来查过了，其实没生效。
 SUFFIXES = ("'s", "s", "es", "ed", "ing", "'", "en")
@@ -111,8 +114,8 @@ def cmd_contract(a):
 
 
 def cmd_census(a):
-    base = Path('mods') / (a.stem + '.esp')
-    canon = base / (a.stem + '_english_chinese_translated.xml')
+    base = resolve_mod_dir(getattr(a, 'mod', None), a.stem, Path('.'))
+    canon = resolve_canonical(getattr(a, 'canonical', None), a.stem, base)
     if not canon.is_file():
         print('!! 缺 canonical：%s' % canon)
         return 1
@@ -146,6 +149,8 @@ def cmd_census(a):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--stem', required=True)
+    ap.add_argument('--mod', default=None, help='MOD 目录名或路径（默认按 stem 探测 mods/<stem>[.esp]）')
+    ap.add_argument('--canonical', default=None, help='canonical XML 路径（默认按 MOD 目录推导）')
     ap.add_argument('mode', choices=['contract', 'census'])
     ap.add_argument('words', nargs='+')
     ap.add_argument('--form', dest='forms', action='append',

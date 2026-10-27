@@ -43,6 +43,9 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+
 import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -145,9 +148,9 @@ def main(argv=None) -> int:
     elif args.prune and args.drop_stale:
         pass  # both allowed; classified separately
 
-    mod = args.stem + ".esp"
-    xml_path = Path(args.xml) if args.xml else Path(
-        "mods") / mod / "{}_english_chinese_translated.xml".format(args.stem)
+    xml_path = (Path(args.xml) if args.xml
+                else resolve_canonical(None, args.stem,
+                                      resolve_mod_dir(None, args.stem, Path("."))))
     if not xml_path.is_file():
         print("error: canonical 不存在: {}".format(xml_path), file=sys.stderr)
         return 2

@@ -47,6 +47,7 @@ READOUT = ROOT / ".agents/skills/translation-review-tools/scripts/read_batch.py"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from prune_close_patch import _as_items, _rebuild, classify, load_canonical_map  # noqa: E402
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
 
 
 def auto_prune_patch(patch: Path, translated_xml: Path, bid: str) -> int:
@@ -228,7 +229,7 @@ def main() -> int:
     ap.add_argument("--no-auto-prune", action="store_true",
                     help="关闭收口前的 patch 残留自动对账（默认开；"
                          "手工跑 prune_close_patch 时用它避免重复清理）")
-    ap.add_argument("--xml", required=True, help="源 XML（_english_chinese.xml）")
+    ap.add_argument("--xml", required=True, help="源 XML（_english_chinese.xml），必填")
     ap.add_argument("--contract", required=True)
     ap.add_argument("--translated-xml", default=None)
     ap.add_argument("--plan", default="",
@@ -242,10 +243,10 @@ def main() -> int:
     args = ap.parse_args()
 
     stem = args.stem
-    translated = Path(args.translated_xml) if args.translated_xml else (
-        ROOT / "mods" / f"{stem}.esp" / f"{stem}_english_chinese_translated.xml"
-    )
     source = ROOT / args.xml
+    translated = (Path(args.translated_xml) if args.translated_xml
+                  else resolve_canonical(None, stem,
+                                         resolve_mod_dir(None, stem, ROOT), source))
     contract = ROOT / args.contract
     workb = ROOT / ".work" / stem / "batches"
     archive = ROOT / ".work" / stem / "archive"

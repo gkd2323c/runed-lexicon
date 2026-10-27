@@ -36,13 +36,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from close_round import load_exemptions  # noqa: E402  同 skill 内复用，避免重写豁免解析
+from mod_paths import resolve_mod_dir  # noqa: E402
 
 
 def mod_dir(stem: str) -> Path:
-    for cand in (Path.cwd() / "mods" / f"{stem}.esp", Path.cwd() / "mods" / stem):
-        if cand.is_dir():
-            return cand
-    raise SystemExit(f"MOD directory not found for {stem}")
+    return resolve_mod_dir(None, stem, Path.cwd())
 
 
 def batch_dir(stem: str, batch: str) -> Path:

@@ -64,10 +64,11 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py --stem $S -
 批已写回、需要按裁决表收口时（canonical 上已有别的形）：
 
 ```bash
-py -3 $D/make_close_fixes.py --stem $S --batch $B... --table _tmp/data/table.json
-py -3 .agents/skills/translation-batch-ops/scripts/prune_close_patch.py --stem $S --batches $B... --prune --drop-stale
+py -3 $D/make_close_fixes.py --stem $S --batch $B... --table _tmp/data/table.json --mod mods/<MOD目录>
+py -3 .agents/skills/translation-batch-ops/scripts/prune_close_patch.py --stem $S --batches $B... --prune --drop-stale --xml mods/<MOD目录>/${S}_english_chinese_translated.xml
 py -3 .agents/skills/translation-batch-ops/scripts/close_round.py --stem $S --batches $B... \
-   --fixes .work/$S/batches/close-round-fixes.json --xml mods/$S.esp/${S}_english_chinese.xml \
+   --fixes .work/$S/batches/close-round-fixes.json --xml mods/<MOD目录>/${S}_english_chinese.xml \
+   --translated-xml mods/<MOD目录>/${S}_english_chinese_translated.xml \
    --contract .work/$S/contracts/${S}.compiled.json
 ```
 

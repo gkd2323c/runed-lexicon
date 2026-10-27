@@ -25,6 +25,9 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
+from mod_paths import resolve_canonical, resolve_mod_dir, resolve_source_xml  # noqa: E402
+
 
 def load_owner(batches_dir):
     owner = {}
@@ -43,7 +46,9 @@ def main() -> int:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser()
     ap.add_argument('--stem', required=True)
-    ap.add_argument('--xml', default=None)
+    ap.add_argument('--mod', default=None, help='MOD 目录名或路径（默认按 stem 探测）')
+    ap.add_argument('--source-xml', dest='source_xml', default=None, help='源 XML 路径')
+    ap.add_argument('--xml', default=None, help='canonical XML 路径（默认按 MOD 目录推导）')
     ap.add_argument('--batches-dir', default=None)
     ap.add_argument('--rule', action='append', required=True,
                     help='<现形>:<锚,锚>-><目标形>')
@@ -68,8 +73,9 @@ def main() -> int:
     # 由「同一源句算出两个不同目标即中止」那条检查兜住。
 
     stem = args.stem
-    xml = Path(args.xml) if args.xml else (
-        Path('mods') / f'{stem}.esp' / f'{stem}_english_chinese_translated.xml')
+    base = resolve_mod_dir(getattr(args, 'mod', None), stem, Path('.'))
+    xml = resolve_canonical(args.xml, stem, base,
+                            resolve_source_xml(getattr(args, 'source_xml', None), stem, base))
     srcs, dests = [], []
     for s in ET.parse(xml).getroot().iter('String'):
         srcs.append((s.findtext('Source') or '').strip())

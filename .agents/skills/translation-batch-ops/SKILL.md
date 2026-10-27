@@ -469,6 +469,12 @@ py -3 .../make_patch_from_maps.py --canonical <translated.xml> --out <patch.json
 
 **术语本体 vs 修辞形**：词表 note 里的修辞说明不是术语译名（Blood Price=血价，note 中的"血债血偿"仅指整句修辞的译法）。术语本体位置必须用词表译名，修辞形只在整句修辞中使用。验收时对 note 含修辞/例外说明的术语，重点查本体位置是否用了正确译名。
 
+**路径不猜（MOD 目录解析的唯一事实来源）**：`scripts/mod_paths.py` 提供 `resolve_mod_dir` / `resolve_source_xml` / `resolve_canonical` 三个函数，是全部流水线工具定位 `mods/<MOD目录>/` 的唯一入口。
+
+失效机制：stem 是 `.work/` 下的工作名，与 `mods/` 下的目录名可以完全不同（`mods/Maslea.esm` 的 stem 是 `Maslea`，`mods/More Thalmor Dossiers` 的 stem 是 `MTD`）。历史上多个工具按 `mods/<stem>.esp/` 硬拼路径，失效形态不是报错而是**静默给出一个不存在的路径**：写回类在 `apply_fixes` 阶段报 `--translated-xml 不存在`，只读类报 `canonical 不存在` 后退出码 2 把本该执行的剪枝静默跳过，最坏的方向是回落分支 `next(..., stem)` 在 `mods/` 下新建一个只装产物的孤儿目录——工具报 PASS 而真正的 MOD 目录里始终没有 canonical。
+
+规则：调用方显式给出（`--mod` / `--xml` / `--translated-xml` / `--canonical`）一律以它为准；没有显式路径时从源 XML 路径反推；两者都没有时按候选目录（`<stem>`、`<stem>.esp`、`<stem>.esm`、`<stem>.esl`）探测，**探测不到即报错退出，不回落、不静默、不新建目录**。新增工具不得自行拼接 MOD 路径。
+
 ## 8. 验证方式
 
 ```text

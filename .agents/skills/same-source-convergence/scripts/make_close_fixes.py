@@ -20,10 +20,15 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--stem', required=True)
+    ap.add_argument('--mod', default=None, help='MOD 目录名或路径（默认按 stem 探测 mods/<stem>[.esp]）')
+    ap.add_argument('--canonical', default=None, help='canonical XML 路径（默认按 MOD 目录推导）')
     ap.add_argument('--batch', required=True, nargs='+',
                     help='一个或多个批次；表内 batches 可覆盖')
     ap.add_argument('--table', required=True)
@@ -33,9 +38,10 @@ def main():
     spec = json.loads(Path(a.table).read_text(encoding='utf-8'))
     batches = list(spec.get('batches') or []) or list(a.batch)
     T, R = spec['table'], spec.get('rationale') or {}
-    base = Path('mods') / (a.stem + '.esp')
+    base = resolve_mod_dir(getattr(a, 'mod', None), a.stem, Path('.'))
+    canon = resolve_canonical(getattr(a, 'canonical', None), a.stem, base)
     srcs, dests = [], []
-    for s in ET.parse(base / (a.stem + '_english_chinese_translated.xml')).getroot().iter('String'):
+    for s in ET.parse(canon).getroot().iter('String'):
         srcs.append((s.findtext('Source') or '').strip())
         dests.append((s.findtext('Dest') or '').strip())
 
