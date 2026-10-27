@@ -19,6 +19,9 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+
 # ---- HIT：确定属审查/流程工件 -------------------------------------------------
 HIT_PATTERNS: list[tuple[str, str]] = [
     ("主会话", r"主会话|主管裁决|待主管|需主管"),

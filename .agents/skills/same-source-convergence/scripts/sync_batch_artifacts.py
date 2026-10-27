@@ -24,6 +24,9 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+
 
 def load(p):
     with io.open(p, encoding='utf-8') as f:

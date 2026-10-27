@@ -32,6 +32,9 @@ import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+
 # 种子首词若属于这些词，即使首字母大写也不是专名（句首普通词、疑问/情态/介词等）。
 # 该检查对**所有**种子生效（不限单词形）：`Against Mora` / `Can I` 这类
 # 组合的首词是虚词，整条应丢弃。

@@ -35,6 +35,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from make_fixes_from_report import group_fixes, load_batch_owner  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
+from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402
+
 POS_LABEL = {"head": "首句", "tail": "尾句", "whole": "整句"}
 
 
