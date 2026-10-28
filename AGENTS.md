@@ -127,6 +127,10 @@ Agent 在任何环节输出的文件，语义、角色、路径三者必须确�
 
 - **阶段 2：批次翻译与动态技能调度**
 
+  - **派单顺序：非 INFO 批次优先于 INFO 对话批次。** 新 MOD 开工与每轮补位时，先把非 INFO 计划（物品、装备、地名、派系、法术、书籍标题等记录族）排满再派 INFO 对话批次。
+
+    依据：非 INFO 批次多为显示名，它们是对话译文里专名的源头。先定名，对话里出现同一专名时就有可沿用的既定形，同源分裂在产生前就被堵住；反过来先译对话，对话会先自拟一套人名地名，非 INFO 批次随后只能追齐，追不齐就是全库分裂。失效形态：INFO 全部译完才发现非 INFO 批次零开工，而对话里已经落了一批自拟形，非 INFO 批次与 canonical 逐条对不上，只能靠同源收敛回填。
+
   - 备料前读 `translation-batch-preparer`；规划非 INFO 批次再读 `noninfo-batch-planner`。构建 INFO 对话上下文前读 `translation-context-builder`。
   - 开始翻译前读 `skyrim-translation-craft` 与 `translation-executor`；使用本地模型时再读 `local-model-translator`。派单前读 `subagent-ops`。
   - 进入批次循环前读 `translation-batch-ops` §0。验收前读 `translation-quality-gate` 与 `translation-fidelity-scan`；审校、修正或同源收敛时读 `translation-review-tools` 与 `same-source-convergence`。长文本审查仍按 `longtext-hallucination-review` 执行。
