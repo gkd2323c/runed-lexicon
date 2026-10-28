@@ -107,7 +107,7 @@ Review checklist per flag:
   - internal apostrophes and hyphens kept: M'aiq, J'zargo, Nix-Hound, Swims-In-Deep-Water
   - cultural particles allowed lowercase inside a name (Lash gra-Shugurz)
   - possessive stripped: Whiterun's / Whiterun’s match Whiterun
-  - trailing apostrophes dropped on every token, not just the last: the game wraps names in single quotes, so `'Soul trap'-spell` tokenizes as [`Soul`, `trap'-spell`] and `'Flame Atronach'` as [`Flame`, `Atronach'`]; stripping only the last token left `trap'`/`atronach'` unmatched (real incident: Familiar/使魔, Flame Atronach/火焰侍灵, Soul Trap/摄魂陷阱 all passed earlier audits)
+  - trailing apostrophes dropped on every token, not just the last: the game wraps names in single quotes, so `'Soul trap'-spell` tokenizes as [`Soul`, `trap'-spell`] and `'Flame Atronach'` as [`Flame`, `Atronach'`]; stripping only the last token leaves `trap'`/`atronach'` unmatched
   - plural tolerated: Argonians / Thalmors match Argonian / Thalmor
   - no NLP, no stemming
 - Empty Dest and untranslated Dest (Dest == Source) are CHECK candidates — only an empty Source is skipped. For translation-result JSON, a `translation` field that is present but empty is treated as an empty translation (candidate), never silently replaced by `original_dest`; rows explicitly marked `status: KEEP` are skipped.
@@ -121,19 +121,18 @@ zero-flag run is never read as "everything is checked".
 
 1. **Composite-only official names.** A proper noun that the official dictionary
    only ever spells inside a longer phrase is not audited in its bare form.
-   `Dwemer` has 245 official rows (`Dwemer Actuator` -> 锻莫制动器, `Dwemer Vault
-   Door`, …) but no standalone row, so `Dwemer` never enters the enabled map and
-   a row like `Frosty Dwemer Abilities` is not checked; `Morrowind` (246 rows,
-   all prose) and `Aedra` (17 rows, all prose) are in the same position. A
-   token-gloss inference layer was prototyped and rejected: voting over composite
-   rows derives `Dwemer` -> 锻莫 correctly (96% / 67 rows) but also `War` -> 战斧
-   and `Raven` -> 鸦石镇, producing ~350 mostly-wrong candidates. The fix belongs
+   `Dwemer` has official rows only as part of longer phrases (`Dwemer Actuator` -> 锻莫制动器,
+   `Dwemer Vault Door`, …) but no standalone row, so `Dwemer` never enters the enabled map and
+   a row like `Frosty Dwemer Abilities` is not checked; `Morrowind` and `Aedra`, whose official
+   rows are all prose, are in the same position. A token-gloss inference layer was prototyped
+   and rejected: voting over composite rows derives `Dwemer` -> 锻莫 correctly but also
+   `War` -> 战斧 and `Raven` -> 鸦石镇, producing mostly-wrong candidates. The fix belongs
    in the project contract: register the name as a REQUIRED term so
    `translation-quality-gate` enforces it.
 2. **Single-word names from weak records.** `BOOK`/`MISC`/`WOOP`-only single
-   words stay optional unless `--include-single` or `--entity` is given (737 vs
-   3755 candidates on a large MOD). The switch is a noise trade, not a capability
-   gap: the candidates exist, they are simply not printed by default.
+   words stay optional unless `--include-single` or `--entity` is given. The switch
+   is a noise trade, not a capability gap: the candidates exist, they are simply not
+   printed by default.
 3. **Dest-side errors without a Source-side name.** The audit only fires when the
    Source contains the official name. A wrong name that appears only in the Dest
    (a hallucinated place, an invented faction) is out of scope; use

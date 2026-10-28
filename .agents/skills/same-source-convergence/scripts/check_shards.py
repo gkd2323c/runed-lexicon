@@ -5,7 +5,7 @@ r"""分片批次合并与交卷门槛自检：{批次}/map-part-*.json -> map.js
 分片两片看不到对方的 readout，同一句重复出现时很容易各起一形。
 本脚本在合并前把八条交卷门槛逐条打出来，让问题在合并前就暴露。
 
-门槛：键集与分片索引严格相等、无空译文、无 PENDING/REVIEW 残留、
+门槛：键集与分片索引严格相等、无空译文、无 PENDING 残留（REVIEW 已定稿，允许复核中写回）、
 confidence 是字符串档位、无半角双引号/直角引号/U+FFFD。任一不过则不落盘。
 
 用法：py -3 check_shards.py --stem <STEM> --batch <BATCH-ID> --parts a b [--merge]
@@ -19,7 +19,7 @@ from collections import Counter
 from pathlib import Path
 
 BAD_CHARS = re.compile(r'[\u300c\u300d\u300e\u300f\ufffd"]')
-OK_STATUS = ('TRANSLATED', 'KEEP')
+OK_STATUS = ('TRANSLATED', 'REVIEW', 'KEEP')
 
 
 def load(path):

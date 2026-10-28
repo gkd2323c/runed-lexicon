@@ -1,6 +1,6 @@
 ---
 name: longtext-hallucination-review
-description: "长文本抗幻觉审查工作流：对已译 MOD 的长叙事文本（BOOK 书页、QUST 长日志、MESG 长描述）做两层审查——机械探针排除灾难性截断、子代理逐段精读找语义幻觉（编造/漏译/漂移/反转）。Use when 需要审查长文本译文是否忠实于源文、怀疑长段落里事实被改写、要批量核查书页类译文的质量、或在收口前做长文本语义复核。Triggers: 抗幻觉, 幻觉审查, 长文本审查, 长文翻译质量, 事实保真, 编造漏译漂移反转, hallucination review, long-text fidelity. Do NOT trigger for: 单条短文本的译法judgment（用 translation-review-tools 的 query/read_batch）、名词一致性扫描（用 noun-consistency-scan）、机械忠实度扫描（用 translation-fidelity-scan）、纯风格评审（用 prose-critique）。"
+description: "长文本抗幻觉审查工作流：对已译 MOD 的长叙事文本（BOOK 书页、QUST 长日志、MESG 长描述）做两层审查——机械探针排除灾难性截断、子代理逐段精读找语义幻觉（编造/漏译/漂移/反转）。Use when 需要审查长文本译文是否忠实于源文、怀疑长段落里事实被改写、要批量核查书页类译文的质量、或在收口前做长文本语义复核。Triggers: 抗幻觉, 幻觉审查, 长文本审查, 长文翻译质量, 事实保真, 编造漏译漂移反转, hallucination review, long-text fidelity. Do NOT trigger for: 单条短文本的译法judgment（用 translation-review-tools 的 query/read_batch）、名词一致性扫描（用 noun-consistency-scan）、机械忠实度扫描（用 translation-fidelity-scan）。"
 compatibility: "Depends on runed-lexicon project layout and the translation-review-tools skill's scripts (hallucination_probe.py, longtext_readout.py, query.py). Read-only except the final correction writeback via xtranslator-xml-writer. Requires subagents for the semantic pass."
 metadata:
   version: "1.0.0"
@@ -50,7 +50,7 @@ py -3 .agents/skills/translation-review-tools/scripts/hallucination_probe.py \
 
 ### 2.3 派单做语义精读
 
-按片派子代理，`access="read"`（只读审查，产出以回复正文返回，不落盘）。任务卡见 §3。
+按片派子代理，派可写权限，并在任务卡中限定只写约定报告路径（如 `.work/<plugin>/reports/longtext-review-<shard_id>.json`），产出落盘到报告文件，不碰 canonical。任务卡见 §3。
 
 并行度按实例位上限派满；已验收的实例**立即关闭**腾位，否则后续分片派不出去。
 
@@ -107,7 +107,7 @@ py -3 .agents/skills/xtranslator-xml-writer/scripts/write_translations.py \
 
 审查产出是**候选**，不是结论。核验时用源文片段定位，不用报告给的 idx 直接改。
 
-**报告给的 idx 可能是错的**：把某条的问题挂在相邻 idx 名下、同时声明相邻条「无偏差」，是实际发生过的情形。按内容特征串回库定位（`query.py --src` 或脚本遍历），确认真实 idx 后再动笔。
+**报告给的 idx 可能是错的**：报告可能把某条的问题挂在相邻 idx 名下、同时声明相邻条「无偏差」。按内容特征串回库定位（`query.py --src` 或脚本遍历），确认真实 idx 后再动笔。
 
 ### 4.2 不抄报告里的中文形
 

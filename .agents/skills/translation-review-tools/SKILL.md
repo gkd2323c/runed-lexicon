@@ -51,11 +51,10 @@ py -3 .../make_fixes_from_report.py --report <review.json> --xml <translated.xml
 
 - 兼容两种报告 schema：`findings[]`（新）与 `issues[]`（历史）；`xml_index`/`idx` 均可。
 - `--report` 两种写法等价：`--report A B` 与 `--report A --report B` 都收全部报告（`action="extend"`）。
-  早期版本后者只保留最后一份、前面的报告被静默丢弃，症状是「报告条目数只有一份的量」而命令不报错。
 - `expected_current` 从 canonical 当场读取（CAS 基准）；现值已等于裁决值的条目列为 no-op 剔除。
 - `--drop`：驳回项（如官方实证现状正确）；`--override`：`{idx: 新值}` 特裁（部分采纳/语境重造）。
 - `--override` **可引入报告 findings 之外的 idx**（`introduce_overrides`）。跨批同锚词收敛的常态是
-  「reviewer 只点名了一侧，另一侧由主会话按全库多数裁定」：例 `institution` 全库 81:4 悬殊，
+  「reviewer 只点名了一侧，另一侧由主会话按全库多数裁定」：例 `institution` 全库形数悬殊，
   reviewer 按批内少数形建议统一，主会话反向裁定要改的正是 reviewer 没提到的那几行。
   显式 `--drop` 仍优先于 override（驳回不被特裁复活）；`--include` 同样生效；越界记
   `WARN override idx 越界`；现值已同记 no-op。stdout 单列「特裁新增（报告外，reviewer 未点名）」便于复核。
@@ -130,7 +129,7 @@ canonical 现译。这类记录喂给 `make_fixes_from_report.py` 会**静默空
 - 只读输入（canonical + review-record），不写盘。
 - 判据是「`proposed` 能否直接落盘」，**不判 proposed 的语义对错**——语义裁决归主会话。
   一份 `proposed` 全可用的记录仍可能整条方向错，必须照常逐条回源文判读。
-- 回归用例 `test_check_review_proposed.py`（13 例 unittest，覆盖上述三形态 + `--allow-same` 边界 +
+- 回归用例 `test_check_review_proposed.py`（unittest，覆盖上述三形态 + `--allow-same` 边界 +
   **记录无法解析**的报告路径）。
 - 记录本身坏掉时（`json.loads` 失败、文件不存在）**不算「本批没有缺陷」**，闸门会把该批标成
   「视为未审」并退出 1。理由：坏 JSON 的批次如果被当成已审完，欠账统计就会凭空少一批。
@@ -151,7 +150,7 @@ py -3 .../repair_json_escapes.py --path <record.json> --dry-run
 py -3 .../repair_json_escapes.py --path <record.json>
 ```
 
-- **逐字符扫描，不用正则替换**：正则会把 `\\` 里的第二个反斜杠误判成非法转义（已踩过）。
+- **逐字符扫描，不用正则替换**：正则会把 `\\` 里的第二个反斜杠误判成非法转义。
 - 只把「后面不跟合法转义字符」的反斜杠补成 `\\`，其余字节一律不动。
 - 修完**必须能 `json.loads` 才落盘**，并回读断言内容一致；仍失败则直接抛、不写。
 - 修完仍要用 `check_review_proposed.py --repair-hint` 复检 `proposed` 可用性——
@@ -280,7 +279,7 @@ py -3 .agents/skills/translation-review-tools/scripts/check_batch_evidence.py \
 
 因此本脚本降级为**遗留字段的抽查器**：老批次或子代理自愿填写时，重跑一遍确认没穿；`evidence` 缺失是正常状态，不是缺陷。
 
-判据三条：`lookup` 必填（否则无法重跑，该条跳过并报）；声明命中数与实测差 > 2 报错（词典会更新，个位数差异不算伪证）；`zh_forms` 与官方实际译形**完全无重合**报错（子串/单复数差异不算）。回归 `test_check_batch_evidence.py`（8 项，用假词典不依赖真实词典内容）。
+判据三条：`lookup` 必填（否则无法重跑，该条跳过并报）；声明命中数与实测差 > 2 报错（词典会更新，个位数差异不算伪证）；`zh_forms` 与官方实际译形**完全无重合**报错（子串/单复数差异不算）。回归 `test_check_batch_evidence.py`（用假词典，不依赖真实词典内容）。
 
 **只报不一致，不定罪。** 字典更新导致的漂移也会报出来，让人看一眼即可。
 
@@ -288,7 +287,7 @@ py -3 .agents/skills/translation-review-tools/scripts/check_batch_evidence.py \
 
 读单个批次的源文/译文对照。数据源**按新鲜度**取（`map.json` 与 `translation.json` 都在时比 mtime），退化到另一份 + `--xml`；实际用了哪份打在 stderr。
 
-**为什么不只判存在**：`translation.json` 是上一轮 `consume_batch` 的产物，子代理随后写的 `map.json` 更新。只判「存在」会让陈旧的那份遮蔽刚交卷的那份——失效形态是读到一堆 `PENDING` 空占位，当成交卷读，据此做的判断全错。取 `map.json` 时若没给 `--xml`，报错会说明是「translation.json 比它旧，不采信」而不是含糊的「缺源文」。回归见 `test_read_batch_freshness.py`（6 项）。
+**为什么不只判存在**：`translation.json` 是上一轮 `consume_batch` 的产物，子代理随后写的 `map.json` 更新。只判「存在」会让陈旧的那份遮蔽刚交卷的那份——失效形态是读到一堆 `PENDING` 空占位，当成交卷读，据此做的判断全错。取 `map.json` 时若没给 `--xml`，报错会说明是「translation.json 比它旧，不采信」而不是含糊的「缺源文」。回归见 `test_read_batch_freshness.py`。
 
 ```text
 py -3 .agents/skills/translation-review-tools/scripts/read_batch.py \
@@ -562,7 +561,7 @@ py -3 .../apply_fixes.py --stem <plugin> \
 
 **同一 idx 的多次替换会串联**：对已存在 patch 的 idx，下次替换以 patch 中的译文为基准继续改（而不是从 canonical 旧值重新出发）。因此一条目需改两处不同文字时，分两次调用即可，不会互相覆盖；`expected_dest` 始终取 canonical 现值（CAS 基准不变）。
 
-**方括号标记自动豁免**：译文把方括号内容中文化后（`[END OF SEASON 1]`→「[第一季终]」），writer 的占位符校验会报 `protected token mismatch`。patch 生成时**自动对比源译的方括号标记并写入 `waived_tokens`**，无需手工声明（手工补声明漏过两次）。两侧都保留的标记（如 `[pagebreak]`）不入豁免；显式提供 `waived_tokens` 时以调用方为准。
+**方括号标记自动豁免**：译文把方括号内容中文化后（`[END OF SEASON 1]`→「[第一季终]」），writer 的占位符校验会报 `protected token mismatch`。patch 生成时**自动对比源译的方括号标记并写入 `waived_tokens`**，无需手工声明。两侧都保留的标记（如 `[pagebreak]`）不入豁免；显式提供 `waived_tokens` 时以调用方为准。
 
 ```text
 py -3 .../apply_fixes.py --stem <plugin> --batch <BID> --fixes _tmp/data/fix.json
@@ -759,7 +758,7 @@ term-digest 新鲜度门：图例判定（有无图例、残缺图例、文件�
 改回错值、无豁免时仍报整句分裂、豁免只作用于整句组（首句公式收敛不受影响）、
 `--batches`/`--batches-dir` 同用校验、分组输出形态与 `close_round --batches` 提示。
 
-`test_form_census.py`（24 项，CI 的 `unittest discover` 步骤自动收集）覆盖 `form_census.py`：
+`test_form_census.py`（由 CI 的 `unittest discover` 步骤自动收集）覆盖 `form_census.py`：
 源/Dest 顺序读取、未译行排除（空 Dest 与 `Dest==Source`）、**长形优先**（`等级体系`
 不被 `等级` 吃掉，`--forms` 直传与契约自动取两条路径一致）、未归类桶、无形态时全量入桶、
 锚为正则且大小写不敏感、批内主形识别与背离构成、单行批次不制造噪声告警、未知 idx 跳过、

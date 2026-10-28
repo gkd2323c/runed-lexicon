@@ -7,7 +7,7 @@ metadata:
   status: "已退役，由 Mutagen 导出器接替（见下）"
 ---
 
-> **当前状态**：xEdit 命令行模式处理约 100MB、五千余 DIAL 的大型插件时可超过 10 分钟仍无完成标记，首次缓存构建也很慢。优先使用 Mutagen overlay 导出器：同量级插件约 **1.3 秒**完成全量 DIAL→INFO 导出，包含 speaker、prompt、responses 与 conditions，INFO EDID 连接率可达 99.2%。产物规范：`.work/<plugin>/context/<plugin>-mutagen-dialogue.json`。下文仅供兼容场景使用。
+> **当前状态**：xEdit 命令行模式在大型插件上可能长时间无完成标记，首次缓存构建也很慢。优先使用 Mutagen overlay 导出器：同量级插件秒级完成全量 DIAL→INFO 导出，包含 speaker、prompt、responses 与 conditions，INFO EDID 连接率见该 skill 的性能基线。产物规范：`.work/<plugin>/context/<plugin>-mutagen-dialogue.json`。下文仅供兼容场景使用。
 
 # xEdit Context Exporter
 

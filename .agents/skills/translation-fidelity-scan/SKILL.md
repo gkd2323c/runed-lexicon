@@ -39,7 +39,7 @@ py -3 .agents/skills/translation-fidelity-scan/scripts/fidelity_scan.py --xml <t
   - **`QUST:NNAM` 目标句的 `lost` 计为机械 FAIL**：任务目标句源文带句末标点则译文必须带，缺则 FAIL 并阻断验收（源词缩写点如 `Acc.`、对话被打断的 `...`→「——」会误报，误报行由 Agent 对照源文裁决）。
   - 其他 REC 的差异仅报不定罪（对话台词标点自然差异）。
   - 判类前先剥离尾随引号/括号（`他说“好！”` 判为 exclam；末尾「（可选）」标记不影响主体判类）。
-  - **已知盲区**：源文末尾带括号标记（如 `... (Optional)`）时，两侧类别均为 none，主体缺标点不会被报；此类行需人工复核（当前全库 6 行均正确）。
+  - **已知盲区**：源文末尾带括号标记（如 `... (Optional)`）时，两侧类别均为 none，主体缺标点不会被报；此类行需人工复核。
 
 ## 过度泛化扫描（`overgeneralization_scan.py`）
 
@@ -60,7 +60,7 @@ py -3 .agents/skills/translation-fidelity-scan/scripts/overgeneralization_scan.p
 - 只取已译行（`Source == Dest` 的行没有「译名」可言）。
 - `--term <串>` 只扫锚点含该串的词条；`--stem` 决定报告落点（`.work/<stem>/reports/<stem>-overgeneralization-report.json`）。退出码 0 零候选 / 1 有候选 / 2 用法错误。
 - **只报不定罪。** 良性命中占多数，逐类实测：源文分写变体（词表 `Hollyfalls`、源文 `Holly Falls`）、源文作者拼错（词表 `Celamer`、源文 `Celamir`；词表 `Artaeum`、源文 `Arteum`）、源文用同义词（词表 `Labyrinth`、对上 `A Minor Maze`）、承前省译、中文子串误报（`Dremora`→`魔人` 命中 `Vampire Hunter` 的「猎魔人」）。
-- **不要在工具里加容差去压这些良性命中。** 实测加过三层容差（连写复合、单复数、子串风险标注）只把 294 降到 260，省下的全是要人工看掉的，裁决价值来自人读候选而不是工具精度。宁可全报，人工分诊。
+- **不要在工具里加容差去压这些良性命中。** 容差省下的是本要人工分诊的命中，裁决价值来自人读候选而不是工具精度。宁可全报，人工分诊。
 
 
 ## 性能

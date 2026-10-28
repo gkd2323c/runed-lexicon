@@ -29,6 +29,9 @@ import pathlib
 import sys
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from mod_paths import resolve_mod_dir  # noqa: E402
+
 
 def load_indexes(batches_dir: pathlib.Path, plans: list[pathlib.Path]):
     """返回 {批号: [idx...]}。优先取 index.txt；缺失时回落到计划文件的 idx。"""

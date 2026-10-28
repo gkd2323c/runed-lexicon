@@ -7,7 +7,7 @@
         "阿德里尔"
       ],
       "target": "阿德尔",
-      "reason": "官方词典：Adril→阿德尔、Adril Arano→阿德尔·阿拉诺（Dragonborn）；TheKalpicAnomaly 实测错形「阿德里尔」（200）",
+      "reason": "官方词典：Adril→阿德尔、Adril Arano→阿德尔·阿拉诺（Dragonborn）；常见音译错形为「阿德里尔」",
       "category": "lore-name"
     },
     {
@@ -34,7 +34,7 @@
         "阿杜因"
       ],
       "target": "奥杜因",
-      "reason": "官方词典：世界吞噬者龙名（MVF1 审计实测变体）",
+      "reason": "官方词典：Alduin→奥杜因，世界吞噬者龙名；「阿杜因」为常见音译错形",
       "category": "lore-name"
     },
     {
@@ -64,7 +64,7 @@
         "时辰"
       ],
       "target": "小时",
-      "reason": "「时辰」为中国传统两小时制计时单位，TES 无对应物；实测把 an hour 译作「一个时辰」将时长放大一倍（TheKalpicAnomaly_GLENMORIL 16 处）。hour 既定口径为「小时／一小时」",
+      "reason": "「时辰」为中国传统两小时制计时单位，TES 无对应物；若把 an hour 译作「一个时辰」会将时长放大一倍。hour 既定口径为「小时／一小时」",
       "category": "anachronism-time",
       "unconditional": true
     },
@@ -97,7 +97,7 @@
         "玛拉护身符"
       ],
       "target": "玛拉护符",
-      "reason": "官方词典：玛拉护符（MVF1 round6 实测 护身符 漏网）",
+      "reason": "官方词典：Amulet of Mara→玛拉护符；「玛拉护身符」为易漏网变体，需一并拦截",
       "category": "lore-name"
     },
     {
@@ -6166,7 +6166,7 @@
         "老天爷"
       ],
       "target": "",
-      "reason": "汉民间信仰神明俗称（玉皇大帝），TES 无对应物；Artaeum 三处已清（12941 By the gods/10642 heavens/13674 pray 语境）；建议改写：众神在上/诸神在上/天哪",
+      "reason": "汉民间信仰神明俗称（玉皇大帝），TES 无对应物；多见于感叹或发誓语境；建议改写：众神在上/诸神在上/天哪",
       "category": "anachronism-religion-taoist",
       "unconditional": true
     },
@@ -7506,7 +7506,7 @@
         "同志"
       ],
       "target": "战友",
-      "reason": "现代政治称谓混入奇幻语境；TES 语境对应战友/同伴（TheKalpicAnomaly NI-DIAL-029 实测 3796 误译）",
+      "reason": "现代政治称谓混入奇幻语境；TES 语境应译为战友或同伴",
       "category": "anachronism-politics"
     },
     {
@@ -7576,7 +7576,7 @@
         "迪德拉君主"
       ],
       "target": "迪德拉君王",
-      "reason": "官方词典：迪德拉君王（Prince of Oblivion 亦作湮灭君王；社区通行魔神/魔族王子为高频错译）；实测「迪格拉君主」（915/917，2026-09-21 回正）「迪德拉君主」",
+      "reason": "官方词典：迪德拉君王（Prince of Oblivion 亦作湮灭君王；社区通行魔神/魔族王子为高频错译）；「迪格拉君主」「迪德拉君主」为常见音译错形",
       "category": "lore-name"
     },
     {
@@ -7614,7 +7614,7 @@
         "死猎犬"
       ],
       "target": "死亡猎犬",
-      "reason": "官方词典：死亡猎犬（MVF1 round6 实测 死猎犬 漏网）",
+      "reason": "官方词典：Death Hound→死亡猎犬；「死猎犬」为易漏网变体，需一并拦截",
       "category": "lore-name"
     },
     {
@@ -7677,7 +7677,7 @@
         "诸神"
       ],
       "target": "圣灵",
-      "reason": "官方：Divines=九圣灵（Nine Divines），非泛称诸神；By the Divines→圣灵啊/圣灵在上、Thank the divines→感谢圣灵。Falskaar 实测误译「诸神在上/诸神保佑」已回正；「诸神」仅可用于 the gods 类泛称（源无 Divines 锚点不受影响）",
+      "reason": "官方：Divines=九圣灵（Nine Divines），非泛称诸神；By the Divines→圣灵啊/圣灵在上、Thank the divines→感谢圣灵；「诸神在上/诸神保佑」属于常见错译；「诸神」仅可用于 the gods 类泛称（源文无 Divines 锚点不受影响）",
       "category": "lore-name"
     },
     {
@@ -7967,7 +7967,7 @@
         "富拉兹"
       ],
       "target": "弗拉兹",
-      "reason": "Druadach Master 辈 Fulaz-Ahl（弗拉兹-阿尔）对白常省姓氏作 Fulaz（弗拉兹）；富拉兹为错形 3 处已回正；TERM004 防回流（连字符全名锚覆盖不到裸形）",
+      "reason": "人名 Fulaz-Ahl（弗拉兹-阿尔）对白常省去后半部分作单名 Fulaz（弗拉兹）；「富拉兹」为错音译；TERM004 防回流（连字符全名锚覆盖不到单名裸形）",
       "category": "lore-name"
     },
     {
@@ -7976,7 +7976,7 @@
         "富拉兹"
       ],
       "target": "弗拉兹-阿尔",
-      "reason": "Druadach Master 辈人名，连字符保留；对白 3 处误写富拉兹已回正；TERM004 防回流",
+      "reason": "连字符人名需保留全名；对白常误写为「富拉兹」；TERM004 防回流",
       "category": "lore-name"
     },
     {
@@ -8201,7 +8201,7 @@
         "天国"
       ],
       "target": "",
-      "reason": "现实宗教禁令：TES 死后世界是松加德/灵魂石冢等；建议改写：松加德/湮灭/死后世界按 TES 语境。**2026-10-02 补「天国」**：原表只列「天堂」，同语域的「天国」从同义词缝里漏了过去——TheKalpicAnomaly 20188 `because heaven is waiting on the other side`→「因为天国就在彼方等候」一路沉到 canonical，而该 MOD 全库 `heaven` 的既定形是「乐土」（约 27 行，天堂 0 行）。禁令列的是一个形，坏形态是一族。",
+      "reason": "现实宗教禁令：TES 死后世界是松加德/灵魂石冢等；「天国」与「天堂」同属现实宗教语域；建议改写：松加德/湮灭/乐土/死后世界（按 TES 语境）。禁令列的是一个形，坏形态是一族",
       "category": "anachronism-religion",
       "unconditional": true
     },
@@ -8399,7 +8399,7 @@
         "奥瑟斯"
       ],
       "target": "奥苏斯",
-      "reason": "官方词典：Orthus Endario→奥苏斯·恩达里奥、别担心奥苏斯（Skyrim 三处）；奥瑟斯为 TheKalpicAnomaly 9234 实测异形（2026-09-22 回正）",
+      "reason": "官方词典：Orthus Endario→奥苏斯·恩达里奥、别担心奥苏斯（Skyrim）；「奥瑟斯」为错译，正确形为「奥苏斯」",
       "category": "lore-name"
     },
     {
@@ -8410,7 +8410,7 @@
         "克德拉克"
       ],
       "target": "克拉科",
-      "reason": "官方词典：战友团首领；21 条候选高频错译（MVF1 round4）；克德拉克为 TheKalpicAnomaly 9266 实测异形（2026-09-22 回正）",
+      "reason": "官方词典：战友团首领克拉科；「克德拉克」为常见错译，正确形为「克拉科」",
       "category": "lore-name"
     },
     {
@@ -8441,7 +8441,7 @@
         "凯恩"
       ],
       "target": "凯娜",
-      "reason": "官方 WOOP:TNAM Kyne→凯娜（'凯娜之静''凯娜的祝福'；《天空之子》'以凯娜、舒尔之名'）；克妮/凯茵为音译错形（KW-Kaidan INFO-016/025 实测）。注意与 Kynareth→凯娜瑞丝 区分；「凯恩」为 GLENMORIL 联动首批实测错形（底座 81 处与官方均作「凯娜」），2026-09-29 回填。",
+      "reason": "官方 WOOP:TNAM Kyne→凯娜（“凯娜之静”“凯娜的祝福”；《天空之子》“以凯娜、舒尔之名”）；克妮/凯茵/凯恩均为音译错形。注意与 Kynareth→凯娜瑞丝 区分",
       "category": "lore-name"
     },
     {
@@ -8503,7 +8503,7 @@
         "封主"
       ],
       "target": "领主之缚",
-      "reason": "Druadach 主线团体 The Lordbound 全 MOD 统一领主之缚（canonical 233 处收敛）；对白曾发明 16 种异译（封印之主/封主会/领主束缚学派等），TERM004 独立全量扫描防回流；MOD 局部 The Lordbound 词条 REQUIRED 双保险",
+      "reason": "专名 The Lordbound 统一定名为「领主之缚」；易出现「封印之主」「封主会」「领主束缚学派」等异译，需拦截错译「封主」防回流",
       "category": "lore-name"
     },
     {
@@ -9026,7 +9026,7 @@
         "乌鸦之心"
       ],
       "target": "鸦心",
-      "reason": "Druadach 势力 the Ravenhearts 形容词/集合形 Ravenhearted 统一鸦心（canonical 11 处鸦心氏族）；鹰心为错（Raven=鸦非鹰），20402 曾误译已回正；TERM004 独立锚防回流",
+      "reason": "势力 the Ravenhearts 形容词/集合形 Ravenhearted 统一为「鸦心」；「鹰心」为错译（Raven 为鸦非鹰）；TERM004 独立锚防回流",
       "category": "lore-name"
     },
     {
@@ -9445,7 +9445,7 @@
         "泰尔瓦尼"
       ],
       "target": "泰瓦尼",
-      "reason": "官方词典：Telvanni Research→泰瓦尼研究、Telvanni Robes→泰瓦尼长袍（Dragonborn）；TheKalpicAnomaly 实测错形「泰尔瓦尼」（23999，2026-09-21 回正）",
+      "reason": "官方词典：Telvanni Research→泰瓦尼研究、Telvanni Robes→泰瓦尼长袍（Dragonborn）；「泰尔瓦尼」为错译，正确形为「泰瓦尼」",
       "category": "lore-name"
     },
     {
@@ -9454,7 +9454,7 @@
         "玛拉神庙"
       ],
       "target": "玛拉神殿",
-      "reason": "官方词典：玛拉神殿（MVF1 round6 实测 神庙 漏网）",
+      "reason": "官方词典：Temple of Mara→玛拉神殿；「玛拉神庙」为易漏网变体，需一并拦截",
       "category": "lore-name"
     },
     {
@@ -9545,10 +9545,10 @@
     {
       "english": "Trinimac",
       "forbidden": [
-        "崔尼玛克"
+        "特里尼马克"
       ],
-      "target": "特里尼马克",
-      "reason": "官方精灵神名音译（词典实证）；崔尼玛克为 Druadach 漏网",
+      "target": "崔尼玛克",
+      "reason": "官方精灵神名音译（词典实证：Skyrim / Dawnguard / Dragonborn 三份语料一致作「崔尼玛克」，零「特里尼马克」）。",
       "category": "lore-name"
     },
     {
@@ -9640,7 +9640,7 @@
         "吸血鬼之身"
       ],
       "target": "吸血鬼化",
-      "reason": "官方词典：Vampirism→吸血鬼化（Dawnguard）；TheKalpicAnomaly 实测错形「吸血鬼之身」（8 行，2026-09-21 复扫回正）",
+      "reason": "官方词典：Vampirism→吸血鬼化（Dawnguard）；「吸血鬼之身」为偏离官方形态的错译，正确形为「吸血鬼化」",
       "category": "lore-name"
     },
     {
@@ -9730,7 +9730,7 @@
         "白峰"
       ],
       "target": "白脊",
-      "reason": "官方词典：White Ridge Barrow→白脊古坟（proper-noun-index 清点）；TheKalpicAnomaly INFO-493 实测错形「白峰」（子代理自拟，验收回正）",
+      "reason": "官方词典：White Ridge Barrow→白脊古坟；「白峰」为偏离官方名称的错译",
       "category": "lore-name"
     },
     {
@@ -9904,7 +9904,7 @@
         "艾莎"
       ],
       "target": "艾沙",
-      "reason": "GLENMORIL 底座 8 处主形作「艾沙」（NPC_:FULL/DIAL），底座 CONT:FULL 一处孤形「艾莎的遗物」是错形；UNSLAAD 兄弟层亦裁「艾沙」。Vicn 世界观跨 MOD 角色，2026-09-29 回填。",
+      "reason": "跨作品角色 Aisha 统一译为「艾沙」；「艾莎」为孤形错译",
       "category": "lore-name"
     },
     {

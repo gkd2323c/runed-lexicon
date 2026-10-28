@@ -3,9 +3,10 @@
 """批次覆盖率核查：对批次计划与批次目录做全量状态扫描，输出缺口清单。
 
 状态定义（逐批次）：
-- VERIFIED  ：translation.json 已填充（≥1 条 TRANSLATED 译文）——已验收（或已写回）；
-               纯 KEEP 批没有 TRANSLATED 条目，改由 consume 落盘痕迹判定（见
-               consume_evidence）
+- VERIFIED  ：translation.json 已填充（≥1 条 TRANSLATED / REVIEW 译文）——已验收（或已写回）；
+               REVIEW 是已定稿、待人工复核的译文单元状态，与 TRANSLATED 同等可写回，
+               计入已消费、写回与快照口径；纯 KEEP 批没有译文贡献，改由 consume 落盘痕迹判定
+               （见 consume_evidence）
 - TRANSLATED：map.json 存在但 translation.json 未填充——子代理已交卷，待主会话消费
 - PREPPED   ：context.json / translation.json 存在但无产出——已备料待翻译
 - MISSING   ：批次目录不存在或无任何工作文件——未备料
@@ -33,8 +34,9 @@ def consume_evidence(d, entries):
     （实测 253→270 分钟，而 round_pipeline 早已 PIPELINE PASS、0 Dest change）。纯 KEEP
     批的已消费性只能看 consume 自己的落盘痕迹。
 
-    - resolved  ：translation.json 中「译文非空且 status ∈ {TRANSLATED, KEEP}」的条目
-      数。**判据本身**——fill_translations 只由 consume / round_pipeline / close_round
+    - resolved  ：translation.json 中「译文非空且 status ∈ {TRANSLATED, REVIEW, KEEP}」的条目
+      数。REVIEW 是已定稿、待人工复核的译文状态，与 TRANSLATED 同等可写回；
+      REVIEW 标记本身不阻断消费。**判据本身**——fill_translations 只由 consume / round_pipeline / close_round
       触发，能落满即证明交付确实被消费过。它不会被同源预填骗过：inherit_prefill 只写
       map.json，未派单批的 translation.json 始终是 PENDING 骨架。
     - map_filled：`map.filled.json`（consume 第 2 步写的归一化 map）是否存在且非空。
@@ -42,13 +44,11 @@ def consume_evidence(d, entries):
       它照样存在；空对象 `{}` 更只能证明「交付是空的」，fill 因此什么都没落盘。把
       存在性当充分条件，会把「consume 崩在步 2/3」和「子代理交了空 map」两类真洞永久
       藏成已验收——比原缺陷更危险。
-    - status=REVIEW 刻意**不**计入 resolved：REVIEW 是「值已定稿、状态待转正」的中间态
-      （progress_snapshot §4 的口径交叉校验会因它报不一致），转正前不算已消费。
     - entries 为空（含 translation.json 缺失/解析失败）时一律不算消费，保守侧倒。
     """
     resolved = 0
     for t in entries:
-        if (t.get('translation') or '').strip() and t.get('status') in ('TRANSLATED', 'KEEP'):
+        if (t.get('translation') or '').strip() and t.get('status') in ('TRANSLATED', 'REVIEW', 'KEEP'):
             resolved += 1
     map_filled = False
     mfp = os.path.join(d, 'map.filled.json')
@@ -90,12 +90,13 @@ def classify(batch, batches_dir, canonical=None):
             entries = res.get('translations', [])
             filled = sum(
                 1 for t in entries
-                if t.get('translation') and t.get('status') == 'TRANSLATED'
+                if t.get('translation') and t.get('status') in ('TRANSLATED', 'REVIEW')
             )
         except Exception:
             filled = -1
     consumed, resolved, map_filled = consume_evidence(d, entries)
-    # "filled" means the batch was translated and verified; it does NOT mean the
+    # "filled" counts finalized TRANSLATED / REVIEW entries and means the batch
+    # was translated and verified; it does NOT mean the
     # rows reached the canonical XML. Cross-check when a canonical map is given,
     # otherwise a batch that passed verification but was never written back looks
     # finished forever.
@@ -105,7 +106,7 @@ def classify(batch, batches_dir, canonical=None):
     if canonical is not None and entries:
         unwritten = 0
         for t in entries:
-            if not t.get('translation') or t.get('status') != 'TRANSLATED':
+            if not t.get('translation') or t.get('status') not in ('TRANSLATED', 'REVIEW'):
                 continue
             i = t.get('xml_index')
             pair = canonical.get(i)
@@ -114,7 +115,7 @@ def classify(batch, batches_dir, canonical=None):
                 if len(unwritten_idx) < 12:
                     unwritten_idx.append(i)
     if filled > 0 or consumed:
-        # filled>0：至少一条 TRANSLATED 译文已落 translation.json（旧口径，行为不变）。
+        # filled>0：至少一条 TRANSLATED / REVIEW 译文已落 translation.json。
         # consumed 且 filled==0：纯 KEEP 批——canonical 天然无痕，只能靠 consume 落盘
         # 痕迹判已消费（见 consume_evidence）。
         state = 'VERIFIED'

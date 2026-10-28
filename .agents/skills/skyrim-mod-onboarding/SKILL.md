@@ -200,7 +200,7 @@ py -3 .agents/skills/translation-review-tools/scripts/term_digest.py --context .
 
 ## 6. 已知坑
 
-- **纯书籍 / 非 INFO MOD 的备料链不走 `make-batch-index`，也不需要 dialogue-context**。`skyrim-mod-onboarding` 步 2 的 Mutagen 结构导出与备料三件套首件 `make-batch-index.py` 都是 INFO 对话 MOD 专用的：前者导 DIAL→INFO（书籍无对话可导），后者读 `<stem>-info-batches.json`（非 INFO MOD 只有 `<stem>-noninfo-batches.json`）。纯书籍 MOD 的正确备料链是 `rebuild_context.py --stem <S> --batch <BID>` + `term_digest.py`，跳过 `make-batch-index`。`rebuild_context.py` 对 dialogue-context 已作可选处理（缺省即跳过，builder 侧落 `not_applicable`），不再强制要求该文件。
+- **纯书籍 / 非 INFO MOD 的备料链不走 `make-batch-index`，也不需要 dialogue-context**。`skyrim-mod-onboarding` 步 2 的 Mutagen 结构导出与备料三件套首件 `make-batch-index.py` 都是 INFO 对话 MOD 专用的：前者导 DIAL→INFO（书籍无对话可导），后者读 `<stem>-info-batches.json`（非 INFO MOD 只有 `<stem>-noninfo-batches.json`）。纯书籍 MOD 的正确备料链是 `rebuild_context.py --stem <S> --batch <BID>` + `term_digest.py`，跳过 `make-batch-index`。`rebuild_context.py` 对 dialogue-context 为可选输入，缺失时跳过并在 builder 侧落 `not_applicable`。
 - **不要在初始化阶段跑 `dictionary-noun-audit`**。它检查的是 Dest 侧漏项，此时全库都是未译行（`Dest == Source`），会给出成百上千条无效候选。它是收口阶段的工具，不是开工前的工具。
 - **不要用 `translation-batch-preparer` 建全量批**。它是单批手工挑选的旧工具，全量切批用 `plan-info-batches.py` + `plan_noninfo_batches.py`。
 - **不要手工写 `compiled.json`**。契约是派生产物，改术语一律改 `terms.json` 再重编译。

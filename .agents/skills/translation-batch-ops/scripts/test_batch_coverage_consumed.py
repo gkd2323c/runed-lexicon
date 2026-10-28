@@ -210,15 +210,24 @@ class UnconsumedKeepStillStalledTest(_BatchDirMixin, unittest.TestCase):
         self.assertFalse(r["consumed"])
         self.assertEqual(r["state"], "TRANSLATED")
 
-    def test_review_status_is_not_consumption(self):
-        """REVIEW 是「值已定稿、状态待转正」的中间态，转正前不算已消费。"""
+    def test_review_status_is_consumed_and_written(self):
+        """REVIEW 是已定稿译文，计入消费、写回与快照口径。"""
         d = self._batch_dir("NI-TES4-907")
         _write(d, "map.json", {"0": {"translation": "甲", "status": "TRANSLATED"}})
         _write(d, "map.filled.json", {"0": {"translation": "甲", "status": "TRANSLATED"}})
         _write(d, "translation.json", {"translations": [_unit("REVIEW", "甲")]})
-        r = C.classify(_batch("NI-TES4-907", [0]), self.dir)
-        self.assertFalse(r["consumed"])
-        self.assertEqual(r["state"], "TRANSLATED")
+        canonical = {0: ("DEFAULT", "甲")}
+        r = C.classify(_batch("NI-TES4-907", [0]), self.dir, canonical)
+        self.assertTrue(r["consumed"])
+        self.assertEqual(r["state"], "VERIFIED")
+        self.assertEqual(r["filled"], 1)
+        self.assertEqual(r["unwritten"], 0)
+
+        summary = P.batch_summary({"batches": [_batch("NI-TES4-907", [0])]},
+                                  self.dir, canonical, now=1_700_000_000)
+        self.assertEqual(summary["verified"], 1)
+        self.assertEqual(summary["filled_lines"], 1)
+        self.assertEqual(summary["unwritten_lines"], 0)
 
 
 class LegacyAndUnchangedStatesTest(_BatchDirMixin, unittest.TestCase):

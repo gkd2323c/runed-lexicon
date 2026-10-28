@@ -8,7 +8,7 @@ metadata:
 
 # Non-INFO Batch Planner
 
-切分非 INFO 类别的未译行，产出流水线可直接消费的批次计划。是 INFO 战役之后各类别系统收尾的备料工具；与 `translation-batch-preparer`（单批手工挑选的旧工具）不同，本工具面向全量切批、产出固定 schema。
+切分非 INFO 类别的未译行，产出流水线可直接消费的批次计划。是 INFO 战役之后各类别系统收尾的备料工具；与 `translation-batch-preparer`（单批手工挑选）分工不同，本工具面向全量切批、产出固定 schema。
 
 ## 核心模型
 
@@ -80,7 +80,7 @@ plan → index.txt → translation-context-builder --index-file → translation_
 ## 边缘情况
 
 - 单源组超大（如某词重复 80 行）：整组输出为一个批，可能超过 `--max-rows`；这是有意行为（拆开会导致同词两条译文）。
-- 同一 Source 跨类别出现（如地名同时出现在 CELL 与 REFR）：v1 按家族分开装批，不做跨家族合并；译名一致性由词表与验收层保证。
+- 同一 Source 跨类别出现（如地名同时出现在 CELL 与 REFR）：按家族分开装批，不做跨家族合并；译名一致性由词表与验收层保证。
 - 空候选或过滤后为空：报错退出（exit 2），不产出空计划。
 - `--dry-run` 不写任何文件。
 

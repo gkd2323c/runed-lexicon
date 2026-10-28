@@ -65,7 +65,7 @@ XML 不保存 FormID，只有 EDID；而一部分 INFO 记录在 XML 里根本�
 1. 用 EDID 对 context 的 `editor_id`
 2. 仍无归属时，取 `[XXXXXXXX]` 里的 FormID 对 context 的 `form_id`
 
-第二轮是必需的。实测中它能把大量 INFO 从「非对话」拉回对话段，例如某 MOD 对话行从 2533 提升到 3084。少了这一轮，提示语（`INFO:RNAM`）和很多回复会全部掉进非对话段。
+第二轮是必需的。它能把大量 INFO 从「非对话」拉回对话段——少了这一轮，提示语（`INFO:RNAM`）和很多回复会全部掉进非对话段。
 
 ## 关键边缘情况
 

@@ -1,6 +1,6 @@
 ---
 name: translation-batch-preparer
-description: Prepare structured translation batches from xTranslator XML for Skyrim mod localization without modifying the source XML. Use this skill whenever a Skyrim mod translation needs to be broken into reviewable batches, untranslated entries need stable identifiers and duplicate counts, or official Skyrim/DLC terminology should be attached before an Agent begins translating. Before any actual translation decisions, fully read the target mod's CONTEXT.md and DICTIONARY.md; if either file is missing, stop and ask the user whether to create it.
+description: Prepare structured translation batches from xTranslator XML for Skyrim mod localization without modifying the source XML. Use this skill whenever a Skyrim mod translation needs to be broken into reviewable batches, untranslated entries need stable identifiers and duplicate counts, or official Skyrim/DLC terminology should be attached before an Agent begins translating. Before any actual translation decisions, fully read the target mod's CONTEXT.md and DICTIONARY.md; if either file is missing, create it from actual materials, stopping to confirm only if materials are insufficient to verify lore facts or proper-noun provenance.
 compatibility: Requires Python 3.10+ and the runed-lexicon project layout with dictionary/ and mods/ directories. Uses only the Python standard library and does not require network access.
 metadata:
   version: "0.1.3"
@@ -74,7 +74,7 @@ The script recursively loads every XML file under `dictionary/` and builds an ex
 
 For each MOD source string it checks word n-grams against that index, preferring longer phrases. Automatic term matches are limited to term-like records such as names, locations, items, spells, effects, quests, and similar records. Original `INFO` / `DIAL` dialogue snippets are deliberately excluded so ordinary phrases are not mislabeled as terminology.
 
-This first version deliberately favors precision over fuzzy recall:
+The tool deliberately favors precision over fuzzy recall:
 
 - It does not perform semantic or fuzzy matching.
 - It does not infer MOD-specific names.
@@ -104,5 +104,5 @@ python -m py_compile .agents/skills/translation-batch-preparer/scripts/prepare_t
 python .agents/skills/translation-batch-preparer/scripts/prepare_translation_batch.py mods/ExampleMod.esp --rec INFO:NAM1 --limit 3
 ```
 
-For the current Sirenroot sample, the first `INFO:NAM1` untranslated entry should retain its XML index, EDID, record type, and English source, and should attach established terms such as `Nirnroot` or `skooma` when those exact normalized terms exist in the official dictionaries.
+For any real MOD sample, the first `INFO:NAM1` untranslated entry should retain its XML index, EDID, record type, and English source, and should attach established terms such as `Nirnroot` or `skooma` when those exact normalized terms exist in the official dictionaries.
 

@@ -69,7 +69,7 @@ At minimum, check:
 
 For important source material, make an explicit choice before delegation: fixed translation, literal KEEP, item guidance, or intentionally free wording. The local model's general Skyrim knowledge is not a substitute for this audit.
 
-Real Sirenroot testing showed why this matters: omitted term decisions let `Ingun` and `Ayleid` drift to fresh transliterations, unknown Ayleid words were "helpfully" localized, and a context-only identity reveal (`Yes, that's me.`) lost the name that Chinese needed to repeat.
+Without explicit terminology decisions, proper names easily drift to divergent transliterations, unknown lore words can be mistakenly localized, and context-dependent identity reveals (such as `Yes, that's me.`) lose the entity name that Chinese needs to state explicitly.
 
 ## Do not outsource the Agent's job
 
@@ -163,7 +163,7 @@ Working defaults from the current local smoke tests:
 
 These are operational defaults, not model-theory limits. Real MOD evidence should override synthetic benchmark assumptions when later testing gives stronger data.
 
-Batch by semantic coherence rather than an arbitrary row count. The current local smoke test preserved 100 ordered rows and their protected tokens, so there is no reason to force 10-20 row batches when one coherent dialogue/book/quest unit naturally contains more.
+Batch by semantic coherence rather than an arbitrary row count. Smoke testing preserves ordered rows and their protected tokens, so there is no reason to force 10-20 row batches when one coherent dialogue/book/quest unit naturally contains more.
 
 ## Inspect the rendered prompt
 
@@ -340,5 +340,5 @@ When `hy-mt2-32k:latest` is already registered and Ollama is running, run the li
 py -3 .agents/skills/local-model-translator/scripts/ollama_translate.py run .agents/skills/local-model-translator/assets/smoke-request.json
 ```
 
-The smoke response should preserve all four IDs in order, keep `<Alias=Player>`, `%d`, `%s`, and `Mala` exactly, and use `白漫城` / `甜卷` where required.
+The smoke response should preserve all sample IDs in order, keep `<Alias=Player>`, `%d`, `%s`, and `Mala` exactly, and use `白漫城` / `甜卷` where required.
 

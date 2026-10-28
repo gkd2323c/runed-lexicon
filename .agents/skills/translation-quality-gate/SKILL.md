@@ -208,7 +208,7 @@ callers that don't need the R21 shadowing).
 本类是**匹配精度缺陷**（改工具）。`He did.` 的 4 行整句定形本身完全正确，不该降
 `FORBIDDEN_ONLY`——那会丢掉整句锁。**判别信号：若译文正确且源文并非整句，就是匹配问题。**
 
-15 项测试见 `scripts/test_standalone_sentence.py`（含与 `case_sensitive` 的交互护栏）。
+回归测试见 `scripts/test_standalone_sentence.py`（含与 `case_sensitive` 的交互护栏）。
 
 ### 大小写敏感词条（`case_sensitive`, v0.4.2）
 
@@ -260,7 +260,7 @@ callers that don't need the R21 shadowing).
 `_cross_term_target_covered` 的**覆盖方**锚点同样按覆盖方词条自己的标志判定，
 避免「不区分大小写地豁免」——只认大写的词条被小写源文豁免掉。
 
-`test_case_sensitive.py` 共 **29 项**，覆盖独立 forbidden 路径与跨词条覆盖路径，并含默认行为对照护栏。
+`test_case_sensitive.py` 覆盖独立 forbidden 路径与跨词条覆盖路径，并含默认行为对照护栏。
 
 This prevents auto-bind from flagging units where the English term only appears as a
 substring of a longer word or inside markup attributes. These fixes are covered by
@@ -293,7 +293,7 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
    不识别连字符变体写法（作者手写 "High-elf" / "alt-mer"），会导致 Altmer/High
    Elf 互搏条的正确译文被误拦。多词锚点允许词间 [\s-]+ 连接、单词锚点
    允许单点插连字符，并保留形容词派生（Altmeri）；仅豁免侧生效，主检查仍为
-   严格整词。回归验证：selftest_corpus 64 项 + 正反案例双向测试。
+   严格整词。回归验证：selftest_corpus 全过 + 正反案例双向测试。
 
 每处 TERM004 命中都带该条目的 `reason`，方便 Agent 判断是误报还是真回归。
 收录/维护边界见 GLOSSARY.md §7 与 `global-forbidden-words.json` 顶部 doc。
@@ -362,7 +362,7 @@ binding 的单元，局部 TERM002 查不到）。判定带四道防护，避免
 
 维护面：白名单表按 MOD 建档在 `mods/<plugin>/global-ban-exemptions.json`，
 **不进 `global-forbidden-words.json`**——后者只收跨 MOD 官方名词的系统性坏形态。
-本项目全库有 166 个两字 `unconditional` 禁词，**只登记被真实译文证实过的合法形态，
+本项目全库有两字 `unconditional` 禁词，**只登记被真实译文证实过的合法形态，
 不做投机性放行**。
 
 **门禁是候选发现器，不是判决器**：命中后由编排者逐条核销，不得为了消警改动正确译文。
@@ -433,7 +433,7 @@ trunc-html-006/007；selftest 必须直接调用 `truncation_issue`。
 ## CHAR001 确定性实现与误报过滤（v0.1.4 R11；v0.1.6 去 zhconv 环境依赖）
 
 CHAR001 检测非简体字符。v0.1.6 起使用**随仓 vendored 转换表** `scripts/zh_cn_conv.json`
-（zhconv 1.4.3 zhcdict.json 的 zh2Hans + zh2CN 合并表，GPLv2+，11,906 条目）加
+（zhconv 1.4.3 zhcdict.json 的 zh2Hans + zh2CN 合并表，GPLv2+）加
 `quality_gate.py` 内的最长匹配转换副本，语义与 `zhconv.convert(dest, 'zh-cn')`
 逐字节一致（全 CJK 单字符域 + 短语探针验证）。不再 import zhconv，无"环境是否
 装了 zhconv"的降级分支——检测能力不再随环境漂移（t_2f368a4c）。
@@ -464,8 +464,7 @@ python .agents/skills/translation-quality-gate/scripts/selftest_corpus.py
 
 All cases must pass before the gate may be considered safe. The gate path in
 `selftest_corpus.py` calls the real gate functions (check_unit,
-standalone_forbidden_issues) so selftest and gate cannot drift; current total
-69 cases (v0.2.0).
+standalone_forbidden_issues) so selftest and gate cannot drift.
 
 ## Semantic gate（`scripts/semantic_gate.py`，v0.3.0）
 
@@ -481,18 +480,17 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 | WARN 升级   | 0.3 ≤ 上述两项 < 0.5                         | 人工复核队列   |
 | WARN 软提示 | issue_type=register 且置信 ≥ 0.5             | 仅供参考，不拦 |
 
-阈值依据：禁用词级违反在一组 19 例样本上召回 19/19（0.5 门限）；high 级漏判
-落在 0.23~0.49 区间、落入升级带由人工兜底，符合成本不对称原则（漏标进人眼，
-多标无害）。**注意样本量**：19 例只够说明 0.5 没有明显过严，不足以证明它是
-最优点。**改阈值前请另取一批样本重测**，不要拿这 19 例当依据往上调或下调。
+阈值依据：禁用词级违反在一组样本上全部召回（0.5 门限）；high 级漏判
+落在升级带内、由人工兜底，符合成本不对称原则（漏标进人眼，多标无害）。**注意样本量**：
+现有样本只够说明 0.5 没有明显过严，不足以证明它是最优点。**改阈值前请另取一批样本重测**，
+不要拿现有样本当依据往上调或下调。
 
 **判定指令**：`semantic_error` 的 instructions 显式声明以下不算
 语义错误：字面隐喻、语类双关、非常规动宾搭配的**忠实直译**，即使读来新奇；
 合理显化包括被动句补施事、省略句补出与上文一致的回指、排比复现词的统一。
 判定时先逐个在源文定位关键成分的对应表达，弱化否定先还原逻辑，只有确实找不到对应才判错。
-这可消除忠实直译非常规结构的系统性误报，边界分数可从 0.51~0.73 降至约 0.39，
-同时保留真错的 0.50 以上召回。显化类仍可能越线，同一译文双跑也可能出现 0.60/0.49
-的跨线抖动；两类均交豁免通道人工裁决。`MOD_REGISTER` 应声明角色的诙谐或调侃变体属正常语域。
+这可消除忠实直译非常规结构的系统性误报，同时保留真错的召回。显化类仍可能越线，
+同一译文双跑也可能出现跨线抖动；两类均交豁免通道人工裁决。`MOD_REGISTER` 应声明角色的诙谐或调侃变体属正常语域。
 
 **语境适用性**：注入契约条目时连 `note` 一并注入，模型先判断 alias 注明的适用语境
 是否成立，不成立则该条目不适用。alias 条目的 REQUIRED 级绑定由此在语义层生效，
@@ -501,16 +499,16 @@ System One 模型承担这三类判断，两层互补：机械层仍全权负责
 **匹配语义（必注入）**：契约的 `match.kind` 是 `contains_phrase`——译文包含 required_zh
 形式即合规，不要求逐字相等。字段名 `required_zh` 本身易被读成逐字要求，故注入时
 必须同时给 `match_semantics` 说明。漏掉它会系统性误报：实测 `Whiterun`→「白漫城」
-（官方全称，机械层 PASS）被判 TERM_VIOLATION，term=0.49~0.61 跨过 HARD=0.5。
+（官方全称，机械层 PASS）被判 TERM_VIOLATION，分数跨过 HARD 门限。
 
-| 注入方式             | term 三次实测      | 判定               |
-| -------------------- | ------------------ | ------------------ |
-| 只给 required_zh     | 0.51 / 0.49 / 0.51 | FAIL（贴边界抖动） |
-| 加 match_semantics   | 0.17 / 0.16 / 0.15 | ok                 |
-| 只改字段名 target_zh | 0.56 / 0.57 / 0.56 | FAIL（无关变量）   |
+| 注入方式             | 判定               |
+| -------------------- | ------------------ |
+| 只给 required_zh     | FAIL（贴边界抖动） |
+| 加 match_semantics   | ok                 |
+| 只改字段名 target_zh | FAIL（无关变量）   |
 
-修复后误报消除且不漏真违规（同一句）：正确全称 0.04 ok、正确省称 0.03 ok、
-未译 0.96 FAIL、错译「雪漫」0.41 FAIL、音译「怀特伦」0.95 FAIL。
+修复后误报消除且不漏真违规（同一句）：正确全称与正确省称 ok、未译 FAIL、
+错译「雪漫」FAIL、音译「怀特伦」FAIL。
 
 **四态判定（状态必须如实；语义层仅作参考）**：
 
@@ -552,7 +550,7 @@ RemoteDisconnected 不被 URLError 包装，漏捕时零重试直接穿透，实
   verify 报告中该批 `checked=false`——参考层缺失同样不阻主线。
 
 **豁免通道（人工复核裁决的落盘，v0.4.0）**：概率模型对部分语境正确的边界句存在稳定误报，
-多轮改写后分数仍可能固定在约 0.57；整批 `--no-semantic` 又会放弃其余条目的语义检查。
+多轮改写也难以把它压回门限以下；整批 `--no-semantic` 又会放弃其余条目的语义检查。
 豁免通道把人工裁决变成机器可读的状态：
 
 | 参数 | 语义 |

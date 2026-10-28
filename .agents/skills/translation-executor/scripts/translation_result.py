@@ -15,6 +15,8 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 RESULT_SCHEMA_VERSION = 1
+# REVIEW remains accepted for existing drafts: it is a finalized translation
+# awaiting human review, and is writable like TRANSLATED. PENDING alone is unfinished.
 ALLOWED_STATUSES = {"PENDING", "TRANSLATED", "REVIEW", "KEEP"}
 ALLOWED_CONFIDENCE = {"", "HIGH", "MEDIUM", "LOW"}
 
@@ -465,6 +467,8 @@ def command_summary(args: argparse.Namespace) -> int:
     print(f"Result: {result_path}")
     print(f"Items: {len(translations)}")
     print("Statuses: " + ", ".join(f"{key}={value}" for key, value in sorted(statuses.items())))
+    if statuses.get("REVIEW", 0):
+        print(f"REVIEW={statuses['REVIEW']}（译文已定稿、待人工复核，可写回）")
     print("Confidence: " + ", ".join(f"{key or '<unset>'}={value}" for key, value in sorted(confidences.items())))
     return 0
 

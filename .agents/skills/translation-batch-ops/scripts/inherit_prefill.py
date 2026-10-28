@@ -162,10 +162,8 @@ def cmd_expand(args: argparse.Namespace) -> int:
         if isinstance(item, dict):
             txt = str(item.get("translation") or "").strip()
             conf = str(item.get("confidence") or "HIGH")
-            # 译者标的 status 必须原样传下去。折叠只该复制译文，
-            # 不该把 KEEP/REVIEW 静默改写成 TRANSLATED —— 那会让存疑行
-            # 以「确信译文」的姿态进 canonical，也让 writer 的
-            # 「skipped non-final」计数说谎。
+            # 译者标的 status 必须原样传下去。REVIEW 与 TRANSLATED 同为
+            # 已定稿译文，只额外标记待人工复核；PENDING 仍是唯一未定稿状态。
             stat = str(item.get("status") or "TRANSLATED").strip().upper() or "TRANSLATED"
             note = str(item.get("notes") or "").strip()
         else:
@@ -173,12 +171,12 @@ def cmd_expand(args: argparse.Namespace) -> int:
             conf = "HIGH"
             stat = "TRANSLATED"
             note = ""
-        if stat not in ("TRANSLATED", "REVIEW", "KEEP"):
+        if stat not in ("TRANSLATED", "REVIEW", "KEEP", "PENDING"):
             stat = "TRANSLATED"
         if not txt:
             missing.append(rep)
             continue
-        if stat != "TRANSLATED":
+        if stat == "PENDING":
             nonfinal[stat] = nonfinal.get(stat, 0) + len(members)
         folded = f"folded: {note}" if note else "folded"
         for m in members:
@@ -188,7 +186,7 @@ def cmd_expand(args: argparse.Namespace) -> int:
         raise SystemExit(f"uniq-map 缺 {len(missing)} 个代表键译文: {missing[:10]}")
     if nonfinal:
         detail = ", ".join(f"{k} {v} 行" for k, v in sorted(nonfinal.items()))
-        print(f"  注意: 非 TRANSLATED 状态已保留 -> {detail}（writer 会跳过，勿当已写回）")
+        print(f"  注意: 未定稿状态已保留 -> {detail}（不能写回，需先完成译文）")
 
     if missing:
         raise SystemExit(f"uniq-map 缺 {len(missing)} 个代表键译文: {missing[:10]}")

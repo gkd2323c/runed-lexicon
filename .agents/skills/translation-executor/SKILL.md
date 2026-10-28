@@ -69,7 +69,7 @@ For every result item:
 6. Preserve every protected runtime token exactly.
 7. Set `status`:
    - `TRANSLATED` when the wording is ready for ordinary review.
-   - `REVIEW` when a meaningful unresolved semantic ambiguity remains, such as a core concept whose translation depends on what the thing actually is.
+   - `REVIEW`：值已定稿、待人工复核，照常写回。它与 `TRANSLATED` 同等参与写回与消费，不阻断 writeback、consume 或进度快照，保留为机械可筛的待裁决标记，由审查线筛选裁决。
    - `KEEP` when the entry has been inspected and intentionally must remain exactly identical to the source, such as an author/creator name, internal technical label, or other non-localizable identifier surfaced by the localization export.
 8. Set `confidence` to `HIGH`, `MEDIUM`, or `LOW`.
 9. Use `notes` only for information that helps later review; do not narrate routine translation choices.
@@ -100,7 +100,7 @@ Examples of things that should normally move forward without user intervention:
 Examples that can still justify `REVIEW`:
 
 - a title/name deliberately built on a semantic pun that changes story interpretation;
-- a core object or concept whose translation cannot be chosen responsibly until its role in the plot is understood;
+- a core object or concept translated with working wording but flagged for review to confirm its interpretation once context is fully established;
 - a term whose candidate translations imply different lore identities rather than merely different phonetic spellings.
 
 ## Protected tokens
@@ -120,13 +120,13 @@ If the extractor flags an ordinary piece of text as a protected token, preserve 
 
 ### 缺失背书扫描（`scripts/suggest_waived_tokens.py`）
 
-源文含动作提示括号而译文已中文化、却无 `waived_tokens` 背书的条目，用本脚本扫描（`_tmp/scripts/auto-waivers.py` 的通用化转正，不再依赖 DIAL plan 与 map 版式，直接读 executor result）：
+源文含动作提示括号而译文已中文化、却无 `waived_tokens` 背书的条目，用本脚本扫描（直接读取 executor result，不依赖 DIAL plan 与 map 版式）：
 
 ```text
 py -3 .agents/skills/translation-executor/scripts/suggest_waived_tokens.py --result <translation.json> [--apply] [--report <json>]
 ```
 
-默认仅提示不修改；`--apply` 把建议合并进条目（去重，只加真实存在于 source 的子串，validator 记 warning 备查）。方括号/圆括号整段视为可中文化动作提示；尖括号仅动作标签白名单可豁免，含 `=`/`%` 的运行时占位符绝不豁免；译文已原样保留的不建议。`fix-quotes.py`（引号批量改 map）不转正：检出职能已被 quality-gate CHAR001 覆盖（「」报 FAIL 并给出正确方向），批量改写违反 gate 只读原则。
+默认仅提示不修改；`--apply` 把建议合并进条目（去重，只加真实存在于 source 的子串，validator 记 warning 备查）。方括号/圆括号整段视为可中文化动作提示；尖括号仅动作标签白名单可豁免，含 `=`/`%` 的运行时占位符绝不豁免；译文已原样保留的不建议。引号批量改写不纳入工具链：检出职能已被 quality-gate CHAR001 覆盖（「」报 FAIL 并给出正确方向），批量改写违反 gate 只读原则。
 
 ## Fill a draft from a translation map
 
@@ -256,7 +256,7 @@ Rebuild or revalidate an older batch when the new context actually changes somet
 
 - Never modify or reserialize xTranslator XML in this skill.
 - Never edit `<Source>`, `<Dest>`, `<EDID>`, `<REC>`, or XML metadata here.
-- Never silently drop a translation unit that is difficult to translate; use `REVIEW` with a concise reason.
+- 难处理的条目照译并落盘，用 `REVIEW` 标记复核需求，不得留空或丢弃。
 - Never translate internal labels, creator names, or other deliberately non-localizable strings merely to reduce the untranslated count; mark inspected cases `KEEP`.
 - Never invent missing speaker / quest / relationship data.
 - Do not confuse `PROVISIONAL` with permanent or human-approved. The Agent should still make reversible working decisions for ordinary MOD-original names instead of leaving English in otherwise translated dialogue.
@@ -271,7 +271,7 @@ Rebuild or revalidate an older batch when the new context actually changes somet
 python .agents/skills/translation-executor/scripts/test_workflow_regressions.py
 ```
 
-统一运行 5 个永久测试文件（查询、旧值保护、集合发布、导入校验、导入到 filler 的离线 CLI 链路）；任一失败返回非零。只用合成临时数据，不联网、不调用模型、不改真实译文。它不替代 translation-quality-gate 的失效机制语料自测和实际批次校验。
+统一运行本目录下的永久回归测试（覆盖查询、旧值保护、集合发布、导入校验、导入到 filler 的离线 CLI 链路）；任一失败返回非零。只用合成临时数据，不联网、不调用模型、不改真实译文。它不替代 translation-quality-gate 的失效机制语料自测和实际批次校验。
 
 ## Validate this Skill
 
@@ -286,7 +286,7 @@ py -3 -m py_compile .agents/skills/translation-executor/scripts/translation_resu
 Then smoke-test initialization and pending validation against a real context payload:
 
 ```text
-py -3 .agents/skills/translation-executor/scripts/translation_result.py init .work/status-context-v2.json --batch 0 --output .work/translation-executor-smoke.json --force
-py -3 .agents/skills/translation-executor/scripts/translation_result.py validate .work/translation-executor-smoke.json --context .work/status-context-v2.json --allow-pending
+py -3 .agents/skills/translation-executor/scripts/translation_result.py init .work/<plugin>/context/<plugin>-info-context.json --batch 0 --output .work/translation-executor-smoke.json --force
+py -3 .agents/skills/translation-executor/scripts/translation_result.py validate .work/translation-executor-smoke.json --context .work/<plugin>/context/<plugin>-info-context.json --allow-pending
 ```
 

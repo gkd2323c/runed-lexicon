@@ -64,7 +64,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
-from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402, resolve_source_xml
+from mod_paths import resolve_canonical, resolve_mod_dir, resolve_source_xml  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -245,9 +245,20 @@ def main(argv=None) -> int:
     ap.add_argument("--out", help="普查结果 JSON 落盘路径")
     args = ap.parse_args(argv)
 
-    mod_dir = resolve_mod_dir(getattr(args, 'mod', None), args.stem, Path('.'))
-    xml = Path(args.xml) if args.xml else resolve_canonical(None, args.stem, mod_dir)
-    src = Path(args.source_xml) if args.source_xml else resolve_source_xml(None, args.stem, mod_dir)
+    try:
+        if args.xml and args.source_xml:
+            # 两个路径都给了就不需要从 stem 推 MOD 目录；凭 --mod 或当前目录即可。
+            mod_dir = Path(getattr(args, 'mod', '') or '.')
+        else:
+            mod_dir = resolve_mod_dir(getattr(args, 'mod', None), args.stem, Path('.'))
+        xml = Path(args.xml) if args.xml else resolve_canonical(None, args.stem, mod_dir)
+        src = Path(args.source_xml) if args.source_xml else resolve_source_xml(None, args.stem, mod_dir)
+    except SystemExit as exc:
+        # 解析器以 SystemExit(消息) 报用法错误；本工具约定用法错误返回 2。
+        if exc.code not in (None, 0):
+            print(str(exc.code), file=sys.stderr)
+            return 2
+        raise
     contract = Path(args.contract) if args.contract else Path(".work") / args.stem / "contracts" / "{}.compiled.json".format(args.stem)
     batches_dir = Path(args.batches_dir) if args.batches_dir else None
 

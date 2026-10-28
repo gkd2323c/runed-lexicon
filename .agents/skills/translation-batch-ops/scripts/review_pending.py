@@ -34,6 +34,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from mod_paths import resolve_mod_dir  # noqa: E402
 from review_coverage import read_reviewed  # noqa: E402
 
 

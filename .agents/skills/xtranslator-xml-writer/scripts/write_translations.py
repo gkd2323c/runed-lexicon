@@ -417,7 +417,7 @@ def collect_translations(
                 )
 
             status = str(item.get("status", "")).upper()
-            if status not in {"TRANSLATED", "KEEP"}:
+            if status == "PENDING":
                 if not skip_nonfinal:
                     raise WritebackError(f"{unit_id}: non-final status {status!r}")
                 skipped.append({
@@ -426,6 +426,8 @@ def collect_translations(
                     "result_file": relative(path),
                 })
                 continue
+            if status not in {"TRANSLATED", "REVIEW", "KEEP"}:
+                raise WritebackError(f"{unit_id}: invalid status {status!r}")
             counts[status] += 1
 
             node = xml_strings[index]
@@ -640,10 +642,9 @@ def main() -> int:
     parser.add_argument("--check-only", action="store_true", help="Validate without writing XML")
     parser.add_argument(
         "--skip-nonfinal", action="store_true",
-        help="Skip non-final (REVIEW/PENDING/…) units instead of rejecting the "
-        "whole run; skipped units are listed in the report and never written. "
-        "Use for batch writebacks where a few units await review; the skipped "
-        "units must be resolved and written by a later generation.",
+        help="Skip PENDING units instead of rejecting the whole run; skipped units "
+        "are listed in the report and never written. REVIEW is finalized and is "
+        "written normally.",
     )
     parser.add_argument("--force", action="store_true", help="Replace existing output/report")
     args = parser.parse_args()
@@ -759,6 +760,7 @@ def _run(args: argparse.Namespace) -> int:
                     f"(first: {preview}); the result set is missing batches. Refusing to write.")
 
         translated_count = status_counts.get("TRANSLATED", 0)
+        review_count = status_counts.get("REVIEW", 0)
         keep_count = status_counts.get("KEEP", 0)
         report: dict[str, Any] = {
             "baseline_xml": relative(xml_path),
@@ -768,6 +770,7 @@ def _run(args: argparse.Namespace) -> int:
             "string_count": len(baseline_strings),
             "result_count": len(items),
             "translated_count": translated_count,
+            "review_count": review_count,
             "keep_count": keep_count,
             "result_files": [relative(path) for path in result_paths],
             "patch_files": [relative(path) for path in patch_paths],
@@ -793,7 +796,8 @@ def _run(args: argparse.Namespace) -> int:
                 write_report(resolve_path(args.report), report, args.force)
             print(
                 f"Pre-write validation passed: {len(items)} result(s), "
-                f"{translated_count} TRANSLATED, {keep_count} KEEP "
+                f"{translated_count} TRANSLATED, {review_count} REVIEW (finalized), "
+                f"{keep_count} KEEP "
                 f"({predicted_keep_fix} will be restored to source), "
                 f"{len(skipped_units)} skipped non-final, "
                 f"{len(baseline_strings)} XML String(s)."
@@ -967,7 +971,8 @@ def _run(args: argparse.Namespace) -> int:
         print(
             f"Wrote {relative(output_path)}: {changed_count} Dest change(s) "
             f"({keep_fix_count} KEEP restored to source), "
-            f"{keep_count} KEEP, {len(skipped_units)} skipped non-final, "
+            f"{review_count} REVIEW (finalized), {keep_count} KEEP, "
+            f"{len(skipped_units)} skipped PENDING, "
             f"post-write validation passed."
         )
         print(f"Baseline SHA-256: {baseline_hash}")

@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "translation-batch-ops" / "scripts"))
-from mod_paths import resolve_canonical, resolve_mod_dir  # noqa: E402, resolve_source_xml
+from mod_paths import resolve_canonical, resolve_mod_dir, resolve_source_xml  # noqa: E402
 
 
 def split_en(s: str) -> list[str]:

@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Python 3.10+，绝大多数脚本只用标准库。解释器以 `skill-creator` preflight 确认的为准（本机为 `py -3`；CI 与本文命令用 `python`）。CI 会额外安装 `pyyaml`、`zhconv`。
 
 ```bash
-# 推送前必跑：复刻 CI 五步（约 30 秒，失败 exit 1）
+# 推送前必跑：执行 CI 检查（失败 exit 1）
 python tools/pre-push-check.py
 python tools/pre-push-check.py --syntax-only      # 只跑第 4 步（CI 步骤入口）
 python tools/pre-push-check.py --hygiene-only     # 只跑第 5 步（CI 步骤入口）
@@ -38,7 +38,7 @@ python tools/pre-push-check.py --install-hook   # 装 .git/hooks/pre-push，每�
 python -m unittest discover -s .agents/skills/translation-executor/scripts -p "test_*.py"
 python -m unittest discover -s .agents/skills/translation-executor/scripts -p "test_fill_set.py"
 
-# CI 第 2 步的七个 standalone 回归脚本（与 pre-push-check.py 的 STANDALONE_SCRIPTS 两边必须同步改）
+# CI 第 2 步的 standalone 回归脚本（与 pre-push-check.py 的 STANDALONE_SCRIPTS 两边必须同步改）
 python .agents/skills/xtranslator-xml-writer/scripts/test_patch_mode.py
 python .agents/skills/xtranslator-xml-writer/scripts/test_incremental_mode.py
 python .agents/skills/noninfo-batch-planner/scripts/test_plan_noninfo.py
@@ -72,7 +72,7 @@ python .agents/skills/term-contract-compiler/scripts/lint_terms.py \
   --terms mods/<plugin>/terms.json --bans global-forbidden-words.json
 ```
 
-**测试发现的坑**：CI 的 `unittest discover` 步骤会跳过不含字面量 `unittest` 的测试文件（怕 `exit 5: NO TESTS RAN`）。用 standalone 风格（自己写 `main()`）新写的 `test_*.py` 不会被 CI 执行——要么加 `unittest`，要么登记进 `tools/pre-push-check.py` 的 `STANDALONE_SCRIPTS` 与 `ci.yml`（两边必须同步改）。
+`unittest discover` 会跳过不含 `unittest` 测试用例的文件。仅定义 `main()` 的独立 `test_*.py` 不会由该步骤执行；这类脚本须登记到 `tools/pre-push-check.py` 的 `STANDALONE_SCRIPTS` 和 `ci.yml`，并保持两处同步。
 
 ## 流水线架构
 
@@ -102,7 +102,7 @@ ESP/ESM ──xTranslator──> mods/<plugin>/<plugin>_english_chinese.xml   �
 
 Skill 分四层 + 元 skill：
 
-- **协作编排**：`subagent-ops`（委派决策、任务卡编译与红线、体量与送达纪律、故障归因；附轨迹读取与写盘冲突守卫三个可选脚本）
+- **协作编排**：`subagent-ops`（委派决策、任务卡编译与红线、体量与送达纪律、故障归因；附轨迹读取与写盘冲突守卫脚本）
 - **流水线核心**（有脚本）：`translation-context-builder`、`translation-executor`、`translation-quality-gate`（含 `semantic_gate.py` 参考层）、`xtranslator-xml-writer`、`translation-batch-ops`（批次运维：验收/覆盖/缺口/进度/分片/审查欠账 review_pending 与批次实况 batch_status/收口链 round_pipeline 与 close_round）、`translation-batch-preparer`（批次切分与未译清点）、`noninfo-batch-planner`（非 INFO 批次计划）、`translation-review-tools`（读批/术语摘要/修正集 apply/字符集归一/抗幻觉探针）、`review-sheet-export`（导出人工审校 xlsx）
 - **契约与名词**：`term-contract-compiler`（编译契约）、`proper-noun-index`（源侧官方专名清点）、`dictionary-noun-audit`（译文侧漏项候选）、`noun-consistency-scan`（同源多译分裂）、`same-source-convergence`（同源译文收敛、分片对账与译形裁决）
 - **结构提取与查询**：`mutagen-dialogue-exporter`（秒级解析插件，取代 xEdit；xEdit 导出路径已退役，保留在 `.agents/skills/xedit-context-exporter/` 仅作历史参考）、`skyrim-xml-tools`（XML 检视/未译清单/官方词典查询，只读）、`translation-fidelity-scan`、`fantasy-context-auditor`（本地 LLM 预筛）、`local-model-translator`
@@ -129,7 +129,7 @@ Skill 分四层 + 元 skill：
 
 8. **先检索复用，禁止重复实现**（`skyrim-tool-dev-rules` §1.0）：需要任何程序化操作前先查 `.agents/skills/` 是否已有覆盖。一次性内联 `python -c`、shell 管道、临时脚本只要在做现成 skill 能做的事，同属违规。确需一次性的落 `_tmp/scripts/`（不进项目资产目录）；要成为复用能力的按 §A 沉淀为 skill。
 
-9. **性能门禁**：单次完整调用 > 30s 视为缺陷，需先 `cProfile` 拆账再修；gate → writeback → 复扫关键路径须保持秒级基线（gate 0.89s @8555 单元 / 4.1s @20634 单元、writeback 0.43s、noun-audit 2.1s）。改动后写回类须证明输出**逐字节一致**。
+9. **性能门禁**：单次完整调用超过 30 秒视为缺陷，需先用 `cProfile` 分析耗时再修；gate → writeback → 复扫关键路径须保持秒级响应。改动后，写回类工具须证明输出**逐字节一致**。
 
 10. **两种验证状态必须分开声明**：工程验证通过（结构完好、节点数一致、占位符完整、gate PASS）≠ 语义翻译正确。脚本退出码 0 不等于「翻译正确」或「已实机验证」。不因已知后续剧情提前译出真实身份、阵营或亲缘关系。
 

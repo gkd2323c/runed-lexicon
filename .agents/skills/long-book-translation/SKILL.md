@@ -49,7 +49,7 @@ py -3 .agents/skills/long-book-translation/scripts/plan_book_shards.py \
   --out-dir _tmp/data/book-<edid> --budget 8000
 ```
 
-`--budget` 默认 8000。这是架构约束，不是模型上限；项目实测 3923 个章节块中最大 12941 字符、超 6000 的仅 1.8%，该值下绝大多数章节一章一单元。
+`--budget` 默认 8000。这是架构约束，不是模型上限；实测章节块中超 6000 字符的仅约 1.8%，该预算下绝大多数章节一章一单元。
 
 分片边界优先级：
 
@@ -88,7 +88,7 @@ py -3 .agents/skills/long-book-translation/scripts/build_shard_pack.py \
 
 工作包含四部分：单元定位与原文哈希、书籍护照、**仅在本文出现过的**实体、待译正文指引。
 
-派单时按 `subagent-ops` 走，注意：本流水线的子代理需要读工作包、读对应 `shards/shard-NNN.md`、并**把译文写成 `<shard_id>.txt` 落盘**到约定目录，因此必须派 `access="write"`。任务卡写明输出目录与文件名（`<shard_id>.txt`），不得让子代理把中文正文塞进回传消息。
+派单时按 `subagent-ops` 走，注意：本流水线的子代理需要读工作包、读对应 `shards/shard-NNN.md`、并**把译文写成 `<shard_id>.txt` 落盘**到约定目录，因此必须授予可写权限。任务卡写明输出目录与文件名（`<shard_id>.txt`），不得让子代理把中文正文塞进回传消息。
 
 ### 2.3 拼回与校验
 
@@ -124,7 +124,7 @@ Skyrim 书籍文本不是纯文本。受保护标记两类，权重相同：
 
 **为什么不让模型直接输出标记**：模型会漏标、改标、重排标签，而这些错误在译文读起来通顺时完全不可见。把标记移出翻译视野，格式正确性就从"模型的自觉"变成"程序的断言"。
 
-`[pagebreak]` 曾一度不被保护（理由是它已作为分片边界用完），结果某轮拼合后它全数丢失而校验未报。漏掉它游戏内书籍分页即乱，与标签同级，因此纳入同一套守恒校验。
+`[pagebreak]` 与标签同级受占位符守恒保护：漏掉它游戏内书籍分页即乱，缺失即硬错误，因此纳入同一套守恒校验。
 
 `[sic]` `[x]` `[redacted]` `[untranslatable]` 不占位符化。它们是作者标给自己的元信息，量在数十次量级且语义上属于文本内容，留在正文里译。
 
@@ -174,8 +174,8 @@ Skyrim 书籍文本不是纯文本。受保护标记两类，权重相同：
 收口前做一次全书级核查，依据是**全书拼合结果中的术语索引**而非逐个切片：
 
 ```bash
-# 全书拼合后在 canonical 上跑，不是跑单个分片
-py -3 .agents/skills/noun-consistency-scan/scripts/<scan> ...
+# 全书拼合后在 canonical 上跑名词一致性扫描，不是跑单个分片
+py -3 .agents/skills/noun-consistency-scan/scripts/noun_consistency_scan.py --xml mods/<plugin>/<plugin>_english_chinese_translated.xml --stem <plugin>
 ```
 
 机械层报候选，歧义交由审校子代理判断。审校发现的问题走 `apply_fixes` / `make_fixes_from_report` 修正，不要手改分片文件后重新拼合（那会让分片与 canonical 脱节）。
@@ -193,13 +193,12 @@ py -3 .agents/skills/noun-consistency-scan/scripts/<scan> ...
 | BOOK:DESC 任意长度            | 标记密集，长则分片，短则常规批次 |
 | 同 EDID 多条短段（QUST:CNAM） | 见下，不走分片                   |
 
-**QUST:CNAM 任务日志不走本流程。** 实测它的真实结构是**同 EDID 多条递增短段**，
-不是一条长字符串：`AuridonCouncilQ02` 有 16 条 CNAM，各段 48 → 99 → … → 356 字符
-递增，合计近 8000。写法是任务推进到哪一步，日志就替换成更长的一版（含前文追加）。
+**QUST:CNAM 任务日志不走本流程。** QUST:CNAM 的真实结构是**同 EDID 多条递增短段**，
+不是一条长字符串。写法是任务推进到哪一步，日志就替换成更长的一版（含前文追加）。
 
 这决定了两件事：
 
-- 单条 CNAM 最长约 965 字符，本就在常规翻译单元容量内，分片无从下手
+- 单条 CNAM 通常在数百字符级，本就在常规翻译单元容量内，分片无从下手
 - 真正需要跨段一致的是**同 EDID 的整条任务线**，因为后段包含前段内容
 
 正确处理是把它当作**一个单元组**：同一份护照与台账，各段单独翻译但术语、
@@ -207,7 +206,7 @@ py -3 .agents/skills/noun-consistency-scan/scripts/<scan> ...
 不要并行派单。这条任务线的收口靠 `noun-consistency-scan` 在 canonical 上扫，
 而不是靠本 skill 的切片校验。
 
-MESG:DESC 与本 skill 的关系：实测最长约 941 字符、纯文本无标记，通常也不触发
+MESG:DESC 与本 skill 的关系：多在数百字符级、纯文本无标记，通常也不触发
 分片。超长个体出现时走本流程，边界降级到句子。
 
 ## 8. 与相邻 skill 的分工
@@ -230,7 +229,7 @@ MESG:DESC 与本 skill 的关系：实测最长约 941 字符、纯文本无标�
 ```bash
 node .agents/skills/skill-creator/scripts/check_env.mjs --capability quick-validate
 py -3 .agents/skills/skill-creator/scripts/quick_validate.py .agents/skills/long-book-translation
-py -3 scripts/test_book_shards.py
+py -3 .agents/skills/long-book-translation/scripts/test_book_shards.py
 ```
 
 `test_book_shards.py` 覆盖：分片守恒、占位符编号一致、漏标被拦截、缺失译文被拦截、空译文被拦截、英文残留被拦截、标记逐字节还原。

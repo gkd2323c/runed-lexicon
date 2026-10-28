@@ -73,9 +73,21 @@ def main() -> int:
     # 由「同一源句算出两个不同目标即中止」那条检查兜住。
 
     stem = args.stem
-    base = resolve_mod_dir(getattr(args, 'mod', None), stem, Path('.'))
-    xml = resolve_canonical(args.xml, stem, base,
-                            resolve_source_xml(getattr(args, 'source_xml', None), stem, base))
+    if args.xml:
+        # 显式给了 canonical 就不需要从 stem 推 MOD 目录；凭 --mod 或当前目录即可。
+        base = Path(getattr(args, 'mod', '') or '.')
+    else:
+        try:
+            base = resolve_mod_dir(getattr(args, 'mod', None), stem, Path('.'))
+        except SystemExit as exc:
+            # 解析器以 SystemExit(消息) 报用法错误；本工具约定用法错误返回 2。
+            print(str(exc.code), file=sys.stderr)
+            raise SystemExit(2)
+    if args.xml:
+        xml = Path(args.xml)
+    else:
+        xml = resolve_canonical(None, stem, base,
+                                resolve_source_xml(getattr(args, 'source_xml', None), stem, base))
     srcs, dests = [], []
     for s in ET.parse(xml).getroot().iter('String'):
         srcs.append((s.findtext('Source') or '').strip())

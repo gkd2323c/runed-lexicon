@@ -23,8 +23,8 @@ metadata:
 
 Read-only scanner for noun-level translation consistency in a translated xTranslator XML.
 It finds the classic defect pattern: the same English display name translated into several
-different Chinese forms across rows (e.g. 70× "Remarkable Gravestone" split 68/2 between
-非凡墓碑 and 特别的墓碑). Deterministic; same input → same output.
+different Chinese forms across rows (e.g. one display name split into 非凡墓碑 and 特别的墓碑).
+Deterministic; same input → same output.
 
 ## When to use
 
@@ -90,15 +90,14 @@ n-gram，若这些串能把出现行**递归最平衡二分**成 ≥2 组、且�
 为什么不用「英文第 N 个词 ↔ 中文第 M 块」的位置对齐：两句式台词里第二个专名会映射到
 不存在的块号，短句上错位率极高；互斥覆盖只看共现关系，结论可解释、可复核。
 
-种子过滤（决定信噪比，逐条都对应实测噪声源）：首词是虚词即丢（`Against Mora`/`Can I`）；
-出现次数超 `--max-occurrences` 即丢（`Can I` ×142）；单词种子在语料里常以小写出现即丢
+种子过滤（决定信噪比，逐条都对应一类噪声源）：首词是虚词即丢（`Against Mora`/`Can I`）；
+出现次数超 `--max-occurrences` 即丢；单词种子在语料里常以小写出现即丢
 （`Calm`/`Corruption`/`Defeat` 这类被句首大写的普通名词）。已登记英文形（proper-noun-index
 清单 `names[].name` 与编译契约 `terms[].source`）自动排除，避免已登记专名重复报警。
 
 已知限制（裁决时须知）：中文含引号或分隔符时（`“凯娜之女”`）CJK 块被打断，跨块形态
-抓不到；所有格种子（`Alduin's`）与长句会带入句级 n-gram 噪声。实测三万行量级语料
-351 种子 → 14 候选、1.1s。**候选数不是质量指标**，逐条裁决后仍可能出现零真漂移
-（已知名所有格与假阳性是常见的零漂移来源）。
+抓不到；所有格种子（`Alduin's`）与长句会带入句级 n-gram 噪声。**候选数不是质量指标**，
+逐条裁决后仍可能出现零真漂移（已知名所有格与假阳性是常见的零漂移来源）。
 
 输出角色：`.work/<plugin>/reports/<plugin>-seed-scan.json`
 
@@ -125,9 +124,8 @@ Core pool (A, same Source → multiple Dest splits):
 2. **分组键**：池 A 按**整句源文**分组，同一专名出现在不同句子里的分裂不在
    任何一组内。
 
-真实锚定事故：某个专名的「图／塔」译形分裂落在两条 `DIAL:FULL` 上——**对池 A 双重不可见**（既不是名词行，两句源文也
-不同）。池 A 报「1 组 9 行」（全是另一个 `Book` 问题）时，这个分裂根本没进
-过它的视野。
+**对池 A 双重不可见的形态**：专名的两个译形分别落在两条 `DIAL:FULL` 上——既不是
+名词行，两句源文也不同。池 A 报「1 组」时，这个分裂根本没进过它的视野。
 
 ### F 池：契约专名译形漂移
 
@@ -149,13 +147,13 @@ vs「先祖神洲」；以及合法不同译法如「各地岛屿」vs「夏暮�
 
 **实现上必须按词边界匹配**，两处踩坑记录在 `pool_f` 的 docstring 里：
 
-- 拿归一化字符串做子串 → `fish` 含 `Ish`(370 行)、`self` 含 `Elf`(205 行)、
-  `crystal` 含 `Ystal`(98 行)、`weight` 含 `Eight`(13 行)，1034 行里绝大部分
-  是词内误报。先倒排筛候选、再验完整短语变体后降到 94 行。
+- 拿归一化字符串做子串 → `fish` 含 `Ish`、`self` 含 `Elf`、
+  `crystal` 含 `Ystal`、`weight` 含 `Eight`，绝大部分是词内误报。先倒排筛
+  候选、再验完整短语变体。
 - 倒排分词把撇号当**词内字符** → `Tusamircil's` 成整词，锚点查不到候选行，
   池静默漏报真实分裂。撇号必须算分隔符。
 
-回归 `test_pool_f.py`（15 项）。
+回归 `test_pool_f.py`。
 
 Extension pools (each needs its own input; run separately when needed):
 

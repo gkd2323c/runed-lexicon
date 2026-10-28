@@ -105,13 +105,13 @@ python .agents/skills/skyrim-xml-tools/scripts/lookup_batch.py <词> [<词> ...]
 词直接写在命令行上；`--terms <文件>` 只在你确实有一份想留着复跑的长名单时才用（一行一词，`#` 为注释）。默认 **exact**。
 
 **为什么不逐词 `lookup`**：逐词调用有两个问题——每次调用都重新解析 `dictionary/`
-下全部词典 XML（实测 11 词批量一次 1.7s，逐词跑是同样次数的全量重解析），以及每词
+下全部词典 XML（逐词调用要按词数重解析同样遍数），以及每词
 一份重定向输出会在 `_tmp/` 里堆出几十个一次性文件。`lookup_batch` 只读一次词典、
 输出一份汇总到 stdout，**整个过程不产生任何临时文件**（除非你显式 `--out`）。
 库内侧的对应工具是 `translation-review-tools/scripts/query.py --anchors`，
 同样是「一个输入、一次输出」。
 
-**它内建了四条本项目反复踩到的判据：**
+**它内建了四条判据：**
 
 1. **零命中自动复验拼写**。`lookup` 大小写敏感，零命中常是假阴性。零命中时会自动重试
    首字母大写、全小写、全大写、去空格、连字符↔空格等形态并列出结果。因此
@@ -124,12 +124,12 @@ python .agents/skills/skyrim-xml-tools/scripts/lookup_batch.py <词> [<词> ...]
    才是官方译形；`--contains` 命中只说明该词出现在某些 Source 里，输出里的
    **「语境」** 一栏可能是更长名称的子串、对话正文或星辰法术名，**不构成译形实证**。
    要断言官方译形就用 exact。
-4. **`status` 的强度要跟证据强度对齐**。实测 `Anu` exact 零命中（此前 contains 命中的
-   全是 `Anuriel` 安努瑞尔的子串），而 `Thalmor` exact 命中 1 条即「梭默」。**词表把
-   某条标成 CONFIRMED 之前，先用本工具确认它真能 exact 命中。**
+4. **`status` 的强度要跟证据强度对齐**。`Anu` exact 零命中而 contains 命中的是
+   `Anuriel` 的子串，`Thalmor` exact 命中一条即「梭默」。**词表把某条标成 CONFIRMED
+   之前，先用本工具确认它真能 exact 命中。**
 
-实测：11 词 / 99090 条目 / 1.7s（exact），零临时文件。测试：`test_lookup_batch.py`
-（14 例，用临时词典目录，不依赖真实 `dictionary/` 语料）。
+一次调用覆盖整批词、不产生临时文件。测试：`test_lookup_batch.py`（用临时词典目录，
+不依赖真实 `dictionary/` 语料）。
 
 ### `termrules`（启发式术语规则扫描）
 

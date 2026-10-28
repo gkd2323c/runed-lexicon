@@ -15,7 +15,7 @@ metadata:
 xTranslator 源 XML 里同一句英文会在多个 idx 重复出现（不同 NPC、不同记录族、不同段落）。
 批内分片时两片看不到对方的 readout，同一句各起一形；跨批时先写的批与后写的批各选一形。
 两种都会在写回前被 `round_pipeline` 的同源预检拦下，但预检只打前 10 组，而且**只看形数不看对错**——
-它能告诉你「有 17 组」，不能告诉你「该用哪个形」。
+它能告诉你「有若干组」，不能告诉你「该用哪个形」。
 
 裁决是人的判断，但**列组、查盘面、核契约、防漏判、别把成果冲掉**都该是工具。
 
@@ -59,7 +59,7 @@ py -3 .agents/skills/translation-batch-ops/scripts/round_pipeline.py --stem $S -
 
 **`--batch` 收多个批次，共用一张裁决表**。同源分裂天然跨批（一句呼喝散落在几十个 INFO 批里），而裁决只有一份，所以批次列表要和裁决表走同一个口径，别拆成 N 张几乎相同的表。表里写 `batches` 数组也行，**表内声明优先于命令行**（表才是这次裁决的权威范围，命令行只是手滑时的入口）。
 
-收多个还有一层收益：**「未裁决即中止」是全量判的**。逐批各跑一次时，批 A 收敛完，批 B 才暴露出的新组要等下一轮才被看见（实测跨 8 批收敛时反复重发表两次）。一次跑全部批次，缺表项一次性全列出。
+收多个还有一层收益：**「未裁决即中止」是全量判的**。逐批各跑一次时，批 A 收敛完，批 B 才暴露出的新组要等下一轮才被看见。一次跑全部批次，缺表项一次性全列出。
 
 批已写回、需要按裁决表收口时（canonical 上已有别的形）：
 
@@ -107,9 +107,9 @@ py -3 $D/sync_batch_artifacts.py --stem $S --scan               # 全库脱节�
 | 护栏 | 防住的事故 |
 |---|---|
 | 未裁决的多形组即中止 | 漏判一组就写回，漂移留进 canonical |
-| 契约 REQUIRED 词条机械核对 | 按批内多数收敛压过契约 target（已发生 3 次：那重区别、收获/收成、transformation/蜕变） |
+| 契约 REQUIRED 词条机械核对 | 按批内多数收敛压过契约 target |
 | 契约 forbidden 形一律中止 | 撞全局禁用词 |
-| 写穿 `map-part-*.json` | 只改 `map.json` 时，任何一次重跑 `consume_batch` 都用未收敛的分片覆盖回去（已发生） |
+| 写穿 `map-part-*.json` | 只改 `map.json` 时，任何一次重跑 `consume_batch` 都用未收敛的分片覆盖回去 |
 | 待改 idx 不属本批即中止 | 批已写回却改 `map.json`，改了个没人读的文件 |
 | 已登记豁免源句按 `round_pipeline` 口径跳过 | 豁免族被当漂移强行统一 |
 | `exempt_prompt_fix` 单独通道 | 豁免前提是 prompt 不同；同 prompt 漂移要单收，不能靠豁免放行 |
@@ -127,7 +127,7 @@ py -3 $D/sync_batch_artifacts.py --stem $S --scan               # 全库脱节�
 ### `same_source_family.py`：这个 idx 的同源族到底有几行
 
 ```text
-py -3 same_source_family.py --stem <STEM> --batches-dir .work/<STEM>/batches --idx 41291,41296
+py -3 same_source_family.py --stem <STEM> --batches-dir .work/<STEM>/batches --idx <idx1>,<idx2>
 py -3 same_source_family.py --stem <STEM> --idx-file _tmp/data/idx.txt     # 大批时
 ```
 
@@ -143,12 +143,10 @@ py -3 anchor_overlap.py --xml <canonical.xml> --form 权柄 --anchors authority,
 
 按**源文**命中的锚把某个中文形的行分组，标出「同一形跨多个英文锚」的行。
 词形普查（`adjudicate.py census`）只给中文形分布，看不出跨锚撞形——
-本轮实测「权柄」36 行里 authority 26、power 10，混着两个锚。
+同一中文形可能同时服务多个英文锚（例如「权柄」的命中行里可能混着 authority 与 power 两个锚）。
 
-**跨锚撞形直接改变裁决方向**：一个同时服务两个锚的形不该当主形，而这次普查正是
-把 `authority` 从「权威 63 / 威权 24 / 权柄 26 的三向乱局」收敛成
-「权威（认知制度位）62 行不动 + 威权（裁断位）收编权柄 26 行 + 权柄让出给 power 的 10 行归位为权力」
-的唯一依据。只看中文形票数会把这两类混作一次替换，方向就错了。
+**跨锚撞形直接改变裁决方向**：一个同时服务两个锚的形不该当主形，跨锚普查是区分共享中文形所属锚的唯一依据。
+若只看中文形票数做机械替换，会把分属不同概念的行混为一谈，导致收敛方向错误。
 
 ### `gen_form_convergence_tables.py`：按「中文形 + 锚」批量生成裁决表
 
@@ -169,7 +167,7 @@ py -3 ... --out-dir _tmp/data/authtabs --apply
 三条关键性质（都有测试盯）：
 
 - **以源句为键，不是以行为键**：同源族跨批时，每个相关批次都拿到同一条 `源句 -> 目标` 映射，
-  不会「只改一族里一半行」。实测 authority 收敛 37 行跨 25 批就靠这条。
+  不会「只改一族里一半行」。
 - **锚不匹配则跳过而不是硬替换**：形在但源文不含指定锚的行会单列出来让你核，不会被顺手改掉。
 - **同一源句现有两形即中止**：注意这**不是**「规则自相矛盾」——同一源句必然匹配同一条规则
   （命中即 break）。真正触发条件是该源句现有两形，机械替换会忠实地把这个分裂保留下来，
@@ -179,7 +177,7 @@ py -3 ... --out-dir _tmp/data/authtabs --apply
 
 裁决表 `rationale` 必填（只写「按规则替换」等于把判断留给运气）。**判据文本由调用方提供**
 （`--rationale-file`，规则名 -> 正文）——裁决是人的判断，把它硬编码进脚本等于把脚本变成
-穿工具外衣的一次性脚本（本脚本的第一版就是这么写的，被自己的测试逼改了）。
+穿工具外衣的一次性脚本。
 
 ```text
 py -3 fill_table_rationale.py --dir _tmp/data/authtabs \
@@ -195,9 +193,9 @@ py -3 fill_table_rationale.py --dir _tmp/data/authtabs \
 - **契约 `terms` 可能是 dict 也可能是 list**：`adjudicate.py` 与 `converge_batch.py` 两种都收，不要假设只有一种。
 - **契约 `terms` 的 key 是 `term_id`、不是源词形**：真实数据里 key 长这样
   `kalpic.glen.distinction`，源词形 `distinction` 在词条的 `source` 字段里。
-  按 key 查源词会对**任何**词都返回「契约无此词条」——`adjudicate.py` 曾因此空转了很久，
-  `distinction` / `transformation` 这两个恰恰是「契约 target 优先于多数形」最该被看见的词
-  却一直查不到。已修为 `source_index()` 按 `source` 字段建索引（见 `test_adjudicate.py`）。
+  按 key 查源词会对**任何**词都返回「契约无此词条」，`distinction` / `transformation` 这类
+  「契约 target 优先于多数形」最该被看见的词反而一直查不到。现由 `source_index()` 按
+  `source` 字段建索引（见 `test_adjudicate.py`）。
   **看到「契约无此词条」时先确认是真没有，还是查法又错了**；`converge_batch.py` 走
   `contract_index()` 按源词匹配，它的 `CONTRACT_MISSING` 语义是对的（源句命中了 REQUIRED
   词条但裁决形不含 `match.accepted`），别把它和 `adjudicate` 的「查不到」混为一谈。
@@ -217,7 +215,7 @@ py -3 fill_table_rationale.py --dir _tmp/data/authtabs \
 
 - 只读源 XML 与 canonical；**不改写 canonical**，写回一律走 `round_pipeline` / `close_round`。
 - 只改 `.work/<plugin>/batches/` 下的产物文件。
-- 中文一律用 Write 工具直写字面中文落盘；**不要在 PowerShell 命令行里写中文或 `\uXXXX`**
+- 中文一律以文件写入方式直写字面中文落盘；**不要在 PowerShell 命令行里写中文或 `\uXXXX`**
   （会被改写码位，正则静默失效、普查结论全错），也不要手算 `\uXXXX`。
 - 本 skill 不做翻译裁决，也不产出句子；只列组、核盘面、落裁决。
 

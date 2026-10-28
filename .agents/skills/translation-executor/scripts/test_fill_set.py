@@ -7,6 +7,26 @@ from fill_translation_set import fill_set, SetFillError
 
 
 class SetTests(unittest.TestCase):
+    def test_review_map_fills_pending_result(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'result.json').write_text(json.dumps({'translations': [{
+                'xml_index': 0, 'source': 'Hello', 'translation': '', 'status': 'PENDING'}]}),
+                encoding='utf-8')
+            (root / 'map.json').write_text(json.dumps({'0': {
+                'translation': '新译', 'status': 'REVIEW', 'confidence': 'LOW'}}),
+                encoding='utf-8')
+            manifest = root / 'manifest.json'
+            manifest.write_text(json.dumps({'schema_version': 1, 'files': [{
+                'result': 'result.json', 'map': 'map.json', 'output_name': 'result.json'}]}),
+                encoding='utf-8')
+            output = root / 'output'
+
+            self.assertEqual(fill_set(manifest, output), 1)
+            result = json.loads((output / 'result.json').read_text(encoding='utf-8'))
+            self.assertEqual(result['translations'][0]['translation'], '新译')
+            self.assertEqual(result['translations'][0]['status'], 'REVIEW')
+
     def test_failure_then_success_and_existing_output(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

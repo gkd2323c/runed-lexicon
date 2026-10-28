@@ -1,6 +1,6 @@
 ---
 name: mutagen-dialogue-exporter
-description: "Export deterministic DIAL→INFO dialogue structure from an original Skyrim ESP/ESM/ESL with Mutagen (.NET overlay parsing) in seconds, including topic/quest/branch links, per-INFO speaker (NPC name resolved via load-order link cache), prompts, response texts and condition function/runOn evidence. Also converts the Mutagen output into the xEdit-style dialogue-context shape consumed by translation-context-builder and extracts per-batch index files for its --index-file option. Replaces xedit-context-exporter: xEdit CLI can exceed 10 minutes or hang on an approximately 100MB plugin, while Mutagen parses the same scale in ~1.3s. Use when INFO lines need their real DIAL topic / quest line attribution, when building task-line dialogue batches, or whenever plugin-grounded dialogue structure is needed without the xEdit GUI."
+description: "Export deterministic DIAL→INFO dialogue structure from an original Skyrim ESP/ESM/ESL with Mutagen (.NET overlay parsing) in seconds, including topic/quest/branch links, per-INFO speaker (NPC name resolved via load-order link cache), prompts, response texts and condition function/runOn evidence. Also converts the Mutagen output into the xEdit-style dialogue-context shape consumed by translation-context-builder and extracts per-batch index files for its --index-file option. Replaces xedit-context-exporter: xEdit CLI can hang for a long time on an approximately 100MB plugin, while Mutagen parses the same scale in seconds. Use when INFO lines need their real DIAL topic / quest line attribution, when building task-line dialogue batches, or whenever plugin-grounded dialogue structure is needed without the xEdit GUI."
 compatibility: "Requires Windows, .NET SDK 9+ (net9.0 build), the Mutagen repo cloned at tools/Mutagen (gitignored), and the target plugin's masters present in the installed Skyrim SE Data directory. Read-only: overlay parsing never modifies the plugin."
 metadata:
   version: "0.2.0"
@@ -10,8 +10,8 @@ metadata:
 
 用 Mutagen（C# Bethesda 插件库）以 binary-overlay 方式秒级解析插件，导出确定性的
 DIAL→INFO 对话结构。这是 `xedit-context-exporter` 的替代品：xEdit 命令行模式在
-约 100MB、五千余 DIAL 的大型 ESM 上可超过 10 分钟仍无完成标记，Mutagen 对同量级文件
-约 **1.3 秒**即可导出全量结构，且 speaker/quest/topic 解析同样来自插件结构而非猜测。
+大型 ESM 上可能长时间无完成标记，Mutagen 对同量级文件秒级完成导出全量结构，
+且 speaker/quest/topic 解析同样来自插件结构而非猜测。
 
 ## 前置条件（一次性）
 
@@ -69,7 +69,7 @@ python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py <st
   **INFO EDID 双通道（关键）**：xTranslator 对 `INFO:NAM1`/`RNAM` 的 EDID 列有两种形态，脚本必须同时支持：
   - FormID 型 `[04197AF5]`：作者未给 INFO 起 EditorID 时。连接 local FormID（后 6 位）。
   - 命名型 `SIGREL_HELLO_F90_H05`：作者为 INFO 填了 EditorID 时。按原样 EDID 精确匹配 Mutagen 的 `info.edid`。
-  两通道键空间互斥（实测交集 0），优先命名通道、回退 FormID 通道。
+  两通道键空间互斥，优先命名通道、回退 FormID 通道。
   只用 FormID 通道会静默漏掉命名型行；在命名型占 NAM1 行约 68% 的输入上，
   单通道连接率仅约 31%，双通道可达 98.5%。**新 MOD 接入后必须核对
   「全 XML 未译 INFO NAM1 行数」与「各线未译之和」是否接近，差距大即说明存在未接入的 EDID 形态。**

@@ -15,8 +15,9 @@ The translation map is a plain JSON object keyed by xml_index (integer as string
     }
 
 Rules:
-- Only PENDING items are touched. A map key whose item is already TRANSLATED /
-  KEEP / REVIEW is reported and skipped (use --overwrite to replace it).
+- REVIEW is accepted as a finalized map status and is filled like TRANSLATED,
+  preserving only the additional marker that human review is pending. A mapped key
+  whose result item is already complete is skipped unless --overwrite is used.
 - A map key not present in the result is an error (default) — it means the map
   and the result disagree on batch scope.
 - Optional fields in a map entry (confidence / notes / terminology_decisions /
@@ -45,6 +46,8 @@ import json
 import sys
 from pathlib import Path
 
+# REVIEW is a final translation status like TRANSLATED; it only marks pending
+# human review and remains eligible for normal filling and writeback.
 VALID_STATUS = {"TRANSLATED", "KEEP", "REVIEW"}
 VALID_CONFIDENCE = {"HIGH", "MEDIUM", "LOW"}
 
