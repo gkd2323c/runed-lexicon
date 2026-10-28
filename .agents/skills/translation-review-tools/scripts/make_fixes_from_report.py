@@ -160,9 +160,10 @@ def group_fixes(fixes: dict[int, dict], owner: dict[int, str],
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="审查报告 → 修正集生成")
-    ap.add_argument("--report", required=True, nargs="+",
+    ap.add_argument("--report", required=True, nargs="+", action="extend",
                     help="审查报告 JSON（findings[] 或 issues[]）；可给多份，"
-                         "同源副本与批次归属跨报告一并处理（每轮常审 3 批）")
+                         "同源副本与批次归属跨报告一并处理（每轮常审 3 批）。"
+                         "两种写法等价：--report A B 与 --report A --report B")
     ap.add_argument("--xml", required=True, help="canonical 译文 XML（读现值与同源副本）")
     ap.add_argument("--out", required=True, help="fix map 输出路径")
     ap.add_argument("--drop", default=None, help="驳回的 idx（逗号/空格分隔）")

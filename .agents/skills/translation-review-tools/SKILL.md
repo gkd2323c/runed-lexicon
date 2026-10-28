@@ -50,6 +50,8 @@ py -3 .../make_fixes_from_report.py --report <review.json> --xml <translated.xml
 ```
 
 - 兼容两种报告 schema：`findings[]`（新）与 `issues[]`（历史）；`xml_index`/`idx` 均可。
+- `--report` 两种写法等价：`--report A B` 与 `--report A --report B` 都收全部报告（`action="extend"`）。
+  早期版本后者只保留最后一份、前面的报告被静默丢弃，症状是「报告条目数只有一份的量」而命令不报错。
 - `expected_current` 从 canonical 当场读取（CAS 基准）；现值已等于裁决值的条目列为 no-op 剔除。
 - `--drop`：驳回项（如官方实证现状正确）；`--override`：`{idx: 新值}` 特裁（部分采纳/语境重造）。
 - `--override` **可引入报告 findings 之外的 idx**（`introduce_overrides`）。跨批同锚词收敛的常态是
