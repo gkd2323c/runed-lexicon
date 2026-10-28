@@ -366,6 +366,27 @@
     "verdict": "PASS",
     "codes": []
    }
+  },
+  {
+   "case_id": "source-fidelity.trunc-two-dot-source-008-pass",
+   "test_layer": "gate",
+   "category": "truncation",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "origin": "real_project_incident_rewritten",
+   "note": "Maslea idx 2873/5725：源文以两点 `..` 收尾是作者手写的欲言又止，译文以 …… 收尾且偏短属合法形态，不得报 TRUNC001。",
+   "input": {
+    "source": "And then the old man looked at me with those tired eyes and said, we are not what we were..",
+    "translation": "然后老人用那双疲惫的眼睛看着我，说，我们早已不是从前的我们……",
+    "contract": {
+     "bindings": [],
+     "terms": {}
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   }
   }
  ]
 }

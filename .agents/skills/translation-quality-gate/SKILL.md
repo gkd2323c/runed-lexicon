@@ -415,7 +415,7 @@ TRUNC001 检出“译文把后半句吞了”的候选：源文是完整长句�
 判定条件（全部满足才报）：
 
 - source 长度 ≥ 55（排除 Gah.../Neeth... 类短叹）；
-- source 不以省略号收尾（原文自带欲言又止则跳过）；
+- source 不以省略号收尾（两点式 `..`、三点式 `...`、`…` 均算源文自带欲言又止，跳过）；
 - dest 非空、dest != source（排 KEEP/未译）；
 - dest 以 …… 或 … 结尾；
 - len(dest) < len(source) × 0.62。
@@ -424,7 +424,7 @@ TRUNC001 检出“译文把后半句吞了”的候选：源文是完整长句�
 这类 HTML 信件或书籍的截断将全部漏检。
 标签内省略号 strip 后自然消失不误报；纯标签行 strip 后为空仍被排除。
 长度与结尾判定一律用去标签后文本。回归用例见 source-fidelity-core.json
-trunc-html-006/007；selftest 必须直接调用 `truncation_issue`。
+trunc-html-006/007 与 trunc-two-dot-source-008；selftest 必须直接调用 `truncation_issue`。
 
 **定位为 WARNING 而非 FAIL**：中英长度差天然存在，且“毒舌省略”是合法风格（尼思这类角色），
 机械判定会误伤。每个 TRUNC001 需 Agent 对照完整 source 判断是真残缺（补全）还是风格省略（忽略）。

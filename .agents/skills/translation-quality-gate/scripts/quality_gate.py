@@ -136,7 +136,7 @@ def truncation_issue(unit: dict) -> list:
 
     判定条件（全部满足才报）：
     - source 长度 >= TRUNC_MIN_SRC_LEN（长句，排除 Gah.../Neeth... 类短叹）；
-    - source 不以省略号/句号/感叹/问号之外的方式自带中断（原文含 ... 或 … 结尾则跳过：
+    - source 不以省略号/句号/感叹/问号之外的方式自带中断（原文含 .. / ... 或 … 结尾则跳过：
       那是有意的欲言又止，不是残缺）；
     - dest 非空、dest != source（排 KEEP / 未译）；
     - dest 以 …… 或 … 结尾（译文中断信号）；
@@ -156,8 +156,10 @@ def truncation_issue(unit: dict) -> list:
     dst_text = re.sub(r'<[^>]*>', '', dst)
     if len(src_text) < TRUNC_MIN_SRC_LEN:
         return []
-    # source 自带中断（以 ... / … 结尾或含末尾省略）说明原文就是吞话，跳过
-    if re.search(r'\.\.\.|…\s*$', src_text):
+    # source 自带中断（以 .. / ... / … 结尾或含连续点）说明原文就是吞话，跳过。
+    # 两点式 `..` 与三点式同属作者手写的欲言又止（Maslea idx 2873 / 5725 即此），
+    # 只认三点会把这批合法译文读成残缺。
+    if re.search(r'\.{2,}|…\s*$', src_text):
         return []
     dst_tail = dst_text.rstrip()
     if not (dst_tail.endswith('……') or dst_tail.endswith('…')):

@@ -123,11 +123,27 @@ def load_rows(xml_path: Path) -> list[tuple[int, str, str]]:
     return rows
 
 
+def _is_markup_seed(src: str, start: int, end: int, span: str) -> bool:
+    """匹配片段是否落在 XML 标签 / 属性 / `[标记]` / `$变量` 之内。
+
+    dossier 类档案每行带固定标签前缀（`<font face='$HandwrittenFont'>`、`[Status]`），
+    其中的首字母大写词会被 SEED_RE 当成专名种子，进而在中文形侧按句式高频词聚成
+    假组（实测 MTD 三份文件 28 行候选全为误报）。判据只看紧邻字符：左邻
+    `<` / `[` / `$` / `=` / `{`，或右邻 `>` / `]` / `}`，即判为标记内文本。
+    """
+    markup = set("<>=[]{}$")
+    if any(c in markup for c in span):
+        return True
+    left = src[start - 1] if start > 0 else " "
+    right = src[end] if end < len(src) else " "
+    return left in "<[$={" or right in ">]}"
+
+
 def collect_seeds(rows, max_occurrences: int = 60,
                   min_capitalized_ratio: float = 0.9) -> dict[str, dict]:
     """英文专名种子 → {display, occurrences:[idx...]}。
 
-    三道过滤决定信噪比：
+    四道过滤决定信噪比：
     ① 首词是虚词（FUNCTION_WORDS）的一律丢——`Against Mora`、`Can I` 这类组合整条
        不是专名（首词检查对多词种子同样生效）。
     ② 出现次数超过 `max_occurrences` 的一律丢——在数万行语料里出现上百次的「专名」
@@ -135,6 +151,8 @@ def collect_seeds(rows, max_occurrences: int = 60,
     ③ 单词种子在语料里若常以**小写**形态出现，就是被句首大写的普通名词，不是专名：
        `Calm`/`Corruption`/`Defeat` 这类靠这一条剔掉（实测剔除后候选腰斩）。
        多词种子不做此检查（`Daughter of Kyne` 的末词是普通名词，整条仍是专名）。
+    ④ 落在 XML 标签 / 属性 / `[标记]` 之内的一律丢（`_is_markup_seed`）：模板化档案
+       每行带固定标签前缀，`HandwrittenFont` / `Status` / `Background` 不是专名。
     """
     lower_count: Counter = Counter()
     for _idx, src, _dst in rows:
@@ -147,6 +165,8 @@ def collect_seeds(rows, max_occurrences: int = 60,
         for m in SEED_RE.finditer(src):
             span = m.group(0).strip()
             if not span:
+                continue
+            if _is_markup_seed(src, m.start(), m.end(), span):
                 continue
             first = span.split()[0].lower().strip("'’-")
             if first in FUNCTION_WORDS:
