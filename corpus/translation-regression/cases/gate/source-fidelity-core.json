@@ -387,6 +387,90 @@
     "verdict": "PASS",
     "codes": []
    }
+  },
+  {
+   "case_id": "source-fidelity.trunc-009-source-three-dot-tail-skip",
+   "test_layer": "gate",
+   "category": "truncation",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "origin": "synthetic_guard",
+   "note": "三点式与两点式同属源文自带中断，跳判不得只覆盖其中一种。",
+   "input": {
+    "source": "I have spent great effort to summarise the known facts about the effect, though they raise more questions than they answer...",
+    "translation": "我花费了大量精力总结这些已知事实……",
+    "contract": {
+     "bindings": [],
+     "terms": {}
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   }
+  },
+  {
+   "case_id": "source-fidelity.trunc-010-source-ellipsis-tail-skip",
+   "test_layer": "gate",
+   "category": "truncation",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "origin": "synthetic_guard",
+   "note": "省略号收尾的源文同样跳过；三形（两点/三点/省略号）都不报。",
+   "input": {
+    "source": "I have spent great effort to summarise the known facts about the effect, though they raise more questions than they answer…",
+    "translation": "我花费了大量精力总结这些已知事实……",
+    "contract": {
+     "bindings": [],
+     "terms": {}
+    }
+   },
+   "expect": {
+    "verdict": "PASS",
+    "codes": []
+   }
+  },
+  {
+   "case_id": "source-fidelity.trunc-011-single-dot-tail-still-warning",
+   "test_layer": "gate",
+   "category": "truncation",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "origin": "synthetic_guard",
+   "note": "跳判放宽到两点后，单点收尾的完整句源文配短译文仍须报TRUNC001，不得被一并放过。",
+   "input": {
+    "source": "I have spent great effort to summarise the known facts about the effect, though they raise more questions than they answer.",
+    "translation": "我花费了大量精力总结这些已知事实……",
+    "contract": {
+     "bindings": [],
+     "terms": {}
+    }
+   },
+   "expect": {
+    "verdict": "WARNING",
+    "codes": []
+   }
+  },
+  {
+   "case_id": "source-fidelity.trunc-012-comma-tail-real-truncation",
+   "test_layer": "gate",
+   "category": "truncation",
+   "plugin": "synthetic",
+   "xml_index": null,
+   "origin": "synthetic_guard",
+   "note": "源文以逗号收尾（句中截断而非欲言又止）时，译文明显偏短仍须报TRUNC001。",
+   "input": {
+    "source": "I have spent great effort to summarise the known facts about the effect, though they raise more questions than they answer,",
+    "translation": "我花费了大量精力总结这些已知事实……",
+    "contract": {
+     "bindings": [],
+     "terms": {}
+    }
+   },
+   "expect": {
+    "verdict": "WARNING",
+    "codes": []
+   }
   }
  ]
 }
