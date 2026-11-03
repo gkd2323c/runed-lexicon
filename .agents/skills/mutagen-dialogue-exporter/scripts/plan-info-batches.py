@@ -10,6 +10,11 @@ import json
 import re
 import sys
 import xml.etree.ElementTree as ET
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]
+                       / "translation-batch-ops" / "scripts"))
+from untranslatable import is_untranslatable  # noqa: E402
 
 if len(sys.argv) < 2:
     raise SystemExit("usage: plan-info-batches.py <plugin> [<moddir>]")
@@ -24,7 +29,10 @@ CAP = 45
 def untranslated(i):
     s = strs[i].findtext('Source') or ''
     d = strs[i].findtext('Dest') or ''
-    return s == d and bool(s)
+    # 无内容可译的行（纯空白 / 纯数字）不算未译，不进 INFO 批次：官方词典
+    # 先例保持原样，切进来也无从下笔，写回仍是 Source == Dest，下轮再被扫回。
+    # 判据与 noninfo / gaps 共用 translation-batch-ops/scripts/untranslatable.py。
+    return s == d and not is_untranslatable(s)
 
 
 def topic_unique_untranslated(tp):

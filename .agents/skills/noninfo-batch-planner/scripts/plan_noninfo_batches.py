@@ -2,8 +2,8 @@
 """Plan deterministic non-INFO translation batches for a Skyrim MOD XML.
 
 Scans the source xTranslator XML for untranslated rows (Source == Dest,
-non-empty, REC not starting with INFO), groups them by record family
-(REC prefix, e.g. CELL / NPC_ / QUST), and packs each family into batches.
+with translatable content, REC not starting with INFO), groups them by record
+family (REC prefix, e.g. CELL / NPC_ / QUST), and packs each family into batches.
 
 Packing is source-group greedy: all XML rows sharing one Source are an
 indivisible unit (they share a translation), so a Source never splits
@@ -27,6 +27,10 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]
+                       / "translation-batch-ops" / "scripts"))
+from untranslatable import is_untranslatable  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
@@ -52,7 +56,8 @@ def resolve_path(value: str) -> Path:
 
 def load_untranslated(xml_path: Path, rec_filter: set[str],
                       include_info: set[str] | None = None,
-                      deferred: list[dict] | None = None) -> list[dict]:
+                      deferred: list[dict] | None = None,
+                      untranslatable: list[dict] | None = None) -> list[dict]:
     try:
         root = ET.parse(xml_path).getroot()
     except ET.ParseError as exc:
@@ -61,6 +66,7 @@ def load_untranslated(xml_path: Path, rec_filter: set[str],
     info_ok = {r for r in (include_info or set()) if r.startswith("INFO")}
     rows: list[dict] = []
     deferred = deferred if deferred is not None else []
+    untranslatable = untranslatable if untranslatable is not None else []
     for index, node in enumerate(root.findall("./Content/String")):
         source = text_of(node.find("Source"))
         dest = text_of(node.find("Dest"))
@@ -81,6 +87,13 @@ def load_untranslated(xml_path: Path, rec_filter: set[str],
             deferred.append({"index": index, "rec": rec,
                              "edid": text_of(node.find("EDID")),
                              "source_chars": len(source)})
+            continue
+        if is_untranslatable(source):
+            # 无内容可译（纯空白 / 纯数字）：官方词典先例纯空白 111/111、
+            # 纯数字 4/4 全部保持原样。同样显形登记：静默跳过会让规划未译数与
+            # XML 实际未译数对不上（判据见 translation-batch-ops/scripts/
+            # untranslatable.py）。
+            untranslatable.append({"index": index, "rec": rec, "source": source})
             continue
         rows.append({"index": index, "rec": rec, "source": source})
     return rows, deferred
@@ -185,7 +198,9 @@ def main() -> int:
                     f"--include-info-recs only accepts INFO-family RECs; got {unknown}")
 
         deferred: list[dict] = []
-        rows, deferred = load_untranslated(xml_path, rec_filter, info_recs, deferred)
+        untranslatable: list[dict] = []
+        rows, deferred = load_untranslated(xml_path, rec_filter, info_recs,
+                                           deferred, untranslatable)
         if not rows:
             raise ValueError("No untranslated non-INFO rows matched the filter")
 
@@ -220,19 +235,22 @@ def main() -> int:
             "source_xml": str(xml_path.relative_to(PROJECT_ROOT))
                           if xml_path.is_relative_to(PROJECT_ROOT) else str(xml_path),
             "selection": {
-                "rule": ("source_equals_dest_and_source_nonempty_and_rec_in_selection"
+                "rule": ("source_equals_dest_and_content_translatable_and_rec_in_selection"
                          if info_recs else
-                         "source_equals_dest_and_source_nonempty_and_rec_not_INFO"),
+                         "source_equals_dest_and_content_translatable_and_rec_not_INFO"),
                 "recs": sorted(rec_filter) if rec_filter else "all-non-INFO",
                 "include_info_recs": sorted(info_recs) if info_recs else [],
                 "max_unique": args.max_unique,
                 "max_rows": args.max_rows,
                 "longtext_threshold": LONGTEXT_THRESHOLD,
                 "longtext_deferred_count": len(deferred),
+                "untranslatable_skipped_count": len(untranslatable),
             },
             # 分流给 long-book-translation 的超长行。显形是必须的：
             # 静默排除会让批次未译数与 XML 实际未译数对不上，下一轮以为不存在。
             "longtext_deferred": deferred,
+            # 无内容可译（纯空白 / 纯数字）同样显形，理由同上、同一份 untranslatable.py 判据。
+            "untranslatable_skipped": untranslatable,
             "batches": plan_batches,
         }
 
@@ -241,6 +259,9 @@ def main() -> int:
         print(f"families: {len(families)}, batches: {len(plan_batches)}, "
               f"unique: {total_unique}, rows: {total_rows}")
         print("\n".join(lines))
+        if untranslatable:
+            print(f"无内容可译跳过 {len(untranslatable)} 条（纯空白 / 纯数字；"
+                  f"官方词典先例保持原样，不进批次也不算缺口）")
         if deferred:
             # 按字符量倒序，最大的排在前面：那是分片压力最高的
             print(f"长文本分流 {len(deferred)} 条 -> long-book-translation：")

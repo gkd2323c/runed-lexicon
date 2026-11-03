@@ -11,6 +11,11 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]
+                       / "translation-batch-ops" / "scripts"))
+from untranslatable import is_untranslatable  # noqa: E402
 
 if len(sys.argv) < 2:
     raise SystemExit("usage: split-info-lines.py <plugin> [<moddir>]")
@@ -42,7 +47,11 @@ for i, s in enumerate(strs):
 
 
 def untranslated(i):
-    return (strs[i].findtext('Source') or '') == (strs[i].findtext('Dest') or '')
+    # 同 plan-info-batches.py：无内容可译（纯空白 / 纯数字）不算未译。
+    # 否则它们会同时污染 lines[].untranslated 统计与 unlinked 清单。
+    s = strs[i].findtext('Source') or ''
+    d = strs[i].findtext('Dest') or ''
+    return s == d and not is_untranslatable(s)
 
 
 linked = set()

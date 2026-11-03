@@ -109,6 +109,32 @@ class ScanGapsTest(unittest.TestCase):
         self.assertNotIn(5, [r["index"] for r in rows])
         self.assertNotIn(6, [r["index"] for r in rows])
 
+    def test_digit_only_rows_are_not_untranslated(self):
+        # 整条纯数字（MESG:ITXT 的按钮编号）同样是「无内容可译」：Source==Dest 永远
+        # 成立，官方词典 4/4 保持原样，不能算缺口；但纯点号不在本判据内，省略号仍
+        # 须译成中文省略号（官方 243 条 ^\.+$ 里 238 条已译）。
+        xml = Path(self.tmp.name) / "Digits_english_chinese_translated.xml"
+        xml.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n<Content>\n'
+            '  <String List="0" sID="0001"><EDID>[D1]</EDID>'
+            '<REC id="1" idMax="1">MESG:ITXT</REC>'
+            "<Source>1</Source><Dest>1</Dest></String>\n"
+            '  <String List="0" sID="0002"><EDID>[D2]</EDID>'
+            '<REC id="1" idMax="1">MESG:ITXT</REC>'
+            "<Source>12</Source><Dest>12</Dest></String>\n"
+            '  <String List="0" sID="0003"><EDID>[D3]</EDID>'
+            '<REC id="1" idMax="1">INFO:NAM1</REC>'
+            "<Source>...</Source><Dest>...</Dest></String>\n"
+            '  <String List="0" sID="0004"><EDID>[D4]</EDID>'
+            '<REC id="1" idMax="1">INFO:NAM1</REC>'
+            "<Source>Real line</Source><Dest>Real line</Dest></String>\n"
+            "</Content>\n", encoding="utf-8")
+        idxs = [r["index"] for r in G.load_untranslated(xml)]
+        self.assertNotIn(0, idxs, "单数字行不算未译")
+        self.assertNotIn(1, idxs, "多位数同样不算未译")
+        self.assertIn(2, idxs, "省略号必须仍算未译（要译成中文省略号）")
+        self.assertIn(3, idxs, "普通行不受影响")
+
     def test_build_batches_keeps_sources_whole(self):
         gaps = [
             {"index": 0, "rec": "INFO:NAM1", "source": "Alpha line"},

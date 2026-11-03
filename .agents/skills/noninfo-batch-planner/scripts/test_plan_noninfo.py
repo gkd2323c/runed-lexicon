@@ -169,7 +169,40 @@ def main() -> int:
             if any(not i.startswith("NI-CELL-") for i in ids):
                 failures.append(f"filter leaked families: {ids}")
 
-        # 6. determinism: rerun produces identical plan bytes
+        # 6. rows with no translatable content (blank / pure digits) are skipped and
+        #    registered in untranslatable_skipped instead of silently dropped;
+        #    an ellipsis-only row must stay translatable (官方 243 条 ^\.+$ 里 238 条已译).
+        rows3 = [
+            {"rec": "MESG:ITXT", "source": "1", "edid": "[M1]"},
+            {"rec": "MESG:ITXT", "source": "12", "edid": "[M2]"},
+            {"rec": "CELL:FULL", "source": " ", "edid": "[B1]"},
+            {"rec": "CELL:FULL", "source": "\n\n\n", "edid": "[B2]"},
+            {"rec": "CELL:FULL", "source": "Real Name", "edid": "[R1]"},
+            {"rec": "MESG:ITXT", "source": "...", "edid": "[D1]"},
+        ]
+        xml3 = tmp / "t3_english_chinese.xml"
+        xml3.write_text(build_xml(rows3), encoding="utf-8")
+        res = run("--xml", str(xml3), "--stem", "T5", "--work-root", str(work_root))
+        if res.returncode != 0:
+            failures.append(f"untranslatable run rc={res.returncode}: {res.stderr.strip()}")
+        else:
+            plan = json.loads((work_root / "T5" / "context" / "T5-noninfo-batches.json")
+                              .read_text(encoding="utf-8"))
+            skipped = [r["source"] for r in plan.get("untranslatable_skipped", [])]
+            if sorted(skipped) != sorted(["1", "12", " ", "\n\n\n"]):
+                failures.append(f"untranslatable_skipped wrong: {skipped!r}")
+            if plan.get("selection", {}).get("untranslatable_skipped_count") != 4:
+                failures.append("selection.untranslatable_skipped_count wrong")
+            all_srcs = [s for b in plan["batches"] for s in b["srcs"]]
+            for leaked in ("1", "12", " ", "\n\n\n"):
+                if leaked in all_srcs:
+                    failures.append(f"untranslatable row leaked into batches: {leaked!r}")
+            if "..." not in all_srcs:
+                failures.append("ellipsis row wrongly skipped (must stay translatable)")
+            if "Real Name" not in all_srcs:
+                failures.append("normal row missing from batches")
+
+        # 7. determinism: rerun produces identical plan bytes
         plan_a = (work_root / "T" / "context" / "T-noninfo-batches.json").read_bytes()
         res = run("--xml", str(xml), "--stem", "T", "--work-root", str(work_root))
         plan_b = (work_root / "T" / "context" / "T-noninfo-batches.json").read_bytes()

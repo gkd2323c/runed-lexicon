@@ -150,7 +150,9 @@ py -3 ... locate_idx.py --stem <plugin> --from-file idx.txt
 
 ## 3. 计划覆盖缺口扫描（`scan_plan_gaps.py`）
 
-报出「未译（Source==Dest 且含非空白内容）且不在任何批次计划内」的行。它是与前两个工具互补的第三个盲区：`check_batch_coverage` 只看计划内批次，批次计划只认领「生成时收集到的行」，两条流水线（INFO 计划只收 linked NAM1、非 INFO 计划排除 INFO 前缀）之间可能存在从未被任何计划收走的行（玩家对话与非链接 INFO 行是常见形态）。这类行不被常规覆盖率工具看见，不专门扫描就会一直停留在未译集合里。
+报出「未译（Source==Dest 且内容可译）且不在任何批次计划内」的行。它是与前两个工具互补的第三个盲区：`check_batch_coverage` 只看计划内批次，批次计划只认领「生成时收集到的行」，两条流水线（INFO 计划只收 linked NAM1、非 INFO 计划排除 INFO 前缀）之间可能存在从未被任何计划收走的行（玩家对话与非链接 INFO 行是常见形态）。这类行不被常规覆盖率工具看见，不专门扫描就会一直停留在未译集合里。
+
+**无内容可译的行既不算未译、也不算缺口**：整条为空白或整条为纯数字的行（判据 `scripts/untranslatable.py`）没有可翻译的内容，永远写不出与 Source 不同的 Dest。把它们计入缺口会让 `--fail-on-gaps` 被永久卡住，收敛声明因此做不出来；而批次规划器又会跳过它们，所以两侧必须共用同一份判据，不各写一套。
 
 **机械匹配孤儿清点**：同口径报出「已译（`Source != Dest`）但不在任何计划内」的行。这类行是导出期词典自动匹配产物（AGENTS.md §3.1），同时逃过未译扫描与批次验收两个口径；机械门禁对其错配往往零命中（如反义词错配仍能通过 gate；实测约一成孤儿为系统性错配）。清点与核验卡点：
 
@@ -490,7 +492,7 @@ consume 崩在 fill 前不算、`map.filled.json` 空 `{}` 与损坏都不成立
 translation.json 缺失/损坏/空列表都不算；既有判定不变（TRANSLATED→VERIFIED、KEEP+TRANSLATED 混合批
 `filled` 语义、三件套齐 PREPPED / 缺一 PARTIAL、MISSING），另含无 `map.filled.json` 的早期消费批。
 
-测试覆盖：覆盖率分类的未写回检测（含 KEEP 行不计）、缺口扫描的未认领行检测（含空白行排除）、补遗批次装批（同源不拆）、gaps 计划幂等与保护、活跃批次目录拒写、机械匹配孤儿的检测/清单落盘/核验清单两种形态扣除/--fail-on-orphans 卡点；
+测试覆盖：覆盖率分类的未写回检测（含 KEEP 行不计）、缺口扫描的未认领行检测（含无内容可译行——纯空白与纯数字——排除、纯点号不误伤）、补遗批次装批（同源不拆）、gaps 计划幂等与保护、活跃批次目录拒写、机械匹配孤儿的检测/清单落盘/核验清单两种形态扣除/--fail-on-orphans 卡点；
 batch_sync 的双文件同步/已就位/缺失/mismatch 仍同步/dry-run、CLI check 方向判定、
 make_patch_from_maps 的同步链、rebuild 的缺文件重建/补键（只增不改）/dry-run/--batch 过滤/缺 index 跳过/重链提示（覆盖判定）。
 

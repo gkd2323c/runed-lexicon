@@ -59,6 +59,9 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from untranslatable import is_untranslatable  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 
@@ -78,8 +81,11 @@ def text_of(node: ET.Element | None) -> str:
 def load_all_rows(xml_path: Path) -> tuple[list[dict], list[dict], int]:
     """Scan once: (untranslated, matched, total_strings).
 
-    untranslated: Source == Dest（含 KEEP 形态），Source 非空白。
+    untranslated: Source == Dest（含 KEEP 形态），排除无内容可译（纯空白 / 纯数字）。
     matched:      Source != Dest 且 Dest 非空白（导出期词典自动匹配产物或其修订）。
+
+    无内容可译的行既不该进批次，也不该计入缺口：它们永远写不出与 Source 不同的
+    Dest，若算作缺口会让 --fail-on-gaps 永久卡住收敛声明。判据见 untranslatable.py。
     """
     try:
         root = ET.parse(xml_path).getroot()
@@ -93,7 +99,7 @@ def load_all_rows(xml_path: Path) -> tuple[list[dict], list[dict], int]:
         source = text_of(node.find("Source"))
         dest = text_of(node.find("Dest"))
         rec = text_of(node.find("REC"))
-        if not source.strip():
+        if is_untranslatable(source):
             continue
         if source != dest:
             if dest.strip():

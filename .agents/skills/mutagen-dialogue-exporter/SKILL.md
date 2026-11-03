@@ -77,6 +77,12 @@ python .agents/skills/mutagen-dialogue-exporter/scripts/plan-info-batches.py <st
   **唯一未译源句数**（不是 INFO 条数）均分为子主题；跨批全局源句去重（同句在后批只占一次容量、也只需翻一次）。
   产出 `.work/<plugin>/context/<plugin>-info-batches.json`（批次 → line/dials/unique_src）。
 
+  **无内容可译的行不算未译**（整条为空白或纯数字，判据 `translation-batch-ops/scripts/untranslatable.py`，
+  与 `plan_noninfo_batches.py`、`scan_plan_gaps.py` 共用同一份）：它们永远写不出与 Source
+  不同的 Dest，计入未译会卡在「进批次 → 无从下笔 → 下轮再进」的循环里，也让缺口扫描的
+  收敛卡点永远过不去。`split-info-lines.py` 的 `untranslated()` 同一口径，否则这些行会同时
+  污染 `lines[].untranslated` 统计与 `unlinked` 清单。
+
   **切分单位必须是源句**：INFO 与 NAM1 行是 1:N 关系，同一句台词可能被引擎按条件复制成多条
   记录。在高复述语料上实测平均约 4 条、最高 20 余条，
   **但这是本语料的统计量不是引擎常量**——别的 MOD 可能远低于此。结论不依赖具体

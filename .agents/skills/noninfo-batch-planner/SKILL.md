@@ -12,7 +12,9 @@ metadata:
 
 ## 核心模型
 
-- **候选**：`Source == Dest` 且非空、`REC` 不以 `INFO` 开头的行（`--include-info-recs` 点名的 INFO 族例外）。
+- **候选**：`Source == Dest` 且内容可译、`REC` 不以 `INFO` 开头的行（`--include-info-recs` 点名的 INFO 族例外）。
+- **无内容可译的行不进批次**：整条为空白（`' '`、`'\n\n\n'`）或整条为纯数字（`'1'`）的行没有可翻译的内容——切进来也无从下笔，写回后仍是 `Source == Dest`，下一轮再被扫回来，卡在循环里出不去（实测某 MOD 42 条索引对账确认已停在批次内）。方向由官方词典先例定死：纯空白 111/111、纯数字 4/4 全部保持原样，不是偏好。判据是 `translation-batch-ops/scripts/untranslatable.py` 的 `is_untranslatable()`，与 INFO 计划、`scan_plan_gaps` 共用同一份。
+- **纯点号不属此列**：`...` 要译成中文省略号（官方 243 条 `^\.+$` 里 238 条已译），按符号形状一刀切会把它误杀。
 - **分组单元**：同一条 `Source` 的全部行是不可分割组（共享同一译文）；同源行永不跨批。组序 = 首次出现序（XML 顺序）。
 - **批次**：按 REC 大类（`:` 前缀）分家族，族内贪心装批；装批上限 `--max-unique`（distinct 源数，默认 60）与 `--max-rows`（行数，默认 150），单个超限组仍整组输出。
 - **批 id**：`NI-<家族slug>-<NNN>`（家族按名排序、批号从 001 起），例如 `NI-CELL-001`、`NI-NPC-001`。
@@ -61,6 +63,7 @@ py -3 .../plan_noninfo_batches.py --xml <xml> --stem <stem> \
 - 计划：`.work/<stem>/context/<stem>-noninfo-batches.json`（同名覆盖式演进）。
   `batches[]` 条目：`id` / `line`（家族名）/ `recs` / `unique_src` / `row_count` / `srcs` / `idx`。
   `id` 与 `idx` 字段与 `verify_subagent_batch.py` 的 `--plan` 兼容。
+  被跳过的无内容可译行显形登记在 `untranslatable_skipped` 段（理由同 `longtext_deferred`：静默排除会让规划未译数与 XML 实际未译数对不上，下一轮以为不存在）。
 - 索引：`.work/<stem>/batches/<BID>/index.txt`（每行一个整数 xml_index）。
 
 下游链路与 INFO 相同：
@@ -92,4 +95,4 @@ py -3 -m py_compile .agents/skills/noninfo-batch-planner/scripts/plan_noninfo_ba
 py -3 .agents/skills/noninfo-batch-planner/scripts/test_plan_noninfo.py
 ```
 
-`test_plan_noninfo.py` 覆盖：INFO/已译行排除、同源不跨批、装批上限切分、超大组整体输出、index.txt 与 idx 一致、REC 过滤、dry-run 不写盘、重跑逐字节一致。
+`test_plan_noninfo.py` 覆盖：INFO/已译行排除、无内容可译行（纯空白 / 纯数字）排除并显形登记且纯点号不误伤、同源不跨批、装批上限切分、超大组整体输出、index.txt 与 idx 一致、REC 过滤、dry-run 不写盘、重跑逐字节一致。
