@@ -31,7 +31,9 @@ metadata:
 2. **备料·context + 骨架**：`py -3 .agents/skills/translation-batch-ops/scripts/rebuild_context.py --stem <stem> --batch <BID>` → 单批全量 context.json + translation.json 骨架（mods 目录名自动探测）。
 3. **备料·术语摘要**：`py -3 .agents/skills/translation-review-tools/scripts/term_digest.py --context .work/<stem>/batches/<BID>/context.json --out .work/<stem>/batches/<BID>/term-digest.md`
    （输出名必须是 `term-digest.md`：§2 的 PREPPED 判定只认 `.md`，写成 `.txt` 会被算成 PARTIAL 而非已备料，派单前被覆盖率扫描挡下。）
-4. **派单**：子代理 **write** 权限，产出落 `batches/<BID>/map.json`；译者在可用执行者间轮换；任务卡按 `subagent-ops` 模板（输入指向 index.txt 与 term-digest.md，禁枚举术语）。
+3b. **备料·掩码**：`py -3 .agents/skills/translation-batch-ops/scripts/protect_batch.py mask --stem <stem> --batch <BID>` → `batches/<BID>/masked.json`（§5f）。任务卡的输入指向它；同目录的 `mask-state.json` 是还原用状态，**不给子代理**。
+4. **派单**：子代理 **write** 权限，产出落 `batches/<BID>/raw-map.json`（键=index，值=含哨兵符的译文）；译者在可用执行者间轮换；任务卡按 `subagent-ops` 模板（输入指向 index.txt、term-digest.md 与 masked.json，禁枚举术语）。
+4b. **收卷·还原**：`py -3 .agents/skills/translation-batch-ops/scripts/protect_batch.py restore --stem <stem> --batch <BID> --translations .work/<stem>/batches/<BID>/raw-map.json` → 哨兵守恒才落 `batches/<BID>/map.json`（§5f）。硬错误条不得写入，回子代理重译。
 5. **收口（唯一入口）**：`round_pipeline.py`（§5c）一条命令完成 consume→charset→check→write→verify→snapshot；语义 FAIL 时它停在写回前，裁决后重跑。
 6. **文档治理（与步 5 同轮）**：刷新该 MOD `PROGRESS.md` 的状态数字（以步 5 产出的 `--record` 快照为准）、更新「下一动作」、确认无新增「已收口」条目。**这一步是硬规则不是收尾补办**（AGENTS.md §5；判据与归档机制见 `skyrim-doc-system` §12）。
 
@@ -402,6 +404,43 @@ py -3 .../inherit_prefill.py expand \
 - 继承项在 map 里标 `notes=inherited`，审查卡应优先核对这批键（机械填入的译文同样进审查队列，不因「来自 canonical」而免检）。
 - 只读 canonical 与源 XML，写批目录内的 prefill/uniq/map 文件；写回仍走 `round_pipeline` / `write_translations`。单次调用 <1s（约 4.3 万 String 规模）。
 - 低重复批次可不用：`prefill` 的统计行会显示继承与折叠的收益，收益接近 0 时直接走原流程。
+
+## 5f. 运行时 token 掩码（`protect_batch.py`）
+
+派单前把行内运行时 token 换成哨兵符，收卷后按位还原并校验。目的是把 token 完整性从「模型自觉 + 事后比对」换成「确定性字符串操作 + 事前防护」。
+
+```text
+# 派单前：context.json -> masked.json（子代理读这个）
+py -3 .agents/skills/translation-batch-ops/scripts/protect_batch.py mask \
+  --stem <plugin> --batch <BID>
+
+# 收卷后：子代理译文 -> 还原 + 哨兵校验 -> map.json
+py -3 .agents/skills/translation-batch-ops/scripts/protect_batch.py restore \
+  --stem <plugin> --batch <BID> --translations <raw-map.json> [--report <path>] [--check-order]
+```
+
+`--translations` 接受 `{"<index>": "译文"}` 或 `{"<index>": {"translation": "..."}}`。
+
+**为什么在子代理边界外做**：子代理读 `context.json` 的 `xml.source`，而它同时是写回基准，不能就地改写。掩码与还原都在子代理两侧完成，`fill` / `verify` / `write` 看到的始终是还原后的干净译文——因此不存在「掩码路线与保留路线同批混用」的口径冲突（`translation-protect` §6 那条约束）。
+
+**全量掩码，不做可译性判断**：项目裁决是「不该翻的被翻坏会破坏 MOD（硬伤），漏翻只是文本层面（软伤）」，两个方向代价不对等。所以除 protect 默认文法外，方括号标签与 XML 实体也纳入掩码（脚本内的 `BATCH_INLINE`）——`[Intimidate]`、`<stagger or knock down>` 这类其实可译的片段同样被保护、译文里原样保留，要不要补译由后续审查环节判断，不在掩码层决定。GRAY 标记照出，供二审定位；它影响排序与可见性，不影响是否掩码。
+
+**输出角色（确定性契约）**：
+
+- `.work/<stem>/batches/<BID>/masked.json` —— 给子代理读的掩码输入（**不含原文 token**）
+- `.work/<stem>/batches/<BID>/mask-state.json` —— 哨兵映射，还原用，**不给子代理**
+- `.work/<stem>/batches/<BID>/raw-map.json` —— 子代理产出，含哨兵符
+- `.work/<stem>/batches/<BID>/map.json` —— restore 产出，下游走正常 consume 链
+
+前两份分开是刻意的：把 token 映射放进子代理读的那份，等于请它顺手还原。
+
+**排除与保留**：`bucket=EXCLUDE`（整条即资源路径 / FormID）不进模型，restore 阶段直接以 `status=KEEP` 落回原文。
+
+**退出码与止损**：0 无硬错误 / 1 哨兵不守恒 / 2 用法或 IO 错误。哨兵丢失或出现幻觉哨兵 → 硬错误、该条不进 `map.json`，译文不得使用；**漏翻不算硬错误**，该条不进 `map.json` 但退出码仍为 0——按上面的裁决，漏翻是软伤，不该阻断收口。
+
+**已知假阳性（不是缺陷）**：译者若自行把哨兵还原成 token，译文内容其实完全正确，但哨兵在译文里消失，校验会报 `sentinel_multiset_mismatch`。这是确定性校验的代价；任务卡必须写明「不要还原哨兵」。
+
+验证方式：`py -3 -m unittest discover -s .agents/skills/translation-batch-ops/scripts -p "test_protect_batch.py"`（覆盖分桶、扩展文法、还原守恒、哨兵丢失与幻觉哨兵拦截、EXCLUDE 落 KEEP、漏翻不阻断）。
 
 ## 6. 批次文件对账与重建（`batch_sync.py`）
 

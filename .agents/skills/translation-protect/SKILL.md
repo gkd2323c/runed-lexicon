@@ -95,6 +95,7 @@ py -3 .agents/skills/translation-protect/scripts/protect_text.py restore \
 - **不判语义**：桶位是形态判定，不做"这个 token 是什么意思"的解释。专名与术语裁决归 `translation-review-tools` / `translation-quality-gate`。
 - **与 `long-book-translation`**：两者都是掩码还原路线，但作用域不同——那是长书分片的前身（只管尖括号标签 + `[pagebreak]`），本阶段面向通用批次。哨兵符语法互相兼容。
 - **与 `translation-executor`**：executor 的 `protected_tokens()` 只做检测 + 多重集比对，属「要求模型保留」路线。两条路线**不要在同一批里混用**：同一批要么整体掩码，要么整体要求保留，混用会让校验口径互相打架。
+  批次的正式接入点在 `translation-batch-ops` §5f（`protect_batch.py`）：掩码与还原都在**子代理边界之外**完成，下游 fill / verify / write 只看到还原后的干净译文。因此不触上面这条——「混用」指的是同一批里两套校验口径同时对着模型产物生效，而不是「模型侧掩码 + 下游保留校验」这个组合。
 
 ## 7. 验证
 
