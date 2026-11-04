@@ -135,8 +135,6 @@ Skill 分四层 + 元 skill：
 
 11. **工作区卫生**：`mods/<plugin>/` 零杂物（默认只允许四文档/`terms.json`、源 XML、canonical 写回产物、原插件）；`.work/<Plugin>/` 是过程资产唯一落点（`batches/` `archive/` `reports/` `context/` `contracts/`）；`_tmp/` 每次清理后递归文件数必须**净递减**。
 
-12. **不擅自初始化或修改 Git 提交历史**，除非用户明确指令。提交时注意 `.gitignore` 已排除的内容（见下）不得强制加入。
-
 ## 本地数据（公开仓库不附带）
 
 `dictionary/**/*.xml`、`mods/**`、`tools/xEdit/**`、`tools/term-rules/*.txt`、`tools/Mutagen/`、`.work/`、`_tmp/` 均被 git 排除（不发布）。其中 `dictionary/**/*.xml` 的规则不在 `.gitignore`，而在本机 `.git/info/exclude-dictionary`（由 `core.excludesFile` 指向）：平台检索工具会跳过 `.gitignore` / `.git/info/exclude` 排除的文件、但不读 `core.excludesFile` 来源，规则置于该来源使 Agent 可检索词典且 git 仍不追踪。**新 clone 需重建**：将 `dictionary/**/*.xml` 写入 `.git/info/exclude-dictionary` 并执行 `git config --local core.excludesFile <repo>/.git/info/exclude-dictionary`。**全新 clone 下涉及 `mods/<plugin>/` 与 `dictionary/` 的命令无法直接运行**——需要用户自备官方英中 xTranslator XML（导出方法见 `dictionary/EXPORT_GUIDE.md`）与目标 MOD XML。
